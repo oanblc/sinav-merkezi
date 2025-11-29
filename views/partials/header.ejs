@@ -49,10 +49,21 @@
                         </ul>
                     </li>
                     <% if (typeof user !== 'undefined' && user) { %>
+                        <%
+                            // Kullanıcı tipine göre dashboard URL'i belirle
+                            let dashboardUrl = '/';
+                            if (user.type === 'veli') {
+                                dashboardUrl = '/veli/dashboard';
+                            } else if (user.type === 'rehber_ogretmen') {
+                                dashboardUrl = '/rehber/dashboard';
+                            } else if (user.type === 'kurum_yonetici' || user.type === 'kurum' || user.type === 'kurum_admin') {
+                                dashboardUrl = '/kurum/dashboard';
+                            }
+                        %>
                         <li class="nav-item">
-                            <span class="navbar-text me-3">
+                            <a class="nav-link" href="<%= dashboardUrl %>" style="color: var(--primary) !important; font-weight: 600;">
                                 <i class="bi bi-person-circle"></i> <%= user.username %>
-                            </span>
+                            </a>
                         </li>
                         <li class="nav-item">
                             <a class="btn btn-outline-primary btn-sm" href="/logout">Çıkış</a>

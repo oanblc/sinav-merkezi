@@ -718,6 +718,7 @@ db.serialize(() => {
       ogrenci_id INTEGER,
       durum TEXT DEFAULT 'beklemede',
       mesaj TEXT,
+      sonuc_goruntuleme_aktif INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (veli_id) REFERENCES users (id),
       FOREIGN KEY (rehber_id) REFERENCES users (id),
@@ -725,6 +726,17 @@ db.serialize(() => {
       FOREIGN KEY (ogrenci_id) REFERENCES ogrenciler (id)
     )
   `);
+  
+  // Mevcut ogrenci_talepleri tablosuna sonuc_goruntuleme_aktif kolonu ekle (varsa hata vermesin)
+  db.run(`
+    ALTER TABLE ogrenci_talepleri ADD COLUMN sonuc_goruntuleme_aktif INTEGER DEFAULT 1
+  `, (err) => {
+    if (err && !err.message.includes('duplicate column')) {
+      console.error('❌ Kolon ekleme hatası:', err);
+    } else if (!err) {
+      console.log('✅ sonuc_goruntuleme_aktif kolonu eklendi');
+    }
+  });
   
   // Sınav takvimi tablosu
   db.run(`
@@ -2787,33 +2799,33 @@ app.get('/kurum/ogrenci-sablon-indir', requireAuth, async (req, res) => {
   try {
     const xlsx = require('xlsx');
     
-    // Şablon veri: Sadece başlıklar + 2 örnek satır
+    // Şablon veri: Başlıklar + Gerçek veri örneği
     const sablonData = [
       {
+        'ÖĞRENCI SINIF BİLGİSİ': '5',
+        'ÖĞRENCI ADI SOYADI': 'Onur Kapıcıoğlu',
+        'TELEFON KAYDI': 'Yapıldı',
+        'T.C KİMLİK NO': '14983254220',
+        'ÖĞRENCİ VELİ': 'Edip Kapıcıoğlu',
+        'VELİ TELEFON': '05365052512',
+        'TUTAR': '5000',
+        'ÖDEME DURUMU': 'Yapıldı',
+        'ÖDEME TÜRÜ': 'Nakit',
+        'EDESIS KAYDI': '',
+        'TAKSİT': ''
+      },
+      {
         'ÖĞRENCI SINIF BİLGİSİ': '3',
-        'ÖĞRENCI ADI SOYADI': 'Örnek Öğrenci 1',
-        'TELEFON KAYDI': '05321234567',
+        'ÖĞRENCI ADI SOYADI': 'Örnek Öğrenci 2',
+        'TELEFON KAYDI': '',
         'T.C KİMLİK NO': '12345678901',
-        'ÖĞRENCİ VELİ': 'Örnek Veli 1',
+        'ÖĞRENCİ VELİ': 'Örnek Veli 2',
         'VELİ TELEFON': '05321234567',
-        'TUTAR': '4.000 TRY',
-        'ÖDEME DURUMU': 'BEKLİYOR',
+        'TUTAR': '4000',
+        'ÖDEME DURUMU': 'Bekliyor',
         'ÖDEME TÜRÜ': '',
         'EDESIS KAYDI': '',
         'TAKSİT': '2'
-      },
-      {
-        'ÖĞRENCI SINIF BİLGİSİ': '5',
-        'ÖĞRENCI ADI SOYADI': 'Örnek Öğrenci 2',
-        'TELEFON KAYDI': '',
-        'T.C KİMLİK NO': '',
-        'ÖĞRENCİ VELİ': 'Örnek Veli 2',
-        'VELİ TELEFON': '05329876543',
-        'TUTAR': '5.000 TRY',
-        'ÖDEME DURUMU': 'YAPILDI',
-        'ÖDEME TÜRÜ': 'HAVALE',
-        'EDESIS KAYDI': 'EVET',
-        'TAKSİT': ''
       }
     ];
     
@@ -4656,7 +4668,15 @@ app.get('/veli/ogrenci-duzenle/:id', requireAuth, requireRole('veli'), async (re
     
     // Bu öğrenciye yetki verilmiş rehber öğretmenleri getir
     const rehberOgretmenler = await dbAll(`
-      SELECT t.id as talep_id, t.created_at, u.id as ogretmen_id, u.ad_soyad, u.kurum, u.brans, u.telefon
+      SELECT 
+        t.id as talep_id, 
+        t.created_at, 
+        t.sonuc_goruntuleme_aktif,
+        u.id as ogretmen_id, 
+        u.ad_soyad, 
+        u.kurum, 
+        u.brans, 
+        u.telefon
       FROM ogrenci_talepleri t
       INNER JOIN users u ON t.rehber_ogretmen_id = u.id
       WHERE t.ogrenci_id = ? AND t.durum = 'onaylandi'
@@ -4741,6 +4761,149 @@ app.post('/veli/rehber-yetki-kaldir/:talep_id', requireAuth, requireRole('veli')
     res.json({ success: true, message: 'Rehber öğretmen yetkisi kaldırıldı!' });
   } catch (error) {
     console.error('❌ Yetki kaldırma hatası:', error);
+    res.json({ success: false, message: 'Bir hata oluştu!' });
+  }
+});
+
+// Veli - Rehber Öğretmen Sınav Sonucu Görme Yetkisini Değiştir
+app.post('/veli/rehber-sonuc-yetki-degistir/:talep_id', requireAuth, requireRole('veli'), async (req, res) => {
+  try {
+    const talepId = req.params.talep_id;
+    const { yeni_durum } = req.body;
+    
+    console.log('🔄 Sonuç yetkisi değiştirme isteği:', { talepId, yeniDurum: yeni_durum, veliId: req.session.userId });
+    
+    // Talebin bu veliye ait olduğunu kontrol et
+    const talep = await dbGet(
+      'SELECT t.*, o.veli_id FROM ogrenci_talepleri t INNER JOIN ogrenciler o ON t.ogrenci_id = o.id WHERE t.id = ?',
+      [talepId]
+    );
+    
+    if (!talep || talep.veli_id !== req.session.userId) {
+      return res.json({ success: false, message: 'Yetkiniz yok!' });
+    }
+    
+    // Yetkiyi güncelle
+    await dbRun(
+      'UPDATE ogrenci_talepleri SET sonuc_goruntuleme_aktif = ? WHERE id = ?',
+      [yeni_durum, talepId]
+    );
+    
+    console.log(`✅ Sınav sonucu görme yetkisi ${yeni_durum == 1 ? 'açıldı' : 'kapatıldı'}`);
+    res.json({ 
+      success: true, 
+      message: `Sınav sonucu görme yetkisi ${yeni_durum == 1 ? 'açıldı' : 'kapatıldı'}!` 
+    });
+  } catch (error) {
+    console.error('Yetki değiştirme hatası:', error);
+    res.json({ success: false, message: 'Bir hata oluştu!' });
+  }
+});
+
+// Kurum - Rehber Öğretmenler Listesi (Yetki Yönetimi)
+app.get('/kurum/rehber-ogretmenler', requireAuth, async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
+  }
+  
+  try {
+    // Tüm onaylı talepleri rehber öğretmene göre grupla
+    const talepler = await dbAll(`
+      SELECT 
+        t.id as talep_id,
+        t.ogrenci_id,
+        t.ad_soyad,
+        t.sinif,
+        t.veli_id,
+        t.rehber_ogretmen_id,
+        t.sonuc_goruntuleme_aktif,
+        u.ad_soyad as rehber_ad_soyad,
+        u.brans,
+        u.kurum,
+        u.telefon as rehber_telefon,
+        o.ad_soyad as ogrenci_veli_ad,
+        o.sinif as ogrenci_sinif,
+        v.ad_soyad as veli_adi
+      FROM ogrenci_talepleri t
+      INNER JOIN users u ON t.rehber_ogretmen_id = u.id
+      LEFT JOIN ogrenciler o ON t.ogrenci_id = o.id
+      LEFT JOIN users v ON t.veli_id = v.id
+      WHERE t.durum = 'onaylandi'
+      ORDER BY u.ad_soyad ASC, o.ad_soyad ASC
+    `);
+    
+    // Rehber öğretmene göre grupla
+    const rehberMap = new Map();
+    
+    talepler.forEach(talep => {
+      const rehberId = talep.rehber_ogretmen_id;
+      
+      if (!rehberMap.has(rehberId)) {
+        rehberMap.set(rehberId, {
+          rehber_id: rehberId,
+          ad_soyad: talep.rehber_ad_soyad,
+          brans: talep.brans,
+          kurum: talep.kurum,
+          telefon: talep.rehber_telefon,
+          ogrenci_sayisi: 0,
+          ogrenciler: []
+        });
+      }
+      
+      const rehber = rehberMap.get(rehberId);
+      rehber.ogrenci_sayisi++;
+      rehber.ogrenciler.push({
+        talep_id: talep.talep_id,
+        ad_soyad: talep.ogrenci_veli_ad || talep.ad_soyad,
+        sinif: talep.ogrenci_sinif || talep.sinif,
+        veli_adi: talep.veli_adi,
+        sonuc_goruntuleme_aktif: talep.sonuc_goruntuleme_aktif
+      });
+    });
+    
+    const rehberOgretmenler = Array.from(rehberMap.values());
+    
+    res.render('kurum/rehber-ogretmenler', {
+      rehberOgretmenler: rehberOgretmenler,
+      user: { username: req.session.username, type: req.session.userType },
+      error: req.session.error,
+      success: req.session.success
+    });
+    
+    req.session.error = null;
+    req.session.success = null;
+  } catch (error) {
+    console.error('Rehber öğretmen listesi hatası:', error);
+    req.session.error = 'Sayfa yüklenirken bir hata oluştu!';
+    res.redirect('/kurum/dashboard');
+  }
+});
+
+// Kurum - Rehber Öğretmen Sınav Sonucu Görme Yetkisini Değiştir
+app.post('/kurum/rehber-sonuc-yetki-degistir/:talep_id', requireAuth, async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
+  }
+  
+  try {
+    const talepId = req.params.talep_id;
+    const { yeni_durum } = req.body;
+    
+    console.log('🔄 Kurum - Sonuç yetkisi değiştirme:', { talepId, yeniDurum: yeni_durum });
+    
+    // Yetkiyi güncelle
+    await dbRun(
+      'UPDATE ogrenci_talepleri SET sonuc_goruntuleme_aktif = ? WHERE id = ?',
+      [yeni_durum, talepId]
+    );
+    
+    console.log(`✅ Sınav sonucu görme yetkisi ${yeni_durum == 1 ? 'açıldı' : 'kapatıldı'}`);
+    res.json({ 
+      success: true, 
+      message: `Sınav sonucu görme yetkisi ${yeni_durum == 1 ? 'açıldı' : 'kapatıldı'}!` 
+    });
+  } catch (error) {
+    console.error('Yetki değiştirme hatası:', error);
     res.json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
@@ -5095,7 +5258,7 @@ app.get('/rehber/dashboard', requireAuth, requireRole('rehber_ogretmen'), async 
 // Rehber Öğretmen - Sınav Sonuçları
 app.get('/rehber/sinav-sonuclari', requireAuth, requireRole('rehber_ogretmen'), async (req, res) => {
   try {
-    // Onaylı öğrencilerin sınav sonuçlarını getir
+    // Onaylı VE yetkisi aktif olan öğrencilerin sınav sonuçlarını getir
     // Veli öğrencileri
     const veliSonuclari = await dbAll(`
       SELECT 
@@ -5119,6 +5282,7 @@ app.get('/rehber/sinav-sonuclari', requireAuth, requireRole('rehber_ogretmen'), 
       INNER JOIN ogrenci_talepleri t ON t.ogrenci_id = o.id
       WHERE t.rehber_ogretmen_id = ? 
         AND t.durum = 'onaylandi'
+        AND t.sonuc_goruntuleme_aktif = 1
         AND sk.pdf_path IS NOT NULL
         AND sk.pdf_path != ''
       ORDER BY s.tarih DESC, o.ad_soyad ASC

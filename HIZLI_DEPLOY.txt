@@ -1,0 +1,22 @@
+### 🚀 HIZLI DEPLOY ADIMLARI
+
+## GitHub Desktop'ta (Şu an açık olan ekranınızda):
+
+1. ✅ Sol tarafta yeni dosyalar görünecek
+2. ✅ Summary: "Deploy files added"
+3. ✅ "Commit to main" tıkla
+4. ✅ "Push origin" tıkla
+
+## Railway Dashboard'da (Tarayıcıda açıldı):
+
+1. ✅ "sinav-merkezi" projesine tıkla
+2. ✅ GitHub'a push yaptıktan sonra otomatik deploy başlayacak!
+3. ✅ Veya "Deployments" → "Deploy" butonuna tıkla
+
+## İşlem Süresi: 2 dakika! 🎉
+
+---
+
+**NOT**: Railway, GitHub'a push yaptığınızda otomatik deploy eder!
+Push yaptıktan birkaç saniye sonra Railway Dashboard'da deployment başladığını göreceksiniz.
+

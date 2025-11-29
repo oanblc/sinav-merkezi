@@ -9,99 +9,267 @@
   <% } %>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --primary: #003b78;
+      --primary-light: #0056b3;
+      --primary-dark: #002752;
+      --secondary: #f39c12;
+      --text: #2c3e50;
+      --bg-light: #f8f9fa;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--text);
+      line-height: 1.6;
+      background: #f5f7fa;
     }
+    
+    /* Navbar - Ana Sayfa ile Aynı */
     .navbar {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      background: white;
+      box-shadow: var(--shadow);
+      padding: 16px 0;
     }
+    
     .navbar-brand {
-      font-weight: bold;
+      font-weight: 800;
       font-size: 1.5rem;
+      color: var(--primary) !important;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
+    
+    .navbar-brand i {
+      font-size: 1.8rem;
+    }
+    
     .nav-link {
-      color: rgba(255,255,255,0.9) !important;
-      transition: all 0.3s;
-      padding: 0.5rem 1rem !important;
+      color: var(--text) !important;
+      font-weight: 500;
+      padding: 8px 20px !important;
+      transition: var(--transition);
       border-radius: 8px;
     }
+    
     .nav-link:hover {
-      background: rgba(255,255,255,0.1);
-      color: white !important;
+      color: var(--primary) !important;
+      background: rgba(0, 59, 120, 0.05);
     }
+    
     .dropdown-menu {
       border: none;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      border-radius: 12px;
+      padding: 8px 0;
+      margin-top: 8px;
     }
+    
+    .dropdown-item {
+      padding: 10px 20px;
+      color: var(--text);
+      font-weight: 500;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+    }
+    
+    .dropdown-item:hover {
+      background: rgba(0, 59, 120, 0.05);
+      color: var(--primary);
+    }
+    
+    .dropdown-item i {
+      color: var(--primary);
+      font-size: 1rem;
+    }
+    
+    /* Hero Section - Ana Sayfa ile Uyumlu */
     .hero-section {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #003b78 0%, #0056b3 100%);
       color: white;
-      padding: 80px 0 60px;
+      padding: 120px 0 80px;
       margin-bottom: 60px;
+      position: relative;
+      overflow: hidden;
     }
+    
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    
+    .hero-section .container {
+      position: relative;
+      z-index: 1;
+    }
+    
+    .hero-section h1 {
+      font-weight: 800;
+      margin-bottom: 20px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    /* Content Section */
     .content-section {
       min-height: 400px;
-      padding: 40px 0;
+      padding: 60px 0;
+      background: white;
     }
+    
     .content-section img {
       max-width: 100%;
       height: auto;
       border-radius: 12px;
       margin: 20px 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
-    .content-section h1, .content-section h2, .content-section h3 {
-      color: #667eea;
+    
+    .content-section h1, 
+    .content-section h2, 
+    .content-section h3 {
+      color: var(--primary);
+      font-weight: 700;
       margin-top: 30px;
       margin-bottom: 20px;
     }
+    
+    .content-section h1 {
+      font-size: 2rem;
+    }
+    
+    .content-section h2 {
+      font-size: 1.75rem;
+    }
+    
+    .content-section h3 {
+      font-size: 1.5rem;
+    }
+    
     .content-section p {
       font-size: 1.1rem;
       line-height: 1.8;
-      color: #4a5568;
+      color: var(--text);
       margin-bottom: 20px;
     }
-    .content-section ul, .content-section ol {
+    
+    .content-section ul, 
+    .content-section ol {
       font-size: 1.1rem;
       line-height: 1.8;
-      color: #4a5568;
+      color: var(--text);
+      padding-left: 20px;
     }
+    
+    .content-section li {
+      margin-bottom: 10px;
+    }
+    
     .content-section table {
       margin: 20px 0;
+      width: 100%;
+      border-collapse: collapse;
     }
-    .footer {
-      background: #2d3748;
+    
+    .content-section table th,
+    .content-section table td {
+      padding: 12px;
+      border: 1px solid #e8ecf0;
+    }
+    
+    .content-section table th {
+      background: var(--bg-light);
+      font-weight: 600;
+      color: var(--primary);
+    }
+    
+    /* Footer - Ana Sayfa ile Aynı */
+    footer {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
       color: white;
       padding: 40px 0 20px;
-      margin-top: 80px;
+      margin-top: 60px;
     }
-    .footer h5 {
-      color: white;
+    
+    footer h5 {
+      font-weight: 700;
       margin-bottom: 20px;
+      color: white;
     }
-    .footer a {
+    
+    footer a {
       color: rgba(255,255,255,0.8);
       text-decoration: none;
-      transition: all 0.3s;
+      transition: var(--transition);
+      display: block;
+      margin-bottom: 8px;
     }
-    .footer a:hover {
+    
+    footer a:hover {
       color: white;
+      padding-left: 5px;
+    }
+    
+    .footer-bottom {
+      border-top: 1px solid rgba(255,255,255,0.1);
+      margin-top: 30px;
+      padding-top: 20px;
+      text-align: center;
+      color: rgba(255,255,255,0.6);
+    }
+    
+    /* Giriş Yap Butonu */
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      border: none;
+      padding: 10px 24px;
+      font-weight: 600;
+      border-radius: 8px;
+      transition: var(--transition);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
     }
   </style>
 </head>
 <body>
-  <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+  <!-- Navbar - Ana Sayfa ile Aynı Tasarım -->
+  <nav class="navbar navbar-expand-lg navbar-light">
     <div class="container">
       <a class="navbar-brand" href="/">
-        <i class="bi bi-mortarboard-fill"></i> Sınav Merkezi
+        <i class="bi bi-mortarboard-fill"></i>
+        <span>Sınav Merkezi</span>
       </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav ms-auto">
+        <ul class="navbar-nav ms-auto align-items-center">
           <li class="nav-item">
             <a class="nav-link" href="/">Ana Sayfa</a>
           </li>
@@ -118,24 +286,40 @@
             <a class="nav-link" href="/duyurular">Duyurular</a>
           </li>
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="kurumsalDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
               Kurumsal
             </a>
-            <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="/hakkimizda">Hakkımızda</a></li>
-              <li><a class="dropdown-item" href="/iletisim">İletişim</a></li>
-              <li><a class="dropdown-item" href="/sinav-merkezleri">Sınav Merkezleri</a></li>
+            <ul class="dropdown-menu" aria-labelledby="kurumsalDropdown">
+              <li><a class="dropdown-item" href="/hakkimizda"><i class="bi bi-info-circle me-2"></i>Hakkımızda</a></li>
+              <li><a class="dropdown-item" href="/iletisim"><i class="bi bi-telephone me-2"></i>İletişim</a></li>
+              <li><a class="dropdown-item" href="/sinav-merkezleri"><i class="bi bi-geo-alt me-2"></i>Sınav Merkezleri</a></li>
             </ul>
           </li>
           <% if (user) { %>
+            <%
+              // Kullanıcı tipine göre dashboard URL'i belirle
+              let dashboardUrl = '/';
+              if (user.type === 'veli') {
+                dashboardUrl = '/veli/dashboard';
+              } else if (user.type === 'rehber_ogretmen') {
+                dashboardUrl = '/rehber/dashboard';
+              } else if (user.type === 'kurum_yonetici' || user.type === 'kurum' || user.type === 'kurum_admin') {
+                dashboardUrl = '/kurum/dashboard';
+              }
+            %>
             <li class="nav-item">
-              <a class="nav-link" href="/<%= user.type === 'veli' ? 'veli' : user.type === 'rehber_ogretmen' ? 'rehber' : 'kurum' %>/dashboard">
-                <i class="bi bi-person-circle"></i> Panel
+              <a class="nav-link" href="<%= dashboardUrl %>" style="color: var(--primary) !important; font-weight: 600;">
+                <i class="bi bi-person-circle"></i> <%= user.username %>
               </a>
+            </li>
+            <li class="nav-item">
+              <a class="btn btn-outline-primary btn-sm" href="/logout">Çıkış</a>
             </li>
           <% } else { %>
             <li class="nav-item">
-              <a class="nav-link btn btn-light text-primary px-3" href="/login">Giriş Yap</a>
+              <a class="btn btn-primary ms-3" href="/login">
+                <i class="bi bi-box-arrow-in-right"></i> Giriş Yap
+              </a>
             </li>
           <% } %>
         </ul>
@@ -161,13 +345,13 @@
     </div>
   </section>
 
-  <!-- Footer -->
-  <footer class="footer">
+  <!-- Footer - Ana Sayfa ile Aynı Tasarım -->
+  <footer>
     <div class="container">
       <div class="row">
         <div class="col-md-4 mb-4">
           <h5><i class="bi bi-mortarboard-fill"></i> Sınav Merkezi</h5>
-          <p class="text-white-50">
+          <p style="color: rgba(255,255,255,0.7);">
             Türkiye'nin önde gelen simülasyon deneme sınav merkezi. 
             30 yıllık eğitim tecrübesiyle öğrencilerimizi geleceğe hazırlıyoruz.
           </p>
@@ -178,29 +362,30 @@
             <li><a href="/">Ana Sayfa</a></li>
             <li><a href="/sinav-takvimi">Sınav Takvimi</a></li>
             <li><a href="/sinav-paketleri">Sınav Paketleri</a></li>
+            <li><a href="/cevap-anahtarlari">Cevap Anahtarları</a></li>
+            <li><a href="/duyurular">Duyurular</a></li>
           </ul>
         </div>
         <div class="col-md-4 mb-4">
           <h5>Kurumsal</h5>
           <ul class="list-unstyled">
-            <li><a href="/hakkimizda">Hakkımızda</a></li>
-            <li><a href="/iletisim">İletişim</a></li>
-            <li><a href="/login">Giriş</a></li>
-            <li><a href="/register">Kayıt Ol</a></li>
+            <li><a href="/hakkimizda"><i class="bi bi-info-circle me-2"></i>Hakkımızda</a></li>
+            <li><a href="/iletisim"><i class="bi bi-telephone me-2"></i>İletişim</a></li>
+            <li><a href="/sinav-merkezleri"><i class="bi bi-geo-alt me-2"></i>Sınav Merkezleri</a></li>
+            <li><a href="/login"><i class="bi bi-box-arrow-in-right me-2"></i>Giriş</a></li>
+            <li><a href="/register"><i class="bi bi-person-plus me-2"></i>Kayıt Ol</a></li>
           </ul>
         </div>
       </div>
-      <div class="row mt-4">
-        <div class="col-md-12 text-center">
-          <p class="text-white-50 mb-0">
-            İstanbul, Türkiye<br>
-            info@sinavmerkezi.com | 0 (505) 354 12 30
-          </p>
-          <hr class="bg-white opacity-25 my-3">
-          <p class="text-white-50 mb-0">
-            © 2024 Sınav Merkezi. Tüm hakları saklıdır.
-          </p>
-        </div>
+      <div class="footer-bottom">
+        <p style="margin-bottom: 10px;">
+          <strong>İstanbul, Türkiye</strong><br>
+          <i class="bi bi-envelope me-2"></i>info@sinavmerkezi.com | 
+          <i class="bi bi-telephone ms-2 me-2"></i>0 (505) 354 12 30
+        </p>
+        <p style="margin: 0;">
+          © 2024 Sınav Merkezi. Tüm hakları saklıdır.
+        </p>
       </div>
     </div>
   </footer>

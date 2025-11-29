@@ -1,0 +1,227 @@
+<%- include('../partials/header-dashboard', { title: 'Rehber Öğretmen Yönetimi - Kurum Paneli', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(249, 115, 22, 0.3);
+    }
+    
+    .ogretmen-card {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+    }
+    
+    .ogretmen-card:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        transform: translateY(-2px);
+    }
+    
+    .ogrenci-list {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+    
+    .ogrenci-list.show {
+        max-height: 1000px;
+    }
+    
+    .ogrenci-item {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .yetki-badge {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    
+    .yetki-badge.aktif {
+        background: #d1fae5;
+        color: #065f46;
+        border: 2px solid #6ee7b7;
+    }
+    
+    .yetki-badge.pasif {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 2px solid #fca5a5;
+    }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container">
+        <h1 style="font-weight: 800; margin-bottom: 8px;">
+            <i class="bi bi-person-badge-fill"></i> Rehber Öğretmen Yönetimi
+        </h1>
+        <p style="opacity: 0.9; margin: 0;">Rehber öğretmenlerin sınav sonuçlarını görme yetkilerini yönetin</p>
+    </div>
+</div>
+
+<div class="container">
+    <% if (error) { %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-circle"></i> <%= error %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <% } %>
+    
+    <% if (success) { %>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> <%= success %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <% } %>
+    
+    <% if (rehberOgretmenler && rehberOgretmenler.length > 0) { %>
+        <% rehberOgretmenler.forEach(function(ogretmen) { %>
+        <div class="ogretmen-card">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 8px;">
+                        <i class="bi bi-person-circle" style="color: #f97316;"></i> <%= ogretmen.ad_soyad %>
+                    </h4>
+                    <div style="color: #64748b; font-size: 0.95rem;">
+                        <span><i class="bi bi-bookmark-fill"></i> <%= ogretmen.brans || 'Branş belirtilmemiş' %></span>
+                        <span class="ms-3"><i class="bi bi-building"></i> <%= ogretmen.kurum || '-' %></span>
+                    </div>
+                </div>
+                <div class="col-md-6 text-end">
+                    <button class="btn btn-outline-primary" onclick="toggleOgrenciList('ogretmen-<%= ogretmen.rehber_id %>')">
+                        <i class="bi bi-people-fill"></i> <%= ogretmen.ogrenci_sayisi %> Öğrenci
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Öğrenci Listesi -->
+            <div class="ogrenci-list mt-3" id="ogretmen-<%= ogretmen.rehber_id %>">
+                <hr style="margin: 20px 0;">
+                <h6 style="font-weight: 700; color: #64748b; margin-bottom: 16px;">
+                    <i class="bi bi-mortarboard-fill"></i> Yetkili Olduğu Öğrenciler
+                </h6>
+                
+                <% if (ogretmen.ogrenciler && ogretmen.ogrenciler.length > 0) { %>
+                    <% ogretmen.ogrenciler.forEach(function(ogrenci) { %>
+                    <div class="ogrenci-item">
+                        <div>
+                            <strong style="color: #1e293b;"><%= ogrenci.ad_soyad %></strong>
+                            <div style="font-size: 0.85rem; color: #64748b; margin-top: 4px;">
+                                <span><i class="bi bi-person"></i> <%= ogrenci.veli_adi || 'Veli bilgisi yok' %></span>
+                                <% if (ogrenci.sinif) { %>
+                                <span class="ms-3"><i class="bi bi-award"></i> <%= ogrenci.sinif %>. Sınıf</span>
+                                <% } %>
+                            </div>
+                        </div>
+                        <div>
+                            <% if (ogrenci.sonuc_goruntuleme_aktif == 1) { %>
+                                <span class="yetki-badge aktif">
+                                    <i class="bi bi-eye-fill"></i> Aktif
+                                </span>
+                                <button class="btn btn-sm btn-danger ms-2" 
+                                        onclick="yetkiDegistir(<%= ogrenci.talep_id %>, 0, '<%= ogrenci.ad_soyad %>', '<%= ogretmen.ad_soyad %>')"
+                                        style="border-radius: 8px;">
+                                    <i class="bi bi-x-circle"></i> Kapat
+                                </button>
+                            <% } else { %>
+                                <span class="yetki-badge pasif">
+                                    <i class="bi bi-eye-slash-fill"></i> Pasif
+                                </span>
+                                <button class="btn btn-sm btn-success ms-2" 
+                                        onclick="yetkiDegistir(<%= ogrenci.talep_id %>, 1, '<%= ogrenci.ad_soyad %>', '<%= ogretmen.ad_soyad %>')"
+                                        style="border-radius: 8px;">
+                                    <i class="bi bi-check-circle"></i> Aç
+                                </button>
+                            <% } %>
+                        </div>
+                    </div>
+                    <% }); %>
+                <% } else { %>
+                    <div class="text-center py-4" style="color: #94a3b8;">
+                        <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
+                        <p style="margin-top: 12px;">Bu rehber öğretmenin henüz yetkili olduğu öğrenci yok</p>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+        <% }); %>
+    <% } else { %>
+        <div class="text-center py-5" style="background: white; border-radius: 20px; padding: 60px 40px;">
+            <i class="bi bi-person-x" style="font-size: 4rem; color: #cbd5e1; margin-bottom: 20px;"></i>
+            <h4 style="font-weight: 700; color: #64748b; margin-bottom: 12px;">
+                Henüz Rehber Öğretmen Yok
+            </h4>
+            <p style="color: #94a3b8; font-size: 1.1rem;">
+                Henüz hiçbir rehber öğretmen öğrenci kaydı yapmamış.
+            </p>
+        </div>
+    <% } %>
+</div>
+
+<script>
+function toggleOgrenciList(id) {
+    const list = document.getElementById(id);
+    const button = event.currentTarget;
+    const icon = button.querySelector('.bi-chevron-down, .bi-chevron-up');
+    
+    list.classList.toggle('show');
+    
+    if (list.classList.contains('show')) {
+        icon.classList.remove('bi-chevron-down');
+        icon.classList.add('bi-chevron-up');
+    } else {
+        icon.classList.remove('bi-chevron-up');
+        icon.classList.add('bi-chevron-down');
+    }
+}
+
+function yetkiDegistir(talepId, yeniDurum, ogrenciAdi, ogretmenAdi) {
+    const mesaj = yeniDurum == 1 
+        ? `${ogretmenAdi} için ${ogrenciAdi} adlı öğrencinin sınav sonuçlarını görme yetkisini AÇmak istediğinize emin misiniz?`
+        : `${ogretmenAdi} için ${ogrenciAdi} adlı öğrencinin sınav sonuçlarını görme yetkisini KAPATMAK istediğinize emin misiniz?`;
+    
+    if (!confirm(mesaj)) {
+        return;
+    }
+    
+    fetch(`/kurum/rehber-sonuc-yetki-degistir/${talepId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ yeni_durum: yeniDurum })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(yeniDurum == 1 ? '✅ Yetki açıldı!' : '⛔ Yetki kapatıldı!');
+            location.reload();
+        } else {
+            alert('❌ Hata: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Hata:', error);
+        alert('❌ Bir hata oluştu!');
+    });
+}
+</script>
+
+<%- include('../partials/footer-dashboard') %>
+

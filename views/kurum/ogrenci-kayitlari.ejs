@@ -251,10 +251,10 @@
     
     <select id="odemeDurumuFilter" class="form-select">
         <option value="">💰 Tüm Ödeme Durumları</option>
-        <option>BEKLİYOR</option>
-        <option>YAPILDI</option>
-        <option>HAVALE</option>
-        <option>ÜCRETSİZ</option>
+        <option>Bekliyor</option>
+        <option>Yapıldı</option>
+        <option>Havale</option>
+        <option>Ücretsiz</option>
     </select>
 </div>
 
@@ -265,14 +265,14 @@
             <tr>
                 <th>Sınıf</th>
                 <th>Öğrenci Adı Soyadı</th>
-                <th>Telefon</th>
-                <th>T.C. Kimlik</th>
-                <th>Veli</th>
+                <th>Telefon Kaydı</th>
+                <th>T.C. Kimlik No</th>
+                <th>Öğrenci Veli</th>
                 <th>Veli Telefon</th>
                 <th>Tutar</th>
                 <th>Ödeme Durumu</th>
                 <th>Ödeme Türü</th>
-                <th>Edesis</th>
+                <th>Edesis Kaydı</th>
                 <th>Taksit</th>
                 <th>İşlemler</th>
             </tr>
@@ -282,7 +282,13 @@
             <tr>
                 <td><strong><%= ogr.sinif %></strong></td>
                 <td><%= ogr.ogrenci_adi_soyadi %></td>
-                <td><%= ogr.telefon || '-' %></td>
+                <td>
+                    <% if (ogr.telefon && ogr.telefon !== '-') { %>
+                        <span class="badge bg-success">Yapıldı</span>
+                    <% } else { %>
+                        <span class="badge bg-secondary">-</span>
+                    <% } %>
+                </td>
                 <td>
                     <% 
                         let tcNo = ogr.tc_kimlik_no;
@@ -304,16 +310,31 @@
                     %>
                     <%= veliTel || '-' %>
                 </td>
-                <td><%= ogr.tutar || '-' %></td>
+                <td>
+                    <% if (ogr.tutar && ogr.tutar !== '-') { %>
+                        <strong><%= ogr.tutar %> ₺</strong>
+                    <% } else { %>
+                        -
+                    <% } %>
+                </td>
                 <td>
                     <% 
                     let badgeClass = 'secondary';
-                    if (ogr.odeme_durumu === 'YAPILDI') badgeClass = 'success';
-                    else if (ogr.odeme_durumu === 'BEKLİYOR') badgeClass = 'warning';
-                    else if (ogr.odeme_durumu === 'HAVALE') badgeClass = 'info';
+                    let durumText = ogr.odeme_durumu || '-';
+                    
+                    if (ogr.odeme_durumu === 'YAPILDI' || ogr.odeme_durumu === 'Yapıldı') {
+                        badgeClass = 'success';
+                        durumText = 'Yapıldı';
+                    } else if (ogr.odeme_durumu === 'BEKLİYOR' || ogr.odeme_durumu === 'Bekliyor') {
+                        badgeClass = 'warning';
+                        durumText = 'Bekliyor';
+                    } else if (ogr.odeme_durumu === 'HAVALE') {
+                        badgeClass = 'info';
+                        durumText = 'Havale';
+                    }
                     %>
                     <span class="badge bg-<%= badgeClass %>">
-                        <%= ogr.odeme_durumu || 'BEKLİYOR' %>
+                        <%= durumText %>
                     </span>
                 </td>
                 <td><%= ogr.odeme_turu || '-' %></td>
