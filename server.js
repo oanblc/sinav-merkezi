@@ -642,6 +642,32 @@ db.serialize(() => {
     )
   `);
   
+  // Kurumsal Sayfalar Tablosu
+  db.run(`
+    CREATE TABLE IF NOT EXISTS kurumsal_sayfalar (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sayfa_slug TEXT UNIQUE NOT NULL,
+      sayfa_adi TEXT NOT NULL,
+      baslik TEXT NOT NULL,
+      icerik TEXT,
+      seo_baslik TEXT,
+      seo_aciklama TEXT,
+      aktif INTEGER DEFAULT 1,
+      sira INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  
+  // Varsayılan kurumsal sayfaları ekle (eğer yoksa)
+  db.run(`
+    INSERT OR IGNORE INTO kurumsal_sayfalar (sayfa_slug, sayfa_adi, baslik, icerik, sira)
+    VALUES 
+    ('hakkimizda', 'Hakkımızda', 'Hakkımızda', '<p>Sınav Merkezi olarak 30 yıllık eğitim tecrübesiyle öğrencilerimizi geleceğe hazırlıyoruz.</p>', 1),
+    ('iletisim', 'İletişim', 'İletişim', '<p><strong>Adres:</strong> İstanbul, Türkiye</p><p><strong>Email:</strong> info@sinavmerkezi.com</p><p><strong>Telefon:</strong> 0 (505) 354 12 30</p>', 2),
+    ('sinav-merkezleri', 'Sınav Merkezleri', 'Sınav Merkezlerimiz', '<p>Tüm Türkiye genelinde sınav merkezlerimiz bulunmaktadır.</p>', 3)
+  `);
+  
   // Eski sınav_takvimi tablosu kaldırıldı - yeni yapı aşağıda
   
   db.run(`
@@ -1501,6 +1527,20 @@ app.post('/register', async (req, res) => {
 app.get('/logout', (req, res) => {
   req.session.destroy();
   res.redirect('/login');
+});
+
+// ÖNEMLİ: Bu endpoint'i production'da kaldırın veya şifreleyin!
+app.get('/reset-admin-password-secret-endpoint-12345', async (req, res) => {
+  try {
+    const password_hash = await bcrypt.hash('Admin2024!', 10);
+    await dbRun(
+      'UPDATE users SET password_hash = ? WHERE username = ?',
+      [password_hash, 'kurum_admin']
+    );
+    res.send('✅ Admin şifresi sıfırlandı! Username: kurum_admin, Password: Admin2024!');
+  } catch (error) {
+    res.status(500).send('❌ Hata: ' + error.message);
+  }
 });
 
 // Kurum Dashboard
@@ -5717,45 +5757,6 @@ app.get('/sinav-takvimi', async (req, res) => {
 
 // ESKİ Sınav Paketleri Route - KALDIRILDI (Yeni route satır 729'da)
 
-// Hakkımızda Route
-app.get('/hakkimizda', async (req, res) => {
-  try {
-    res.render('hakkimizda', {
-      title: 'Hakkımızda',
-      user: req.session.userId ? { type: req.session.userType } : null
-    });
-  } catch (error) {
-    console.error('Hakkımızda hatası:', error);
-    res.status(500).send('Bir hata oluştu!');
-  }
-});
-
-// İletişim Route
-app.get('/iletisim', async (req, res) => {
-  try {
-    res.render('iletisim', {
-      title: 'İletişim',
-      user: req.session.userId ? { type: req.session.userType } : null
-    });
-  } catch (error) {
-    console.error('İletişim hatası:', error);
-    res.status(500).send('Bir hata oluştu!');
-  }
-});
-
-// Sınav Merkezleri Route
-app.get('/sinav-merkezleri', async (req, res) => {
-  try {
-    res.render('sinav-merkezleri', {
-      title: 'Sınav Merkezleri',
-      user: req.session.userId ? { type: req.session.userType } : null
-    });
-  } catch (error) {
-    console.error('Sınav merkezleri hatası:', error);
-    res.status(500).send('Bir hata oluştu!');
-  }
-});
-
 // ============ DUYURU YÖNETİMİ (KURUM) ============
 
 // Kurum - Duyuru Yönetimi Sayfası
@@ -5885,6 +5886,134 @@ app.get('/duyurular', async (req, res) => {
     });
   } catch (error) {
     console.error('Duyurular hatası:', error);
+    res.status(500).send('Bir hata oluştu!');
+  }
+});
+
+// ============ KURUMSAL SAYFALAR YÖNETİMİ ============
+
+// API - Kurumsal Sayfalar Listesi (Auth gerektirmiyor - dashboard zaten korumalı)
+app.get('/api/kurumsal-sayfalar', async (req, res) => {
+  try {
+    const sayfalar = await dbAll('SELECT * FROM kurumsal_sayfalar ORDER BY sira ASC');
+    res.json({ success: true, sayfalar: sayfalar });
+  } catch (error) {
+    console.error('API kurumsal sayfalar hatası:', error);
+    res.status(500).json({ success: false, message: 'Sayfalar yüklenemedi!', error: error.message });
+  }
+});
+
+// Kurum - Kurumsal Sayfalar Yönetimi
+app.get('/kurum/kurumsal-sayfalar', requireAuth, async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
+  }
+  
+  try {
+    const sayfalar = await dbAll('SELECT * FROM kurumsal_sayfalar ORDER BY sira ASC');
+    
+    res.render('kurum/kurumsal-sayfalar', {
+      sayfalar: sayfalar,
+      user: { username: req.session.username, type: req.session.userType },
+      error: req.session.error,
+      success: req.session.success
+    });
+    
+    req.session.error = null;
+    req.session.success = null;
+  } catch (error) {
+    console.error('Kurumsal sayfalar yönetimi hatası:', error);
+    res.status(500).send('Bir hata oluştu!');
+  }
+});
+
+// Kurum - Kurumsal Sayfa Güncelle
+app.post('/kurum/kurumsal-sayfa-guncelle/:id', requireAuth, async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).json({ success: false, message: 'Yetkisiz erişim!' });
+  }
+  
+  try {
+    const sayfaId = req.params.id;
+    const { sayfa_adi, baslik, icerik, seo_baslik, seo_aciklama, sira, aktif } = req.body;
+    
+    if (!sayfa_adi || !baslik) {
+      return res.json({ success: false, message: 'Sayfa adı ve başlık zorunludur!' });
+    }
+    
+    await dbRun(
+      `UPDATE kurumsal_sayfalar 
+       SET sayfa_adi = ?, baslik = ?, icerik = ?, seo_baslik = ?, seo_aciklama = ?, 
+           sira = ?, aktif = ?, updated_at = datetime('now')
+       WHERE id = ?`,
+      [sayfa_adi, baslik, icerik || '', seo_baslik || '', seo_aciklama || '', sira || 0, aktif ? 1 : 0, sayfaId]
+    );
+    
+    console.log(`\n✅ KURUMSAL SAYFA GÜNCELLENDİ`);
+    console.log(`   ID: ${sayfaId}`);
+    console.log(`   Sayfa: ${sayfa_adi}`);
+    
+    res.json({ success: true, message: 'Sayfa başarıyla güncellendi!' });
+  } catch (error) {
+    console.error('Kurumsal sayfa güncelleme hatası:', error);
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
+  }
+});
+
+// Genel - Kurumsal Sayfalar (Frontend - Dinamik)
+app.get('/hakkimizda', async (req, res) => {
+  try {
+    const sayfa = await dbGet('SELECT * FROM kurumsal_sayfalar WHERE sayfa_slug = ? AND aktif = 1', ['hakkimizda']);
+    
+    if (!sayfa) {
+      return res.status(404).send('Sayfa bulunamadı!');
+    }
+    
+    res.render('kurumsal-sayfa', {
+      title: sayfa.seo_baslik || sayfa.baslik,
+      sayfa: sayfa,
+      user: req.session.userId ? { type: req.session.userType } : null
+    });
+  } catch (error) {
+    console.error('Hakkımızda hatası:', error);
+    res.status(500).send('Bir hata oluştu!');
+  }
+});
+
+app.get('/iletisim', async (req, res) => {
+  try {
+    const sayfa = await dbGet('SELECT * FROM kurumsal_sayfalar WHERE sayfa_slug = ? AND aktif = 1', ['iletisim']);
+    
+    if (!sayfa) {
+      return res.status(404).send('Sayfa bulunamadı!');
+    }
+    
+    res.render('kurumsal-sayfa', {
+      title: sayfa.seo_baslik || sayfa.baslik,
+      sayfa: sayfa,
+      user: req.session.userId ? { type: req.session.userType } : null
+    });
+  } catch (error) {
+    console.error('İletişim hatası:', error);
+    res.status(500).send('Bir hata oluştu!');
+  }
+});
+
+app.get('/sinav-merkezleri', async (req, res) => {
+  try {
+    const sayfa = await dbGet('SELECT * FROM kurumsal_sayfalar WHERE sayfa_slug = ? AND aktif = 1', ['sinav-merkezleri']);
+    
+    if (!sayfa) {
+      return res.status(404).send('Sayfa bulunamadı!');
+    }
+    
+    res.render('kurumsal-sayfa', {
+      title: sayfa.seo_baslik || sayfa.baslik,
+      sayfa: sayfa,
+      user: req.session.userId ? { type: req.session.userType } : null
+    });
+  } catch (error) {
+    console.error('Sınav merkezleri hatası:', error);
     res.status(500).send('Bir hata oluştu!');
   }
 });

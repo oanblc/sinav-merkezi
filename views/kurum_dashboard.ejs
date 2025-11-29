@@ -191,6 +191,17 @@
         </a>
     </div>
     
+    <!-- Kurumsal Sayfalar -->
+    <div class="col-md-4">
+        <a href="javascript:void(0);" class="menu-card" onclick="kurumsalSayfalarModal();">
+            <div class="menu-icon" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                <i class="bi bi-file-text-fill"></i>
+            </div>
+            <div class="menu-title">Kurumsal Sayfalar</div>
+            <p class="menu-desc">Hakkımızda, İletişim, Sınav Merkezleri</p>
+        </a>
+    </div>
+    
     <!-- WhatsApp Bildirimleri -->
     <div class="col-md-4">
         <a href="/kurum/whatsapp-ayarlari" class="menu-card">
@@ -202,6 +213,246 @@
         </a>
     </div>
 </div>
+
+<!-- Kurumsal Sayfalar Modal -->
+<div class="modal fade" id="kurumsalSayfalarModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border-radius: 20px; border: none;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border-radius: 20px 20px 0 0;">
+                <h5 class="modal-title"><i class="bi bi-file-text-fill"></i> Kurumsal Sayfalar</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="kurumsalSayfalarListesi">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Yükleniyor...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sayfa Düzenleme Modal -->
+<div class="modal fade" id="sayfaDuzenleModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content" style="border-radius: 20px; border: none;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border-radius: 20px 20px 0 0;">
+                <h5 class="modal-title"><i class="bi bi-pencil-fill"></i> Sayfa Düzenle</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="sayfaDuzenleForm">
+                <div class="modal-body p-4">
+                    <input type="hidden" id="edit_id" name="id">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Sayfa Adı *</label>
+                            <input type="text" class="form-control" id="edit_sayfa_adi" name="sayfa_adi" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">URL</label>
+                            <input type="text" class="form-control" id="edit_sayfa_slug" name="sayfa_slug" readonly style="background: #f1f5f9;">
+                            <small class="text-muted">URL değiştirilemez</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Başlık *</label>
+                        <input type="text" class="form-control" id="edit_baslik" name="baslik" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">İçerik *</label>
+                        <textarea class="form-control" id="edit_icerik" name="icerik" rows="12"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="edit_aktif" name="aktif" checked>
+                                <label class="form-check-label fw-bold" for="edit_aktif">Aktif</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg"></i> İptal
+                    </button>
+                    <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); border: none;">
+                        <i class="bi bi-save"></i> Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/lang/summernote-tr-TR.min.js"></script>
+
+<script>
+let sayfalarData = [];
+
+// Kurumsal Sayfalar Modalını Aç
+async function kurumsalSayfalarModal() {
+    console.log('Modal açılıyor...');
+    const modal = new bootstrap.Modal(document.getElementById('kurumsalSayfalarModal'));
+    modal.show();
+    
+    // Sayfaları yükle
+    try {
+        console.log('API çağrısı yapılıyor: /api/kurumsal-sayfalar');
+        const response = await fetch('/api/kurumsal-sayfalar');
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers.get('content-type'));
+        
+        const text = await response.text();
+        console.log('Response text (ilk 200 karakter):', text.substring(0, 200));
+        
+        let result;
+        try {
+            result = JSON.parse(text);
+        } catch (parseError) {
+            console.error('JSON parse hatası:', parseError);
+            document.getElementById('kurumsalSayfalarListesi').innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>JSON Parse Hatası!</strong><br>
+                    Sunucu JSON döndürmedi. Lütfen giriş yapmış olduğunuzdan emin olun.<br>
+                    <button class="btn btn-sm btn-primary mt-2" onclick="location.href='/login'">Giriş Yap</button>
+                </div>
+            `;
+            return;
+        }
+        
+        if (result.success) {
+            sayfalarData = result.sayfalar;
+            renderSayfaListesi(result.sayfalar);
+        } else {
+            document.getElementById('kurumsalSayfalarListesi').innerHTML = `
+                <div class="alert alert-danger">${result.message || 'Sayfalar yüklenemedi!'}</div>
+            `;
+        }
+    } catch (error) {
+        console.error('Fetch hatası:', error);
+        document.getElementById('kurumsalSayfalarListesi').innerHTML = `
+            <div class="alert alert-danger">
+                <strong>Bağlantı Hatası!</strong><br>
+                ${error.message}
+            </div>
+        `;
+    }
+}
+
+// Sayfa Listesini Render Et
+function renderSayfaListesi(sayfalar) {
+    const html = sayfalar.map(sayfa => `
+        <div class="card mb-3" style="border-radius: 16px; border: 2px solid #e2e8f0;">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div style="flex: 1;">
+                        <h5 class="mb-2">
+                            <i class="bi bi-file-earmark-text text-primary"></i> ${sayfa.sayfa_adi}
+                            ${sayfa.aktif ? '<span class="badge bg-success ms-2">Aktif</span>' : '<span class="badge bg-secondary ms-2">Pasif</span>'}
+                        </h5>
+                        <p class="text-muted mb-2">
+                            <strong>URL:</strong> <code>/${sayfa.sayfa_slug}</code><br>
+                            <strong>Son Güncelleme:</strong> ${new Date(sayfa.updated_at).toLocaleDateString('tr-TR')}
+                        </p>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary btn-sm me-2" onclick="duzenle(${sayfa.id})">
+                            <i class="bi bi-pencil"></i> Düzenle
+                        </button>
+                        <a href="/${sayfa.sayfa_slug}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-eye"></i> Önizle
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    document.getElementById('kurumsalSayfalarListesi').innerHTML = html;
+}
+
+// Sayfa Düzenle
+function duzenle(id) {
+    const sayfa = sayfalarData.find(s => s.id === id);
+    if (!sayfa) return;
+
+    document.getElementById('edit_id').value = sayfa.id;
+    document.getElementById('edit_sayfa_adi').value = sayfa.sayfa_adi;
+    document.getElementById('edit_sayfa_slug').value = sayfa.sayfa_slug;
+    document.getElementById('edit_baslik').value = sayfa.baslik;
+    $('#edit_icerik').summernote('code', sayfa.icerik || '');
+    document.getElementById('edit_aktif').checked = sayfa.aktif;
+
+    // İlk modalı kapat
+    bootstrap.Modal.getInstance(document.getElementById('kurumsalSayfalarModal')).hide();
+    
+    // Düzenleme modalını aç
+    const editModal = new bootstrap.Modal(document.getElementById('sayfaDuzenleModal'));
+    editModal.show();
+}
+
+// Summernote Başlat
+$(document).ready(function() {
+    $('#edit_icerik').summernote({
+        lang: 'tr-TR',
+        height: 300,
+        toolbar: [
+            ['style', ['style']],
+            ['font', ['bold', 'underline', 'italic', 'clear']],
+            ['color', ['color']],
+            ['para', ['ul', 'ol', 'paragraph']],
+            ['table', ['table']],
+            ['insert', ['link', 'picture']],
+            ['view', ['fullscreen', 'codeview']]
+        ]
+    });
+});
+
+// Form Submit
+document.getElementById('sayfaDuzenleForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    const id = formData.get('id');
+    
+    const icerik = $('#edit_icerik').summernote('code');
+    
+    const data = {
+        sayfa_adi: formData.get('sayfa_adi'),
+        baslik: formData.get('baslik'),
+        icerik: icerik,
+        aktif: document.getElementById('edit_aktif').checked ? 1 : 0
+    };
+
+    try {
+        const response = await fetch(`/kurum/kurumsal-sayfa-guncelle/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('sayfaDuzenleModal')).hide();
+            alert('✅ ' + result.message);
+            location.reload();
+        } else {
+            alert('❌ ' + result.message);
+        }
+    } catch (error) {
+        alert('❌ Bir hata oluştu: ' + error.message);
+    }
+});
+</script>
 
 
 <%- include('partials/footer-dashboard') %>
