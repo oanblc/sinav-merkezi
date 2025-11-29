@@ -1,0 +1,302 @@
+<%- include('partials/header-dashboard', { title: 'Öğrenci Listesi - Sınav Merkezi', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+    }
+    
+    .stat-card-mini {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card-mini:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+    
+    .stat-card-mini.purple {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .stat-card-mini.green {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    
+    .stat-card-mini.blue {
+        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        color: white;
+    }
+    
+    .search-box {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        margin-bottom: 30px;
+    }
+    
+    .data-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    
+    .data-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        padding: 24px 32px;
+        border-bottom: 2px solid #e8ecf0;
+    }
+    
+    .table-modern {
+        margin: 0;
+    }
+    
+    .table-modern thead th {
+        background: transparent;
+        border: none;
+        padding: 20px;
+        font-weight: 600;
+        color: #64748b;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .table-modern tbody tr {
+        border-bottom: 1px solid #f1f5f9;
+        transition: all 0.2s ease;
+    }
+    
+    .table-modern tbody tr:hover {
+        background: #f8fafc;
+    }
+    
+    .table-modern tbody td {
+        padding: 20px;
+        vertical-align: middle;
+    }
+    
+    .badge-modern {
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
+    
+    .btn-action {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 style="font-weight: 800; margin-bottom: 8px;">
+                    <i class="bi bi-people-fill"></i> Öğrenci Listesi
+                </h1>
+                <p style="opacity: 0.9; margin: 0;">Tüm öğrencileri görüntüle ve yönet</p>
+            </div>
+            <div>
+                <a href="/rehber/dashboard" class="btn btn-outline-light btn-lg" style="border-radius: 12px; font-weight: 600;">
+                    <i class="bi bi-arrow-left"></i> Geri
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- İstatistik Kartları -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card-mini purple">
+            <div class="d-flex align-items-center">
+                <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 16px;">
+                    <i class="bi bi-people" style="font-size: 24px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 2rem; font-weight: 800; line-height: 1;"><%= ogrenciler.length %></div>
+                    <div style="opacity: 0.9; font-size: 0.9rem;">Toplam Öğrenci</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card-mini green">
+            <div class="d-flex align-items-center">
+                <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 16px;">
+                    <i class="bi bi-file-pdf" style="font-size: 24px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 2rem; font-weight: 800; line-height: 1;"><%= ogrenciler.reduce((sum, o) => sum + (o.pdf_sonuc_sayisi || 0), 0) %></div>
+                    <div style="opacity: 0.9; font-size: 0.9rem;">PDF Sonuç</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card-mini blue">
+            <div class="d-flex align-items-center">
+                <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 16px;">
+                    <i class="bi bi-table" style="font-size: 24px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 2rem; font-weight: 800; line-height: 1;"><%= ogrenciler.reduce((sum, o) => sum + (o.excel_sonuc_sayisi || 0), 0) %></div>
+                    <div style="opacity: 0.9; font-size: 0.9rem;">Excel Sonuç</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Arama Kutusu -->
+<div class="search-box">
+    <div class="input-group input-group-lg">
+        <span class="input-group-text" style="background: #f8fafc; border: 2px solid #e8ecf0; border-right: none;">
+            <i class="bi bi-search" style="color: #667eea;"></i>
+        </span>
+        <input type="text" class="form-control" id="searchInput" placeholder="Öğrenci adı, TC no veya veli kullanıcı adı ile ara..." style="border: 2px solid #e8ecf0; border-left: none; background: #f8fafc;">
+    </div>
+</div>
+
+<!-- Öğrenci Tablosu -->
+<div class="data-card">
+    <div class="data-header">
+        <h5 style="margin: 0; font-weight: 700; color: #1e293b;">
+            <i class="bi bi-table"></i> Tüm Öğrenciler (<%= ogrenciler.length %>)
+        </h5>
+    </div>
+    <div style="padding: 0;">
+        <% if (ogrenciler && ogrenciler.length > 0) { %>
+        <div class="table-responsive">
+            <table class="table table-modern" id="ogrenciTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Öğrenci Adı</th>
+                        <th>TC No</th>
+                        <th>Veli</th>
+                        <th>PDF</th>
+                        <th>Excel</th>
+                        <th>Kayıt</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% ogrenciler.forEach(function(ogrenci, index) { %>
+                    <tr>
+                        <td style="font-weight: 600; color: #94a3b8;"><%= index + 1 %></td>
+                        <td>
+                            <div style="display: flex; align-items: center;">
+                                <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; margin-right: 12px;">
+                                    <%= ogrenci.ad_soyad.charAt(0).toUpperCase() %>
+                                </div>
+                                <strong style="color: #1e293b;"><%= ogrenci.ad_soyad %></strong>
+                            </div>
+                        </td>
+                        <td style="color: #64748b;"><%= ogrenci.tc_no || '-' %></td>
+                        <td>
+                            <% if (ogrenci.veli_ad_soyad || ogrenci.veli_username || ogrenci.veli_telefon) { %>
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <div style="font-weight: 600; color: #1e293b;">
+                                        <i class="bi bi-person"></i> <%= ogrenci.veli_ad_soyad || ogrenci.veli_username || 'Veli' %>
+                                    </div>
+                                    <% if (ogrenci.veli_telefon) { %>
+                                        <% 
+                                            let telefon = ogrenci.veli_telefon;
+                                            // .0 ile biten telefon numaralarını temizle
+                                            if (telefon && telefon.toString().endsWith('.0')) {
+                                                telefon = telefon.toString().replace('.0', '');
+                                            }
+                                        %>
+                                        <div style="font-size: 0.8rem; color: #64748b;">
+                                            <i class="bi bi-telephone"></i> <%= telefon %>
+                                        </div>
+                                    <% } %>
+                                </div>
+                            <% } else { %>
+                                <span style="color: #94a3b8;">-</span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <% if (ogrenci.pdf_sonuc_sayisi > 0) { %>
+                                <span class="badge-modern bg-danger"><%= ogrenci.pdf_sonuc_sayisi %></span>
+                            <% } else { %>
+                                <span style="color: #cbd5e1;">0</span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <% if (ogrenci.excel_sonuc_sayisi > 0) { %>
+                                <span class="badge-modern bg-primary"><%= ogrenci.excel_sonuc_sayisi %></span>
+                            <% } else { %>
+                                <span style="color: #cbd5e1;">0</span>
+                            <% } %>
+                        </td>
+                        <td style="color: #64748b; font-size: 0.85rem;">
+                            <%= new Date(ogrenci.created_at).toLocaleDateString('tr-TR') %>
+                        </td>
+                        <td>
+                            <a href="/rehber/ogrenci/<%= ogrenci.id %>" class="btn btn-primary btn-sm btn-action">
+                                <i class="bi bi-eye"></i> Detay
+                            </a>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+        <% } else { %>
+        <div class="text-center py-5" style="padding: 60px 20px;">
+            <i class="bi bi-inbox" style="font-size: 4rem; color: #cbd5e1; margin-bottom: 16px;"></i>
+            <h5 style="color: #64748b; margin-bottom: 8px;">Henüz öğrenci yok</h5>
+            <p style="color: #94a3b8; margin-bottom: 24px;">Onayladığınız öğrenciler burada görünecektir</p>
+        </div>
+        <% } %>
+    </div>
+</div>
+
+<script>
+// Arama fonksiyonu
+document.getElementById('searchInput')?.addEventListener('keyup', function() {
+    const searchTerm = this.value.toLowerCase();
+    const table = document.getElementById('ogrenciTable');
+    if (!table) return;
+    
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const text = row.textContent.toLowerCase();
+        
+        if (text.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    }
+});
+</script>
+
+<%- include('partials/footer-dashboard') %>

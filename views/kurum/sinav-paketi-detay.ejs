@@ -1,0 +1,361 @@
+<%- include('../partials/header-dashboard', { title: paket.ad + ' - Kurum Paneli', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(236, 72, 153, 0.3);
+    }
+    
+    .info-card {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        margin-bottom: 30px;
+    }
+    
+    .sinav-item {
+        background: #f8fafc;
+        border-left: 4px solid #ec4899;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+        transition: all 0.2s;
+    }
+    
+    .sinav-item:hover {
+        background: #fdf2f8;
+        transform: translateX(4px);
+    }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 style="font-weight: 800; margin-bottom: 8px;">
+                    <i class="bi bi-box-seam"></i> <%= paket.ad %>
+                </h1>
+                <p style="opacity: 0.9; margin: 0;">
+                    <i class="bi bi-mortarboard"></i> <%= paket.sinif %>. Sınıf
+                    <% if (paket.aciklama) { %>
+                    | <%= paket.aciklama %>
+                    <% } %>
+                </p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-light" onclick="document.getElementById('ogrenciAtaModal').classList.add('show'); document.getElementById('ogrenciAtaModal').style.display='block';" style="border-radius: 12px; font-weight: 600;">
+                    <i class="bi bi-person-plus"></i> Öğrenci Ata
+                </button>
+                <a href="/kurum/sinav-paketleri" class="btn btn-light" style="border-radius: 12px; font-weight: 600;">
+                    <i class="bi bi-arrow-left"></i> Geri
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- İstatistikler -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="info-card text-center">
+            <div style="font-size: 3rem; color: #ec4899; margin-bottom: 8px;">
+                <i class="bi bi-journals"></i>
+            </div>
+            <h3 style="font-weight: 800; color: #1e293b; margin-bottom: 4px;"><%= sinavlar.length %></h3>
+            <p style="color: #64748b; margin: 0;">Toplam Sınav</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="info-card text-center">
+            <div style="font-size: 3rem; color: #10b981; margin-bottom: 8px;">
+                <i class="bi bi-people"></i>
+            </div>
+            <h3 style="font-weight: 800; color: #1e293b; margin-bottom: 4px;"><%= ogrenciler.length %></h3>
+            <p style="color: #64748b; margin: 0;">Atanan Öğrenci</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="info-card text-center">
+            <div style="font-size: 3rem; color: #3b82f6; margin-bottom: 8px;">
+                <i class="bi bi-calendar-check"></i>
+            </div>
+            <h3 style="font-weight: 800; color: #1e293b; margin-bottom: 4px;"><%= paket.aktif ? 'Aktif' : 'Pasif' %></h3>
+            <p style="color: #64748b; margin: 0;">Paket Durumu</p>
+        </div>
+    </div>
+</div>
+
+<!-- Sınavlar -->
+<div class="info-card">
+    <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 24px;">
+        <i class="bi bi-journals"></i> Paketteki Sınavlar (<%= sinavlar.length %>)
+    </h4>
+    
+    <% if (sinavlar.length === 0) { %>
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Bu pakette henüz sınav bulunmuyor.
+    </div>
+    <% } else { %>
+    <% sinavlar.forEach(function(sinav, index) { %>
+    <div class="sinav-item">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="flex-grow-1">
+                <h5 style="font-weight: 600; color: #1e293b; margin-bottom: 8px;">
+                    <%= index + 1 %>. <%= sinav.ad %>
+                </h5>
+                <p style="color: #64748b; font-size: 0.9rem; margin: 0;">
+                    <i class="bi bi-calendar"></i> <%= new Date(sinav.tarih).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) %>
+                    <% if (sinav.ders) { %>
+                    | <i class="bi bi-book"></i> <%= sinav.ders %>
+                    <% } %>
+                    <% if (sinav.katilimci_sayisi) { %>
+                    | <i class="bi bi-people"></i> <%= sinav.katilimci_sayisi %> Katılımcı
+                    <% } %>
+                </p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="/kurum/sinav-detay/<%= sinav.id %>" class="btn btn-primary btn-sm" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border: none; border-radius: 10px;">
+                    <i class="bi bi-eye"></i> Detay
+                </a>
+            </div>
+        </div>
+    </div>
+    <% }); %>
+    <% } %>
+</div>
+
+<!-- Atanan Öğrenciler -->
+<div class="info-card">
+    <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 24px;">
+        <i class="bi bi-people"></i> Atanan Öğrenciler (<%= ogrenciler.length %>)
+    </h4>
+    
+    <% if (ogrenciler.length === 0) { %>
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Bu pakete henüz öğrenci atanmamış.
+        <button class="btn btn-primary btn-sm ms-3" onclick="document.getElementById('ogrenciAtaModal').classList.add('show'); document.getElementById('ogrenciAtaModal').style.display='block';">
+            <i class="bi bi-person-plus"></i> Öğrenci Ata
+        </button>
+    </div>
+    <% } else { %>
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Öğrenci Adı</th>
+                    <th>Sınıf</th>
+                    <th>Kaynak</th>
+                    <th>Atama Tarihi</th>
+                    <th>Durum</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% ogrenciler.forEach(function(ogrenci) { %>
+                <tr>
+                    <td><strong><%= ogrenci.ogrenci_adi %></strong></td>
+                    <td><%= ogrenci.sinif %></td>
+                    <td>
+                        <% if (ogrenci.ogrenci_kaynak === 'kurum') { %>
+                        <span class="badge bg-primary">Kurum</span>
+                        <% } else { %>
+                        <span class="badge bg-success">Veli</span>
+                        <% } %>
+                    </td>
+                    <td><%= new Date(ogrenci.atama_tarihi).toLocaleDateString('tr-TR') %></td>
+                    <td>
+                        <% if (ogrenci.durum === 'aktif') { %>
+                        <span class="badge bg-success">Aktif</span>
+                        <% } else { %>
+                        <span class="badge bg-secondary">İptal</span>
+                        <% } %>
+                    </td>
+                </tr>
+                <% }); %>
+            </tbody>
+        </table>
+    </div>
+    <% } %>
+</div>
+
+<!-- Öğrenci Atama Modal -->
+<div class="modal fade" id="ogrenciAtaModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius: 20px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); color: white; border-radius: 20px 20px 0 0;">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-plus"></i> Pakete Öğrenci Ata
+                </h5>
+                <button type="button" class="btn-close btn-close-white" onclick="document.getElementById('ogrenciAtaModal').classList.remove('show'); document.getElementById('ogrenciAtaModal').style.display='none';"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">Bu pakete atamak istediğiniz öğrencileri seçin. Seçilen öğrenciler paketteki tüm sınavlara otomatik olarak kaydedilecektir.</p>
+                
+                <!-- Filtreler -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <input type="text" id="ogrenciAra" class="form-control" placeholder="🔍 Öğrenci ara..." onkeyup="ogrenciFiltreUygula()">
+                    </div>
+                    <div class="col-md-6">
+                        <select id="sinifFiltre" class="form-select" onchange="ogrenciFiltreUygula()">
+                            <option value="">Tüm Sınıflar</option>
+                            <option value="<%= paket.sinif %>" selected><%= paket.sinif %>. Sınıf (Önerilen)</option>
+                            <% for (let i = 1; i <= 12; i++) { %>
+                            <% if (i != paket.sinif) { %>
+                            <option value="<%= i %>"><%= i %>. Sınıf</option>
+                            <% } %>
+                            <% } %>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Yükleniyor -->
+                <div id="ogrenciYukleniyor" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2">Öğrenciler yükleniyor...</p>
+                </div>
+                
+                <!-- Öğrenci Listesi -->
+                <div id="ogrenciListesi" style="display: none; max-height: 400px; overflow-y: auto;">
+                    <!-- JavaScript ile doldurulacak -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('ogrenciAtaModal').classList.remove('show'); document.getElementById('ogrenciAtaModal').style.display='none';">İptal</button>
+                <button type="button" class="btn btn-primary" onclick="ogrencileriAta()" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); border: none;">
+                    <i class="bi bi-check-circle"></i> Seçilenleri Ata
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let tumOgrenciler = [];
+
+// Modal açıldığında öğrencileri yükle
+document.getElementById('ogrenciAtaModal').addEventListener('show.bs.modal', function() {
+    ogrencileriYukle();
+});
+
+async function ogrencileriYukle() {
+    try {
+        // Kurum kayıtları
+        const kurumRes = await fetch('/kurum/ogrenci-kayitlari-api');
+        const kurumData = await kurumRes.json();
+        
+        // Veli kayıtları
+        const veliRes = await fetch('/kurum/veli-ogrencileri-api');
+        const veliData = await veliRes.json();
+        
+        tumOgrenciler = [
+            ...kurumData.map(o => ({ ...o, kaynak: 'kurum' })),
+            ...veliData.map(o => ({ ...o, kaynak: 'veli' }))
+        ];
+        
+        ogrenciListesiniGoster();
+    } catch (error) {
+        console.error('Öğrenci yükleme hatası:', error);
+        document.getElementById('ogrenciYukleniyor').innerHTML = '<div class="alert alert-danger">Öğrenciler yüklenirken hata oluştu!</div>';
+    }
+}
+
+function ogrenciListesiniGoster() {
+    const liste = document.getElementById('ogrenciListesi');
+    
+    if (tumOgrenciler.length === 0) {
+        liste.innerHTML = '<div class="alert alert-info">Henüz öğrenci kaydı bulunmuyor.</div>';
+        liste.style.display = 'block';
+        document.getElementById('ogrenciYukleniyor').style.display = 'none';
+        return;
+    }
+    
+    let html = '';
+    tumOgrenciler.forEach(ogrenci => {
+        const id = ogrenci.kaynak === 'kurum' ? ogrenci.id : ogrenci.id;
+        const ad = ogrenci.kaynak === 'kurum' ? ogrenci.ogrenci_adi_soyadi : ogrenci.ad_soyad;
+        const sinif = ogrenci.sinif || '-';
+        const badge = ogrenci.kaynak === 'kurum' ? 'bg-primary' : 'bg-success';
+        const kaynakText = ogrenci.kaynak === 'kurum' ? 'Kurum' : 'Veli';
+        
+        html += `
+            <div class="form-check p-3 mb-2" style="background: #f8fafc; border-radius: 12px;" data-sinif="${sinif}" data-ad="${ad.toLowerCase()}">
+                <input class="form-check-input" type="checkbox" value="${id}_${ogrenci.kaynak}" id="ogr_${id}_${ogrenci.kaynak}">
+                <label class="form-check-label flex-grow-1" for="ogr_${id}_${ogrenci.kaynak}" style="cursor: pointer;">
+                    <strong>${ad}</strong>
+                    <span class="badge ${badge} ms-2">${kaynakText}</span>
+                    <span class="badge bg-secondary ms-1">${sinif}</span>
+                </label>
+            </div>
+        `;
+    });
+    
+    liste.innerHTML = html;
+    liste.style.display = 'block';
+    document.getElementById('ogrenciYukleniyor').style.display = 'none';
+    
+    // Filtre uygula
+    ogrenciFiltreUygula();
+}
+
+function ogrenciFiltreUygula() {
+    const aramaMetni = document.getElementById('ogrenciAra').value.toLowerCase();
+    const sinifFiltre = document.getElementById('sinifFiltre').value;
+    
+    document.querySelectorAll('#ogrenciListesi .form-check').forEach(item => {
+        const ad = item.dataset.ad;
+        const sinif = item.dataset.sinif;
+        
+        const aramaUygun = !aramaMetni || ad.includes(aramaMetni);
+        const sinifUygun = !sinifFiltre || sinif === sinifFiltre;
+        
+        item.style.display = (aramaUygun && sinifUygun) ? 'block' : 'none';
+    });
+}
+
+async function ogrencileriAta() {
+    const secilenler = Array.from(document.querySelectorAll('#ogrenciListesi input:checked')).map(cb => cb.value);
+    
+    if (secilenler.length === 0) {
+        alert('❌ En az 1 öğrenci seçmelisiniz!');
+        return;
+    }
+    
+    if (!confirm(`${secilenler.length} öğrenci pakete atanacak ve tüm sınavlara kaydedilecek. Onaylıyor musunuz?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/kurum/paket-ogrenci-ata', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                paket_id: <%= paket.id %>,
+                ogrenci_ids: secilenler
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ ' + result.message);
+            location.reload();
+        } else {
+            alert('❌ ' + result.message);
+        }
+    } catch (error) {
+        console.error('Atama hatası:', error);
+        alert('Bir hata oluştu!');
+    }
+}
+</script>
+
+<%- include('../partials/footer-dashboard') %>
+

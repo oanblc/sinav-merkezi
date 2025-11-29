@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sınav Paketleri - Sınav Merkezi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+            --card-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            --hover-shadow: 0 12px 48px rgba(6, 182, 212, 0.3);
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .navbar-custom {
+            background: white;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            padding: 16px 0;
+        }
+        
+        .navbar-brand {
+            font-weight: 800;
+            font-size: 1.5rem;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .page-header {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 80px 0 60px;
+            margin-bottom: 60px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 500px;
+            height: 500px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            transform: translate(30%, -30%);
+        }
+        
+        .page-header h1 {
+            font-weight: 800;
+            font-size: 3rem;
+            margin-bottom: 16px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .page-header p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .sinav-card {
+            background: white;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+            transition: all 0.4s ease;
+            height: 100%;
+            border: 2px solid transparent;
+        }
+        
+        .sinav-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--hover-shadow);
+            border-color: #06b6d4;
+        }
+        
+        .sinav-card-header {
+            background: var(--primary-gradient);
+            padding: 32px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .sinav-icon {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+        
+        .sinav-icon i {
+            font-size: 2.5rem;
+            color: #06b6d4;
+        }
+        
+        .sinav-card-body {
+            padding: 32px;
+        }
+        
+        .sinav-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 16px;
+        }
+        
+        .sinav-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            color: #64748b;
+            font-size: 0.95rem;
+        }
+        
+        .sinav-info i {
+            color: #06b6d4;
+            font-size: 1.1rem;
+        }
+        
+        .sinav-price {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 2px solid #fbbf24;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            margin: 24px 0;
+        }
+        
+        .sinav-price .price-label {
+            font-size: 0.9rem;
+            color: #92400e;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .sinav-price .price-amount {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #b45309;
+        }
+        
+        .btn-buy {
+            background: var(--primary-gradient);
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: white;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-buy:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(6, 182, 212, 0.4);
+            color: white;
+        }
+        
+        .btn-buy:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+        }
+        
+        .empty-icon {
+            width: 150px;
+            height: 150px;
+            background: white;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 32px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .empty-icon i {
+            font-size: 4rem;
+            color: #06b6d4;
+        }
+        
+        /* Modal Styles */
+        .modal-content {
+            border-radius: 24px;
+            border: none;
+            overflow: hidden;
+        }
+        
+        .modal-header {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            padding: 24px 32px;
+        }
+        
+        .modal-body {
+            padding: 32px;
+        }
+        
+        .btn-close {
+            filter: brightness(0) invert(1);
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-custom">
+    <div class="container">
+        <a class="navbar-brand" href="/">
+            <i class="bi bi-mortarboard-fill"></i> Sınav Merkezi
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Ana Sayfa</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/sinav-paketleri">Sınav Paketleri</a>
+                </li>
+                <% if (user) { %>
+                    <% if (user.type === 'veli') { %>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/veli/dashboard">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                    <% } else if (user.type === 'rehber_ogretmen') { %>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/rehber/dashboard">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                    <% } %>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout">
+                            <i class="bi bi-box-arrow-right"></i> Çıkış
+                        </a>
+                    </li>
+                <% } else { %>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/login">
+                            <i class="bi bi-box-arrow-in-right"></i> Giriş
+                        </a>
+                    </li>
+                <% } %>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container">
+        <div class="text-center">
+            <h1>
+                <i class="bi bi-box-seam"></i> Sınav Paketleri
+            </h1>
+            <p>Öğrencileriniz için sınav paketleri satın alın, gelişimlerini takip edin</p>
+        </div>
+    </div>
+</div>
+
+<!-- Sınavlar -->
+<div class="container pb-5">
+    <% if (sinavlar && sinavlar.length > 0) { %>
+        <div class="row g-4">
+            <% sinavlar.forEach(sinav => { %>
+                <div class="col-md-6 col-lg-4">
+                    <div class="sinav-card">
+                        <div class="sinav-card-header">
+                            <div class="sinav-icon">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </div>
+                            <h3 style="color: white; font-weight: 700; margin: 0;">
+                                <%= sinav.ad %>
+                            </h3>
+                        </div>
+                        
+                        <div class="sinav-card-body">
+                            <div class="sinav-info">
+                                <i class="bi bi-calendar-event"></i>
+                                <span>
+                                    <%= new Date(sinav.tarih).toLocaleDateString('tr-TR', { 
+                                        day: '2-digit', 
+                                        month: 'long', 
+                                        year: 'numeric' 
+                                    }) %>
+                                </span>
+                            </div>
+                            
+                            <% if (sinav.sinif) { %>
+                                <div class="sinav-info">
+                                    <i class="bi bi-person-workspace"></i>
+                                    <span><%= sinav.sinif %></span>
+                                </div>
+                            <% } %>
+                            
+                            <% if (sinav.ders) { %>
+                                <div class="sinav-info">
+                                    <i class="bi bi-book"></i>
+                                    <span><%= sinav.ders %></span>
+                                </div>
+                            <% } %>
+                            
+                            <% if (sinav.aciklama) { %>
+                                <p style="color: #64748b; margin-top: 16px; font-size: 0.9rem;">
+                                    <%= sinav.aciklama %>
+                                </p>
+                            <% } %>
+                            
+                            <div class="sinav-price">
+                                <div class="price-label">
+                                    <i class="bi bi-tag"></i> Fiyat
+                                </div>
+                                <div class="price-amount">
+                                    <%= sinav.fiyat %> TL
+                                </div>
+                            </div>
+                            
+                            <button class="btn btn-buy" onclick="satinAl(<%= sinav.id %>, '<%= sinav.ad %>', <%= sinav.fiyat %>)">
+                                <i class="bi bi-cart-plus"></i> Satın Al
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+    <% } else { %>
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="bi bi-cart-x"></i>
+            </div>
+            <h3 style="font-weight: 700; color: #1e293b; margin-bottom: 16px;">
+                Henüz Sınav Eklenmedi
+            </h3>
+            <p style="color: #64748b; margin-bottom: 32px;">
+                Satın alınabilir sınav bulunmamaktadır. Lütfen daha sonra tekrar ziyaret edin.
+            </p>
+            <a href="/" class="btn btn-lg" style="background: var(--primary-gradient); border: none; border-radius: 12px; color: white; font-weight: 600; padding: 14px 32px;">
+                <i class="bi bi-house"></i> Ana Sayfaya Dön
+            </a>
+        </div>
+    <% } %>
+</div>
+
+<!-- Ödeme Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-credit-card"></i> <span id="modalTitle">Demo Ödeme</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Giriş Yapılmışsa: Sadece Ödeme -->
+                <% if (user) { %>
+                <div style="text-align: center; padding: 20px;">
+                    <div style="width: 100px; height: 100px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
+                        <i class="bi bi-credit-card" style="font-size: 3rem; color: #06b6d4;"></i>
+                    </div>
+                    <h4 id="modalSinavAd" style="font-weight: 700; color: #1e293b; margin-bottom: 16px;"></h4>
+                    <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+                        <div style="font-size: 0.9rem; color: #92400e; margin-bottom: 4px;">Ödenecek Tutar</div>
+                        <div id="modalFiyat" style="font-size: 2rem; font-weight: 800; color: #b45309;"></div>
+                    </div>
+                    <p style="color: #64748b; margin-bottom: 24px;">
+                        <i class="bi bi-info-circle"></i> Bu bir demo ödemedir. Gerçek ödeme altyapısı entegre edildiğinde PayTR üzerinden işlem yapılacaktır.
+                    </p>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary flex-grow-1" data-bs-dismiss="modal" style="border-radius: 12px; padding: 12px;">
+                            İptal
+                        </button>
+                        <button type="button" class="btn flex-grow-1" onclick="confirmPayment()" style="background: var(--primary-gradient); border: none; border-radius: 12px; color: white; font-weight: 600; padding: 12px;">
+                            <i class="bi bi-check-circle"></i> Ödemeyi Onayla
+                        </button>
+                    </div>
+                </div>
+                <% } else { %>
+                <!-- Giriş Yapılmamışsa: Kayıt Formu + Ödeme -->
+                <div style="padding: 20px;">
+                    <div style="text-align: center; margin-bottom: 24px;">
+                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                            <i class="bi bi-person-plus" style="font-size: 2.5rem; color: #06b6d4;"></i>
+                        </div>
+                        <h4 id="modalSinavAd" style="font-weight: 700; color: #1e293b; margin-bottom: 8px;"></h4>
+                        <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 12px; display: inline-block; margin-bottom: 16px;">
+                            <span style="font-size: 0.85rem; color: #92400e; font-weight: 600;">Fiyat: </span>
+                            <span id="modalFiyat" style="font-size: 1.5rem; font-weight: 800; color: #b45309;"></span>
+                        </div>
+                        <p style="color: #64748b; font-size: 0.9rem;">
+                            <i class="bi bi-info-circle"></i> Satın almak için bilgilerinizi girin
+                        </p>
+                    </div>
+                    
+                    <form id="purchaseForm">
+                        <div class="mb-3">
+                            <label class="form-label" style="font-weight: 600; color: #1e293b;">Ad Soyad *</label>
+                            <input type="text" class="form-control" id="ad_soyad" required 
+                                   style="border-radius: 12px; border: 2px solid #e2e8f0; padding: 12px;"
+                                   placeholder="Adınız Soyadınız">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" style="font-weight: 600; color: #1e293b;">E-posta *</label>
+                            <input type="email" class="form-control" id="email" required 
+                                   style="border-radius: 12px; border: 2px solid #e2e8f0; padding: 12px;"
+                                   placeholder="ornek@email.com">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" style="font-weight: 600; color: #1e293b;">Telefon *</label>
+                            <input type="tel" class="form-control" id="telefon" required 
+                                   style="border-radius: 12px; border: 2px solid #e2e8f0; padding: 12px;"
+                                   placeholder="0555 555 55 55">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" style="font-weight: 600; color: #1e293b;">Şifre *</label>
+                            <input type="password" class="form-control" id="password" required 
+                                   style="border-radius: 12px; border: 2px solid #e2e8f0; padding: 12px;"
+                                   placeholder="En az 6 karakter">
+                            <small class="text-muted">Bu şifre ile daha sonra giriş yapabilirsiniz</small>
+                        </div>
+                        
+                        <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                            <p style="color: #1e40af; margin: 0; font-size: 0.85rem;">
+                                <i class="bi bi-shield-check"></i> Hesabınız otomatik oluşturulacak ve satın alma işleminiz tamamlanacaktır.
+                            </p>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-secondary flex-grow-1" data-bs-dismiss="modal" style="border-radius: 12px; padding: 12px;">
+                                İptal
+                            </button>
+                            <button type="submit" class="btn flex-grow-1" style="background: var(--primary-gradient); border: none; border-radius: 12px; color: white; font-weight: 600; padding: 12px;">
+                                <i class="bi bi-check-circle"></i> Satın Al
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Başarı Modal -->
+<div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <h5 class="modal-title">
+                    <i class="bi bi-check-circle"></i> Satın Alma Başarılı!
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div style="text-align: center; padding: 20px;">
+                    <div style="width: 100px; height: 100px; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
+                        <i class="bi bi-check-circle-fill" style="font-size: 3rem; color: #059669;"></i>
+                    </div>
+                    <p id="successMessage" style="color: #1e293b; font-size: 1.1rem; margin-bottom: 24px;"></p>
+                    <div class="d-flex gap-2">
+                        <a href="/sinav-paketleri" class="btn btn-secondary flex-grow-1" style="border-radius: 12px; padding: 12px;">
+                            <i class="bi bi-cart"></i> Alışverişe Devam
+                        </a>
+                        <% if (user) { %>
+                            <a href="/veli/profil" class="btn flex-grow-1" style="background: var(--primary-gradient); border: none; border-radius: 12px; color: white; font-weight: 600; padding: 12px;">
+                                <i class="bi bi-receipt"></i> Satın Aldıklarım
+                            </a>
+                        <% } else { %>
+                            <a href="/veli/dashboard" class="btn flex-grow-1" style="background: var(--primary-gradient); border: none; border-radius: 12px; color: white; font-weight: 600; padding: 12px;">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let currentSinavId = null;
+    
+    function satinAl(sinavId, sinavAd, fiyat) {
+        currentSinavId = sinavId;
+        const modalSinavAdElements = document.querySelectorAll('#modalSinavAd');
+        const modalFiyatElements = document.querySelectorAll('#modalFiyat');
+        
+        modalSinavAdElements.forEach(el => el.textContent = sinavAd);
+        modalFiyatElements.forEach(el => el.textContent = fiyat + ' TL');
+        
+        const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
+        modal.show();
+    }
+    
+    // Giriş yapılmışsa: Direkt ödeme onayı
+    async function confirmPayment() {
+        if (!currentSinavId) return;
+        
+        try {
+            const response = await fetch('/satin-al', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ sinav_id: currentSinavId })
+            });
+            
+            const data = await response.json();
+            
+            // Payment modal'ı kapat
+            const paymentModal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+            paymentModal.hide();
+            
+            if (data.success) {
+                document.getElementById('successMessage').textContent = data.message;
+                const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                successModal.show();
+            } else {
+                alert('❌ ' + data.message);
+            }
+        } catch (error) {
+            console.error('Ödeme hatası:', error);
+            alert('❌ Ödeme sırasında bir hata oluştu!');
+        }
+    }
+    
+    // Giriş yapılmamışsa: Form submit
+    const purchaseForm = document.getElementById('purchaseForm');
+    if (purchaseForm) {
+        purchaseForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!currentSinavId) return;
+            
+            const ad_soyad = document.getElementById('ad_soyad').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const telefon = document.getElementById('telefon').value.trim();
+            const password = document.getElementById('password').value;
+            
+            // Validasyon
+            if (!ad_soyad || !email || !telefon || !password) {
+                alert('❌ Lütfen tüm alanları doldurun!');
+                return;
+            }
+            
+            if (password.length < 6) {
+                alert('❌ Şifre en az 6 karakter olmalıdır!');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/satin-al', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sinav_id: currentSinavId,
+                        ad_soyad: ad_soyad,
+                        email: email,
+                        telefon: telefon,
+                        password: password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Payment modal'ı kapat
+                const paymentModal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+                paymentModal.hide();
+                
+                if (data.success) {
+                    let message = data.message;
+                    if (data.yeniHesap) {
+                        message += '\n\n🎉 Hesabınız başarıyla oluşturuldu! E-posta ve şifrenizle giriş yapabilirsiniz.';
+                    }
+                    document.getElementById('successMessage').textContent = message;
+                    const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                    successModal.show();
+                    
+                    // Form temizle
+                    purchaseForm.reset();
+                } else {
+                    alert('❌ ' + data.message);
+                }
+            } catch (error) {
+                console.error('Ödeme hatası:', error);
+                alert('❌ Ödeme sırasında bir hata oluştu!');
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
+

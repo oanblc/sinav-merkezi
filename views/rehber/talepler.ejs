@@ -1,0 +1,364 @@
+<%- include('../partials/header-dashboard', { title: 'Gelen Talepler - Rehber Öğretmen Paneli', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #003b78 0%, #0056b3 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(0, 59, 120, 0.3);
+    }
+    
+    .filter-tabs {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+    }
+    
+    .filter-btn {
+        padding: 12px 24px;
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        background: white;
+        color: #64748b;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .filter-btn:hover {
+        border-color: #003b78;
+        background: #e0f2fe;
+        color: #003b78;
+    }
+    
+    .filter-btn.active {
+        border-color: #003b78;
+        background: #003b78;
+        color: white;
+        box-shadow: 0 4px 16px rgba(0, 59, 120, 0.3);
+    }
+    
+    .talep-card {
+        background: white;
+        border-radius: 20px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        border-left: 5px solid #e2e8f0;
+    }
+    
+    .talep-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    }
+    
+    .talep-card.beklemede {
+        border-left-color: #f59e0b;
+    }
+    
+    .talep-card.onaylandi {
+        border-left-color: #10b981;
+    }
+    
+    .talep-card.reddedildi {
+        border-left-color: #ef4444;
+    }
+    
+    .talep-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 20px;
+    }
+    
+    .talep-info h4 {
+        font-weight: 800;
+        color: #1e293b;
+        margin-bottom: 8px;
+    }
+    
+    .talep-meta {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+    
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+    
+    .meta-item i {
+        color: #94a3b8;
+    }
+    
+    .talep-badge {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+    
+    .talep-badge.beklemede {
+        background: #fef3c7;
+        color: #f59e0b;
+    }
+    
+    .talep-badge.onaylandi {
+        background: #d1fae5;
+        color: #10b981;
+    }
+    
+    .talep-badge.reddedildi {
+        background: #fee2e2;
+        color: #ef4444;
+    }
+    
+    .talep-details {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 16px;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+    }
+    
+    .btn-action {
+        padding: 10px 20px;
+        border-radius: 12px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-onayla {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    
+    .btn-onayla:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+    }
+    
+    .btn-reddet {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+    
+    .btn-reddet:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="page-header">
+        <div class="container">
+            <h1 style="font-weight: 800; margin-bottom: 8px;">
+                <i class="bi bi-inbox-fill"></i> Gelen Talepler
+            </h1>
+            <p style="opacity: 0.9; margin: 0;">Size gönderilen öğrenci yetki taleplerini inceleyin, onaylayın veya reddedin</p>
+        </div>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="filter-tabs">
+        <button class="filter-btn active" onclick="filterTalepler('hepsi')">
+            <i class="bi bi-inbox"></i> Tümü (<%= talepler.length %>)
+        </button>
+        <button class="filter-btn" onclick="filterTalepler('beklemede')">
+            <i class="bi bi-clock-history"></i> Bekleyen (<%= talepler.filter(t => t.durum === 'beklemede').length %>)
+        </button>
+        <button class="filter-btn" onclick="filterTalepler('onaylandi')">
+            <i class="bi bi-check-circle"></i> Onaylanan (<%= talepler.filter(t => t.durum === 'onaylandi').length %>)
+        </button>
+        <button class="filter-btn" onclick="filterTalepler('reddedildi')">
+            <i class="bi bi-x-circle"></i> Reddedilen (<%= talepler.filter(t => t.durum === 'reddedildi').length %>)
+        </button>
+    </div>
+
+    <!-- Talepler Listesi -->
+    <div id="taleplerListesi">
+        <% if (talepler.length === 0) { %>
+            <div class="alert alert-info text-center" style="border-radius: 20px; padding: 40px;">
+                <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.5;"></i>
+                <h5 class="mt-3">Henüz talep bulunmuyor</h5>
+                <p class="text-muted">Size henüz öğrenci yetki talebi gönderilmemiş.</p>
+            </div>
+        <% } else { %>
+            <% talepler.forEach(talep => { %>
+                <div class="talep-card" data-durum="<%= talep.durum %>">
+                    <div class="talep-header">
+                        <div class="talep-info">
+                            <h4>
+                                <i class="bi bi-mortarboard-fill"></i> <%= talep.ad_soyad || 'Öğrenci' %>
+                            </h4>
+                            <div class="talep-meta">
+                                <div class="meta-item">
+                                    <i class="bi bi-person"></i>
+                                    <span><strong>Veli:</strong> <%= talep.veli_ad_soyad || 'Bilinmiyor' %></span>
+                                </div>
+                                <% if (talep.ogrenci_sinif) { %>
+                                <div class="meta-item">
+                                    <i class="bi bi-book"></i>
+                                    <span><strong>Sınıf:</strong> <%= talep.ogrenci_sinif %></span>
+                                </div>
+                                <% } %>
+                                <% if (talep.ogrenci_okul) { %>
+                                <div class="meta-item">
+                                    <i class="bi bi-building"></i>
+                                    <span><strong>Okul:</strong> <%= talep.ogrenci_okul %></span>
+                                </div>
+                                <% } %>
+                                <div class="meta-item">
+                                    <i class="bi bi-calendar"></i>
+                                    <span><strong>Tarih:</strong> <%= new Date(talep.created_at).toLocaleDateString('tr-TR') %></span>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="talep-badge <%= talep.durum %>">
+                            <% if (talep.durum === 'beklemede') { %>
+                                <i class="bi bi-clock-history"></i> Beklemede
+                            <% } else if (talep.durum === 'onaylandi') { %>
+                                <i class="bi bi-check-circle"></i> Onaylandı
+                            <% } else { %>
+                                <i class="bi bi-x-circle"></i> Reddedildi
+                            <% } %>
+                        </span>
+                    </div>
+                    
+                    <% if (talep.mesaj) { %>
+                    <div class="talep-details">
+                        <strong><i class="bi bi-chat-left-text"></i> Mesaj:</strong>
+                        <p class="mb-0 mt-2"><%= talep.mesaj %></p>
+                    </div>
+                    <% } %>
+                    
+                    <% if (talep.durum === 'beklemede') { %>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-onayla" onclick="showYanitModal(<%= talep.id %>, '<%= (talep.ad_soyad || "").replace(/'/g, "\\'") %>', 'onayla')">
+                            <i class="bi bi-check-circle-fill"></i> Onayla
+                        </button>
+                        <button class="btn-action btn-reddet" onclick="showYanitModal(<%= talep.id %>, '<%= (talep.ad_soyad || "").replace(/'/g, "\\'") %>', 'reddet')">
+                            <i class="bi bi-x-circle-fill"></i> Reddet
+                        </button>
+                    </div>
+                    <% } %>
+                </div>
+            <% }); %>
+        <% } %>
+    </div>
+</div>
+
+<!-- Yanıt Modal -->
+<div class="modal fade" id="yanitModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 20px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #003b78 0%, #0056b3 100%); color: white; border-radius: 20px 20px 0 0;">
+                <h5 class="modal-title" id="yanitModalTitle">Talebi Yanıtla</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 30px;">
+                <form id="yanitForm">
+                    <input type="hidden" id="talepId">
+                    <input type="hidden" id="talepDurum">
+                    
+                    <div class="mb-4">
+                        <label class="form-label"><strong>Yanıt Mesajı (Opsiyonel)</strong></label>
+                        <textarea id="yanitMesaj" class="form-control" rows="4" placeholder="Veliye göndermek istediğiniz mesaj..." style="border-radius: 12px;"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer" style="border: none; padding: 20px 30px;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 12px;">İptal</button>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('yanitForm').dispatchEvent(new Event('submit'))" style="border-radius: 12px; background: linear-gradient(135deg, #003b78 0%, #0056b3 100%); border: none;">
+                    Onayla
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function filterTalepler(durum) {
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.target.closest('.filter-btn').classList.add('active');
+        
+        const cards = document.querySelectorAll('.talep-card');
+        cards.forEach(card => {
+            if (durum === 'hepsi' || card.dataset.durum === durum) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+    
+    function showYanitModal(talepId, ogrenciAdi, islem) {
+        document.getElementById('talepId').value = talepId;
+        document.getElementById('talepDurum').value = islem === 'onayla' ? 'onaylandi' : 'reddedildi';
+        
+        const modalTitle = islem === 'onayla' 
+            ? '✅ Talebi Onayla' 
+            : '❌ Talebi Reddet';
+        
+        document.getElementById('yanitModalTitle').textContent = modalTitle;
+        document.getElementById('yanitMesaj').placeholder = islem === 'onayla'
+            ? 'Örn: Talebiniz onaylanmıştır. Öğrenci bilgilerine erişebilirim.'
+            : 'Örn: Üzgünüz, şu an bu talebi kabul edemiyorum.';
+        
+        const modal = new bootstrap.Modal(document.getElementById('yanitModal'));
+        modal.show();
+    }
+    
+    document.getElementById('yanitForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const talepId = document.getElementById('talepId').value;
+        const durum = document.getElementById('talepDurum').value;
+        const yanit = document.getElementById('yanitMesaj').value.trim();
+        
+        try {
+            const response = await fetch('/rehber/talep-yanitla', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ talep_id: talepId, durum: durum, yanit: yanit })
+            });
+            
+            const data = await response.json();
+            
+            const yanitModal = bootstrap.Modal.getInstance(document.getElementById('yanitModal'));
+            yanitModal.hide();
+            
+            if (data.success) {
+                alert('✅ ' + data.message);
+                location.reload();
+            } else {
+                alert('❌ ' + data.message);
+            }
+        } catch (error) {
+            console.error('Talep yanıtlama hatası:', error);
+            alert('❌ İşlem sırasında bir hata oluştu!');
+        }
+    });
+</script>
+
+<%- include('../partials/footer-dashboard') %>
+

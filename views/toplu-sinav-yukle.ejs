@@ -1,0 +1,985 @@
+<%- include('partials/header-dashboard', {title: 'Toplu Sınav Yükleme', user}) %>
+<%- include('partials/common-styles') %>
+
+<style>
+    /* Modern Gradient Hero */
+    .upload-hero {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        padding: 60px 0 80px;
+        margin-bottom: -40px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .upload-hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        opacity: 0.1;
+    }
+    
+    .upload-hero .container {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .upload-hero h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 16px;
+    }
+    
+    .upload-hero p {
+        font-size: 1.1rem;
+        opacity: 0.95;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    
+    /* Modern Card Container */
+    .content-wrapper {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+        padding: 40px;
+        margin-top: -20px;
+        position: relative;
+    }
+    
+    /* Form Sections */
+    .form-section {
+        background: #f8f9fc;
+        border-radius: 16px;
+        padding: 30px;
+        margin-bottom: 24px;
+        border: 2px solid #e8ecf4;
+        transition: var(--transition);
+    }
+    
+    .form-section:hover {
+        border-color: var(--primary);
+        box-shadow: 0 4px 16px rgba(0,59,120,0.08);
+    }
+    
+    .form-section h3 {
+        color: var(--primary);
+        font-weight: 700;
+        font-size: 1.3rem;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .form-section h3 i {
+        font-size: 1.5rem;
+    }
+    
+    /* Modern Form Inputs */
+    .form-control, .form-select {
+        border: 2px solid #e8ecf4;
+        border-radius: 12px;
+        padding: 14px 18px;
+        font-size: 1rem;
+        transition: var(--transition);
+        background: white;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(0,59,120,0.1);
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 8px;
+        font-size: 0.95rem;
+    }
+    
+    /* File Upload Area */
+    .file-upload-area {
+        border: 3px dashed var(--primary);
+        border-radius: 16px;
+        padding: 40px;
+        text-align: center;
+        background: linear-gradient(135deg, #f8f9fc 0%, #ffffff 100%);
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    
+    .file-upload-area:hover {
+        border-color: var(--primary-light);
+        background: linear-gradient(135deg, #e8ecf4 0%, #f8f9fc 100%);
+        transform: translateY(-2px);
+    }
+    
+    .file-upload-area i {
+        font-size: 3rem;
+        color: var(--primary);
+        margin-bottom: 16px;
+        display: block;
+    }
+    
+    .file-upload-area p {
+        color: var(--text);
+        font-weight: 500;
+        margin: 0;
+    }
+    
+    .file-upload-area small {
+        color: #6c757d;
+        display: block;
+        margin-top: 8px;
+    }
+    
+    /* File Info Card */
+    .file-item {
+        background: white;
+        border: 2px solid var(--primary);
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 16px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        box-shadow: 0 4px 16px rgba(0,59,120,0.1);
+    }
+    
+    .file-item i {
+        font-size: 2rem;
+        color: var(--primary);
+    }
+    
+    /* Buttons */
+    .btn {
+        border-radius: 10px;
+        padding: 12px 32px;
+        font-weight: 600;
+        transition: var(--transition);
+        border: none;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        box-shadow: 0 4px 12px rgba(0,59,120,0.2);
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,59,120,0.3);
+    }
+    
+    .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    .btn-secondary {
+        background: linear-gradient(135deg, var(--secondary) 0%, #e67e22 100%);
+    }
+    
+    /* Progress Section */
+    #progressSection {
+        background: linear-gradient(135deg, #f8f9fc 0%, #e8ecf4 100%);
+        border-radius: 16px;
+        padding: 30px;
+        margin-top: 24px;
+    }
+    
+    .progress {
+        height: 32px;
+        border-radius: 16px;
+        background: white;
+        box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    
+    .progress-bar {
+        background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+        font-weight: 700;
+        line-height: 32px;
+        transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    #statusMessages {
+        margin-top: 20px;
+    }
+    
+    .status-message {
+        padding: 14px 20px;
+        border-radius: 10px;
+        margin-bottom: 12px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideIn 0.3s ease;
+    }
+    
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateX(-20px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+    
+    .status-message.success {
+        background: #d1fae5;
+        color: #065f46;
+        border-left: 4px solid #10b981;
+    }
+    
+    .status-message.error {
+        background: #fee2e2;
+        color: #991b1b;
+        border-left: 4px solid #ef4444;
+    }
+    
+    .status-message.warning {
+        background: #fef3c7;
+        color: #92400e;
+        border-left: 4px solid #f59e0b;
+    }
+    
+    .status-message.info {
+        background: #dbeafe;
+        color: #1e40af;
+        border-left: 4px solid #3b82f6;
+    }
+    
+    /* Results Section */
+    #resultsSection {
+        margin-top: 40px;
+    }
+    
+    #summaryStats {
+        margin-bottom: 30px;
+    }
+    
+    #summaryStats .status-message {
+        text-align: center;
+        font-size: 1.1rem;
+    }
+    
+    /* Quick Download Cards */
+    #quickDownloadSection {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        border-radius: 16px;
+        padding: 30px;
+        margin-bottom: 30px;
+    }
+    
+    #quickDownloadSection h3 {
+        color: white;
+        font-weight: 700;
+        margin-bottom: 12px;
+    }
+    
+    #quickDownloadSection p {
+        color: rgba(255,255,255,0.9);
+        margin-bottom: 24px;
+    }
+    
+    #quickDownloadList {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 16px;
+    }
+    
+    .download-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        transition: var(--transition);
+    }
+    
+    .download-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    
+    .download-card.matched {
+        border-left: 4px solid #10b981;
+    }
+    
+    .download-card.unmatched {
+        border-left: 4px solid #f59e0b;
+        background: #fffbeb;
+    }
+    
+    .download-card h4 {
+        font-size: 1.15rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: var(--text);
+    }
+    
+    .download-card .text-muted {
+        font-size: 0.9rem;
+        color: #64748b;
+        margin-bottom: 16px;
+    }
+    
+    .download-card a {
+        display: inline-block;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        padding: 10px 24px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: var(--transition);
+    }
+    
+    .download-card.unmatched a {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+    
+    .download-card a:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,59,120,0.3);
+    }
+    
+    /* Badge */
+    .badge {
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    
+    .badge.success {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    
+    .badge.error {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .upload-hero h1 {
+            font-size: 2rem;
+        }
+        
+        .content-wrapper {
+            padding: 24px;
+        }
+        
+        .form-section {
+            padding: 20px;
+        }
+        
+        #quickDownloadList {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<!-- Hero Section -->
+<section class="upload-hero">
+    <div class="container text-center">
+        <h1><i class="bi bi-cloud-arrow-up"></i> Toplu PDF Sınav Yükleme</h1>
+        <p>Çok sayfalı PDF dosyanızı yükleyin, sistem her sayfayı otomatik olarak öğrencilerle eşleştirsin</p>
+    </div>
+</section>
+
+<!-- Main Content -->
+<div class="container" style="margin-top: 40px; margin-bottom: 60px;">
+    <div class="content-wrapper">
+        <form id="uploadForm">
+            <!-- Sınav Bilgileri -->
+            <div class="form-section">
+                <h3><i class="bi bi-journal-text"></i> Sınav Bilgileri</h3>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label" for="sinav_adi">Sınav Adı *</label>
+                        <input type="text" class="form-control" id="sinav_adi" name="sinav_adi" required 
+                               placeholder="Örn: Fenomen Süreç İzleme 4">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="sinav_turu">Sınav Türü *</label>
+                        <select class="form-select" id="sinav_turu" name="sinav_turu" required>
+                            <option value="">Seçiniz</option>
+                            <option value="TYT">TYT</option>
+                            <option value="AYT">AYT</option>
+                            <option value="LGS">LGS</option>
+                            <option value="Deneme">Deneme</option>
+                            <option value="Karne">Karne</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="sinav_tarihi">Sınav Tarihi *</label>
+                        <input type="date" class="form-control" id="sinav_tarihi" name="sinav_tarihi" required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PDF Yükleme -->
+            <div class="form-section">
+                <h3><i class="bi bi-file-earmark-pdf"></i> PDF Dosyası Seçin</h3>
+                <div class="file-upload-area" onclick="document.getElementById('pdfFile').click()">
+                    <i class="bi bi-cloud-upload"></i>
+                    <p><strong>Çok Sayfalı PDF Dosyası Seçin</strong></p>
+                    <small>Her sayfa = 1 öğrenci | Maksimum dosya boyutu: 50MB</small>
+                    <input type="file" id="pdfFile" name="pdfFile" accept=".pdf" style="display: none;" required>
+                </div>
+                <div id="fileInfo"></div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="text-center">
+                <button type="submit" id="submitBtn" class="btn btn-primary btn-lg">
+                    <i class="bi bi-upload me-2"></i>Yükle ve İşle
+                </button>
+            </div>
+        </form>
+
+        <!-- Progress Section -->
+        <div id="progressSection" style="display: none;">
+            <h4 class="mb-3" style="color: var(--primary); font-weight: 700;">
+                <i class="bi bi-hourglass-split me-2"></i>İşlem Devam Ediyor...
+            </h4>
+            <div class="progress mb-3">
+                <div id="progressFill" class="progress-bar" role="progressbar" style="width: 0%">0%</div>
+            </div>
+            <div id="statusMessages"></div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" style="display: none;">
+            <h3 style="color: var(--primary); font-weight: 700; margin-bottom: 24px;">
+                <i class="bi bi-check-circle me-2"></i>İşlem Tamamlandı
+            </h3>
+            
+            <!-- Summary Stats -->
+            <div id="summaryStats"></div>
+            
+            <!-- Quick Download Cards -->
+            <div id="quickDownloadSection" style="display: none;">
+                <h3><i class="bi bi-download me-2"></i> Tüm PDF Sonuçları - Hızlı İndirme</h3>
+                <p>Yeşil kenarlı: Veritabanında eşleşti | Turuncu kenarlı: Eşleşmedi (manuel kontrol gerekli)</p>
+                <div id="quickDownloadList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var analysisData = null;
+    
+    document.getElementById('pdfFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const fileInfo = document.getElementById('fileInfo');
+            fileInfo.innerHTML = `
+                <div class="file-item">
+                    <i class="bi bi-file-earmark-pdf-fill"></i>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: var(--text);">${file.name}</div>
+                        <div style="color: #6c757d; font-size: 0.9rem;">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                    </div>
+                    <i class="bi bi-check-circle-fill" style="color: #10b981; font-size: 1.5rem;"></i>
+                </div>
+            `;
+        }
+    });
+
+    document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const fileInput = document.getElementById('pdfFile');
+        if (!fileInput.files || !fileInput.files[0]) {
+            alert('Lütfen bir PDF dosyası seçin!');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('pdfFile', fileInput.files[0]);
+
+        document.getElementById('progressSection').style.display = 'block';
+        document.getElementById('resultsSection').style.display = 'none';
+        document.getElementById('submitBtn').disabled = true;
+        
+        addStatusMessage('info', '🔍 İlk sayfa analiz ediliyor...');
+
+        try {
+            const response = await fetch('/rehber/toplu-sinav-analiz', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                analysisData = result.data;
+                window.analysisData = result.data;
+                console.log('✅ Analiz tamamlandı, uploadPath:', result.data.uploadPath);
+                showNameSelectionModal(result.data);
+            } else {
+                addStatusMessage('error', result.error || 'Analiz hatası!');
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('progressSection').style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Analiz hatası:', error);
+            addStatusMessage('error', 'Analiz sırasında bir hata oluştu!');
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('progressSection').style.display = 'none';
+        }
+    });
+    
+    function showNameSelectionModal(data) {
+        const modalHTML = `
+            <div id="nameSelectionModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                 background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                <div style="background: white; border-radius: 20px; padding: 40px; max-width: 700px; width: 90%; 
+                     max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                    <h2 style="color: var(--primary); margin-bottom: 20px; text-align: center; font-weight: 800;">
+                        🎯 Öğrenci Adı Seçin
+                    </h2>
+                    <p style="color: #6c757d; text-align: center; margin-bottom: 30px;">
+                        <strong>Toplam ${data.totalPages} sayfa</strong> bulundu.<br>
+                        İlk sayfadan hangisinin öğrenci adı olduğunu seçin.
+                    </p>
+                    
+                    <div id="nameOptions" style="margin-bottom: 30px; max-height: 400px; overflow-y: auto; border: 1px solid #e8ecf4; border-radius: 12px; padding: 10px;">
+                        ${data.potansiyelIsimler.map((isim, index) => `
+                            <label data-line-number="${isim.lineNumber}" style="display: block; padding: 16px; border: 2px solid #e8ecf4; 
+                                   border-radius: 12px; margin-bottom: 12px; cursor: pointer; transition: all 0.3s; background: white;"
+                                   onmouseover="this.style.borderColor='var(--primary)'; this.style.background='#f8f9fc';"
+                                   onmouseout="if(!this.querySelector('input').checked){this.style.borderColor='#e8ecf4'; this.style.background='white';}"
+                                   onclick="selectName(this, '${isim.text.replace(/'/g, "\\'")}')">
+                                <input type="radio" name="selectedName" value="${isim.text}" 
+                                       style="margin-right: 12px; transform: scale(1.3);">
+                                <span style="font-size: 1.1rem; font-weight: 600; color: var(--text);">${isim.text}</span>
+                                <span style="margin-left: 8px; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; background: #e8ecf4; color: #6c757d;">Satır ${isim.lineNumber}</span>
+                                <span style="margin-left: 8px; padding: 4px 12px; border-radius: 6px; font-size: 0.85rem;
+                                      background: ${isim.confidence === 'high' ? '#10b981' : isim.confidence === 'medium' ? '#f59e0b' : '#94a3b8'}; 
+                                      color: white;">${isim.confidence === 'high' ? 'Yüksek güven' : isim.confidence === 'medium' ? 'Orta güven' : 'Düşük güven'}</span>
+                            </label>
+                        `).join('')}
+                        
+                        <div style="border-top: 2px dashed #e8ecf4; margin-top: 20px; padding-top: 20px;">
+                            <label style="display: block; padding: 16px; border: 2px solid var(--secondary); 
+                                   background: #fffbeb; border-radius: 12px; cursor: pointer; transition: all 0.3s;"
+                                   onmouseover="this.style.borderColor='#d97706'; this.style.background='#fef3c7';"
+                                   onmouseout="if(!this.querySelector('input').checked){this.style.borderColor='var(--secondary)'; this.style.background='#fffbeb';}"
+                                   onclick="selectManual(this)">
+                                <input type="radio" name="selectedName" value="__MANUEL__" id="manualRadio"
+                                       style="margin-right: 12px; transform: scale(1.3);">
+                                <span style="font-size: 1.1rem; font-weight: 600; color: #92400e;">
+                                    🖊️ Yukarıdakiler doğru değil, manuel gireceğim
+                                </span>
+                            </label>
+                            <div id="manualInputContainer" style="display: none; margin-top: 15px;">
+                                <input type="text" id="manualNameInput" 
+                                       placeholder="Öğrenci adını buraya yazın (örn: AHMET YILMAZ)"
+                                       style="width: 100%; padding: 14px; border: 2px solid var(--primary); border-radius: 10px; 
+                                              font-size: 1rem; font-weight: 500; text-transform: uppercase;">
+                                <p style="margin-top: 8px; color: #6c757d; font-size: 0.9rem;">
+                                    💡 İpucu: Tam adı soyadı büyük harfle yazın
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 15px; margin-top: 30px;">
+                        <button onclick="confirmNameSelection()" 
+                                style="flex: 1; padding: 14px; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); 
+                                       color: white; border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 600; cursor: pointer;">
+                            ✓ Onayla ve İşlemi Başlat
+                        </button>
+                        <button onclick="closeNameSelectionModal()" 
+                                style="flex: 0 0 auto; padding: 14px 24px; background: #e8ecf4; color: #6c757d; 
+                                       border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">
+                            İptal
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+    
+    function selectName(label, text) {
+        document.querySelectorAll('#nameOptions label').forEach(l => {
+            l.style.borderColor = '#e8ecf4';
+            l.style.background = 'white';
+        });
+        label.style.borderColor = 'var(--primary)';
+        label.style.background = '#f8f9fc';
+        
+        const manualContainer = document.getElementById('manualInputContainer');
+        if (manualContainer) manualContainer.style.display = 'none';
+    }
+    
+    function selectManual(label) {
+        document.querySelectorAll('#nameOptions label').forEach(l => {
+            l.style.borderColor = '#e8ecf4';
+            l.style.background = 'white';
+        });
+        
+        label.style.borderColor = '#d97706';
+        label.style.background = '#fef3c7';
+        
+        const manualContainer = document.getElementById('manualInputContainer');
+        const manualInput = document.getElementById('manualNameInput');
+        if (manualContainer && manualInput) {
+            manualContainer.style.display = 'block';
+            setTimeout(() => manualInput.focus(), 100);
+        }
+    }
+    
+    function closeNameSelectionModal() {
+        const modal = document.getElementById('nameSelectionModal');
+        if (modal) modal.remove();
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('progressSection').style.display = 'none';
+    }
+    
+    async function confirmNameSelection() {
+        const selected = document.querySelector('input[name="selectedName"]:checked');
+        if (!selected) {
+            alert('Lütfen bir isim seçin!');
+            return;
+        }
+        
+        let selectedPattern = selected.value;
+        let selectedLineNumber = null;
+        
+        const selectedLabel = selected.closest('label');
+        if (selectedLabel && selectedLabel.dataset.lineNumber) {
+            selectedLineNumber = parseInt(selectedLabel.dataset.lineNumber);
+            console.log('📍 Seçilen satır numarası:', selectedLineNumber);
+        }
+        
+        if (selectedPattern === '__MANUEL__') {
+            const manualInput = document.getElementById('manualNameInput');
+            const manualValue = manualInput ? manualInput.value.trim().toUpperCase() : '';
+            
+            if (!manualValue) {
+                alert('Lütfen öğrenci adını yazın!');
+                manualInput.focus();
+                return;
+            }
+            
+            if (manualValue.split(/\s+/).length < 2) {
+                alert('Lütfen en az ad ve soyad girin! (örn: AHMET YILMAZ)');
+                manualInput.focus();
+                return;
+            }
+            
+            selectedPattern = manualValue;
+            console.log('✏️ Manuel girilen isim:', selectedPattern);
+        } else {
+            console.log('✅ Seçilen pattern:', selectedPattern);
+        }
+        
+        document.getElementById('nameSelectionModal').remove();
+        
+        addStatusMessage('info', `✅ "${selectedPattern}" seçildi. Tüm sayfalar işleniyor...`);
+        updateProgress(10, 'Tüm sayfalar işleniyor...');
+        
+        try {
+            const data = window.analysisData || analysisData;
+            
+            console.log('📤 Gönderilen data:', {
+                sinav_adi: document.getElementById('sinav_adi').value,
+                pdfPath: data ? data.uploadPath : 'YOK!',
+                selectedPattern: selectedPattern,
+                analysisDataMevcut: !!data
+            });
+            
+            if (!data || !data.uploadPath) {
+                alert('Analiz verisi bulunamadı! Lütfen tekrar yükleme yapın.');
+                console.error('❌ analysisData yok veya uploadPath eksik:', data);
+                return;
+            }
+            
+            const processData = {
+                sinav_adi: document.getElementById('sinav_adi').value,
+                sinav_turu: document.getElementById('sinav_turu').value,
+                sinav_tarihi: document.getElementById('sinav_tarihi').value,
+                pdfPath: data.uploadPath,
+                selectedPattern: selectedPattern,
+                selectedLineNumber: selectedLineNumber
+            };
+            
+            console.log('📤 JSON içeriği:', processData);
+            
+            const response = await fetch('/rehber/toplu-sinav-yukle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(processData)
+            });
+            
+            const result = await response.json();
+            
+            updateProgress(100, 'İşlem tamamlandı!');
+            
+            if (result.success) {
+                addStatusMessage('success', 'Tüm sayfalar başarıyla işlendi!');
+                displayResults(result.data);
+            } else {
+                addStatusMessage('error', result.error || 'İşlem hatası!');
+            }
+        } catch (error) {
+            console.error('İşlem hatası:', error);
+            addStatusMessage('error', 'İşlem sırasında bir hata oluştu!');
+        } finally {
+            document.getElementById('submitBtn').disabled = false;
+        }
+    }
+
+    function updateProgress(percent, message) {
+        const progressFill = document.getElementById('progressFill');
+        progressFill.style.width = percent + '%';
+        progressFill.textContent = percent + '%';
+        if (message) {
+            addStatusMessage('success', message);
+        }
+    }
+
+    function addStatusMessage(type, message) {
+        const statusMessages = document.getElementById('statusMessages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `status-message ${type}`;
+        messageDiv.textContent = message;
+        statusMessages.appendChild(messageDiv);
+    }
+
+    function displayResults(data) {
+        const resultsSection = document.getElementById('resultsSection');
+        const summaryStats = document.getElementById('summaryStats');
+        const quickDownloadSection = document.getElementById('quickDownloadSection');
+        const quickDownloadList = document.getElementById('quickDownloadList');
+
+        resultsSection.style.display = 'block';
+        quickDownloadList.innerHTML = '';
+
+        const stats = data.summary;
+        summaryStats.innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div class="status-message warning">
+                    <strong>📄 Toplam Sayfa:</strong> ${stats.total}
+                </div>
+                <div class="status-message success">
+                    <strong>✅ Eşleşen:</strong> ${stats.matched}
+                </div>
+                <div class="status-message error">
+                    <strong>❌ Eşleşmeyen:</strong> ${stats.unmatched}
+                </div>
+                <div class="status-message success">
+                    <strong>💾 Kaydedilen:</strong> ${stats.saved}
+                </div>
+            </div>
+        `;
+        
+        const kayitliSonuclar = data.results.filter(r => r.saved && r.pdfPath);
+        if (kayitliSonuclar.length > 0) {
+            quickDownloadSection.style.display = 'block';
+            
+            const sortedResults = [
+                ...kayitliSonuclar.filter(r => r.matched),
+                ...kayitliSonuclar.filter(r => !r.matched)
+            ];
+            
+            sortedResults.forEach(result => {
+                const card = document.createElement('div');
+                card.className = `download-card ${result.matched ? 'matched' : 'unmatched'}`;
+                
+                const numara = result.matched ? (result.matchedOgrenci.ogrenci_no || '-') : '-';
+                const isim = result.matched 
+                    ? result.matchedOgrenci.ad_soyad 
+                    : (result.pdfData?.ogrenciBilgi?.ad || 'Bilinmeyen Öğrenci');
+                
+                card.innerHTML = `
+                    <h4>${isim}</h4>
+                    <div class="text-muted">
+                        No: ${numara} | Sayfa: ${result.pageNumber}
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                        <a href="/${result.pdfPath}" target="_blank" download="${result.fileName}"
+                           style="display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; 
+                                  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); 
+                                  color: white; border-radius: 8px; text-decoration: none; font-size: 1.2rem; transition: all 0.3s;"
+                           title="PDF İndir">
+                            <i class="bi bi-download"></i>
+                        </a>
+                        ${!result.matched ? `
+                            <button onclick="manuelEslestir('${result.pdfPath.replace(/\\/g, '\\\\')}', '${result.fileName.replace(/'/g, "\\'")}', ${result.pageNumber}, '${isim.replace(/'/g, "\\'")}')"
+                                    style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px; 
+                                           background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; 
+                                           border: none; border-radius: 8px; padding: 10px 16px; font-weight: 600; cursor: pointer; transition: all 0.3s;"
+                                    title="Manuel Eşleştir">
+                                <i class="bi bi-link-45deg"></i> Eşleştir
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+                quickDownloadList.appendChild(card);
+            });
+        }
+    }
+    
+    // Manuel Eşleştirme
+    function manuelEslestir(pdfPath, fileName, pageNumber, pdfIsim) {
+        const modalHTML = `
+            <div id="manualMatchModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                 background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                <div style="background: white; border-radius: 20px; padding: 40px; max-width: 600px; width: 90%; 
+                     max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                    <h2 style="color: var(--primary); margin-bottom: 12px; text-align: center; font-weight: 800;">
+                        🔗 Manuel Eşleştirme
+                    </h2>
+                    <p style="color: #6c757d; text-align: center; margin-bottom: 24px;">
+                        <strong>PDF'deki İsim:</strong> ${pdfIsim}<br>
+                        <strong>Sayfa:</strong> ${pageNumber}
+                    </p>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label" style="font-weight: 600; color: var(--text); margin-bottom: 8px; display: block;">
+                            <i class="bi bi-search me-2"></i>Öğrenci Ara
+                        </label>
+                        <input type="text" id="studentSearchInput" 
+                               placeholder="Öğrenci adı, soyadı veya numara yazın..."
+                               style="width: 100%; padding: 14px; border: 2px solid #e8ecf4; border-radius: 10px; 
+                                      font-size: 1rem; transition: all 0.3s;"
+                               oninput="searchStudents(this.value)"
+                               onfocus="this.style.borderColor='var(--primary)'"
+                               onblur="this.style.borderColor='#e8ecf4'">
+                    </div>
+                    
+                    <div id="studentResults" style="max-height: 300px; overflow-y: auto; margin-bottom: 20px; 
+                         border: 2px solid #e8ecf4; border-radius: 10px; padding: 10px; background: #f8f9fc;">
+                        <p style="text-align: center; color: #6c757d; padding: 20px;">
+                            Aramaya başlamak için yukarıya yazın...
+                        </p>
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px;">
+                        <button onclick="closeManualMatchModal()" 
+                                style="flex: 1; padding: 12px; background: #e8ecf4; color: #6c757d; 
+                                       border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">
+                            İptal
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Modal data'yı sakla
+        window.currentMatchData = { pdfPath, fileName, pageNumber, pdfIsim };
+    }
+    
+    function closeManualMatchModal() {
+        const modal = document.getElementById('manualMatchModal');
+        if (modal) modal.remove();
+        window.currentMatchData = null;
+    }
+    
+    let searchTimeout = null;
+    async function searchStudents(query) {
+        clearTimeout(searchTimeout);
+        
+        const resultsDiv = document.getElementById('studentResults');
+        
+        if (!query || query.trim().length < 2) {
+            resultsDiv.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 20px;">En az 2 karakter yazın...</p>';
+            return;
+        }
+        
+        resultsDiv.innerHTML = '<p style="text-align: center; color: var(--primary); padding: 20px;"><i class="bi bi-hourglass-split"></i> Aranıyor...</p>';
+        
+        searchTimeout = setTimeout(async () => {
+            try {
+                const response = await fetch('/rehber/ogrenci-ara', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ aramaKelimesi: query.trim() })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.ogrenciler && data.ogrenciler.length > 0) {
+                    resultsDiv.innerHTML = data.ogrenciler.map(ogrenci => `
+                        <div style="background: white; border: 2px solid #e8ecf4; border-radius: 10px; padding: 16px; 
+                             margin-bottom: 10px; cursor: pointer; transition: all 0.3s;"
+                             onmouseover="this.style.borderColor='var(--primary)'; this.style.background='#f8f9fc'"
+                             onmouseout="this.style.borderColor='#e8ecf4'; this.style.background='white'"
+                             onclick="confirmMatch(${ogrenci.id}, '${ogrenci.ad_soyad.replace(/'/g, "\\'")}', '${ogrenci.ogrenci_no}')">
+                            <div style="font-weight: 700; color: var(--text); margin-bottom: 4px;">
+                                ${ogrenci.ad_soyad}
+                            </div>
+                            <div style="font-size: 0.9rem; color: #6c757d;">
+                                No: ${ogrenci.ogrenci_no || '-'} | 
+                                Okul: ${ogrenci.okul || '-'} | 
+                                Sınıf: ${ogrenci.sinif || '-'}
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    resultsDiv.innerHTML = '<p style="text-align: center; color: #ef4444; padding: 20px;"><i class="bi bi-exclamation-circle"></i> Sonuç bulunamadı</p>';
+                }
+            } catch (error) {
+                console.error('Arama hatası:', error);
+                resultsDiv.innerHTML = '<p style="text-align: center; color: #ef4444; padding: 20px;">Arama sırasında hata oluştu!</p>';
+            }
+        }, 300);
+    }
+    
+    async function confirmMatch(ogrenciId, ogrenciAd, ogrenciNo) {
+        if (!confirm(`"${ogrenciAd}" (No: ${ogrenciNo}) ile eşleştirmek istediğinize emin misiniz?`)) {
+            return;
+        }
+        
+        const matchData = window.currentMatchData;
+        if (!matchData) {
+            alert('Eşleştirme verisi bulunamadı!');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/rehber/manuel-eslestir', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ogrenci_id: ogrenciId,
+                    pdf_path: matchData.pdfPath,
+                    pdf_isim: matchData.pdfIsim,
+                    sayfa_no: matchData.pageNumber,
+                    sinav_adi: document.getElementById('sinav_adi').value
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert('✅ Eşleştirme başarılı!');
+                closeManualMatchModal();
+                // Sayfayı yenile veya kartı güncelle
+                location.reload();
+            } else {
+                alert('❌ Hata: ' + (data.error || 'Eşleştirme başarısız!'));
+            }
+        } catch (error) {
+            console.error('Eşleştirme hatası:', error);
+            alert('❌ Eşleştirme sırasında hata oluştu!');
+        }
+    }
+</script>
+
+<%- include('partials/footer-dashboard') %>

@@ -1,0 +1,368 @@
+<%- include('partials/header-dashboard', { title: 'Veli İletişim Listesi - Sınav Merkezi', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(6, 182, 212, 0.3);
+    }
+    
+    .stat-card-mini {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card-mini:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+    
+    .stat-card-mini.cyan {
+        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        color: white;
+    }
+    
+    .stat-card-mini.green {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    
+    .stat-card-mini.orange {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+    
+    .search-box {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        margin-bottom: 30px;
+    }
+    
+    .data-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    
+    .data-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        padding: 24px 32px;
+        border-bottom: 2px solid #e8ecf0;
+    }
+    
+    .table-modern {
+        margin: 0;
+    }
+    
+    .table-modern thead th {
+        background: transparent;
+        border: none;
+        padding: 20px;
+        font-weight: 600;
+        color: #64748b;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .table-modern tbody tr {
+        border-bottom: 1px solid #f1f5f9;
+        transition: all 0.2s ease;
+    }
+    
+    .table-modern tbody tr:hover {
+        background: #f8fafc;
+    }
+    
+    .table-modern tbody td {
+        padding: 20px;
+        vertical-align: middle;
+    }
+    
+    .badge-modern {
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
+    
+    .btn-action {
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+        margin: 0 2px;
+    }
+    
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 style="font-weight: 800; margin-bottom: 8px;">
+                    <i class="bi bi-person-lines-fill"></i> Veli İletişim Listesi
+                </h1>
+                <p style="opacity: 0.9; margin: 0;">Tüm velileri görüntüle ve iletişim bilgilerine eriş</p>
+            </div>
+            <a href="/rehber/dashboard" class="btn btn-light btn-lg" style="border-radius: 12px; font-weight: 600;">
+                <i class="bi bi-arrow-left"></i> Dashboard'a Dön
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- İstatistik Kartları -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card-mini cyan">
+            <div class="d-flex align-items-center">
+                <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 16px;">
+                    <i class="bi bi-people" style="font-size: 24px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 2rem; font-weight: 800; line-height: 1;"><%= veliler.length %></div>
+                    <div style="opacity: 0.9; font-size: 0.9rem;">Toplam Veli</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card-mini green">
+            <div class="d-flex align-items-center">
+                <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 16px;">
+                    <i class="bi bi-person-check" style="font-size: 24px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 2rem; font-weight: 800; line-height: 1;"><%= veliler.filter(v => v.ogrenci_sayisi > 0).length %></div>
+                    <div style="opacity: 0.9; font-size: 0.9rem;">Öğrencisi Olan</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card-mini orange">
+            <div class="d-flex align-items-center">
+                <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 16px;">
+                    <i class="bi bi-person-x" style="font-size: 24px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 2rem; font-weight: 800; line-height: 1;"><%= veliler.filter(v => v.ogrenci_sayisi == 0).length %></div>
+                    <div style="opacity: 0.9; font-size: 0.9rem;">Öğrencisiz</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Arama Kutusu -->
+<div class="search-box">
+    <div class="input-group input-group-lg">
+        <span class="input-group-text" style="background: #f8fafc; border: 2px solid #e8ecf0; border-right: none;">
+            <i class="bi bi-search" style="color: #06b6d4;"></i>
+        </span>
+        <input type="text" class="form-control" id="searchInput" placeholder="Veli kullanıcı adı veya email ile ara..." style="border: 2px solid #e8ecf0; border-left: none; background: #f8fafc;">
+    </div>
+</div>
+
+<!-- Veli Listesi -->
+<div class="data-card">
+    <div class="data-header">
+        <h5 style="margin: 0; font-weight: 700; color: #1e293b;">
+            <i class="bi bi-table"></i> Tüm Veliler (<%= veliler.length %>)
+        </h5>
+    </div>
+    <div style="padding: 0;">
+        <% if (veliler && veliler.length > 0) { %>
+        <div class="table-responsive">
+            <table class="table table-modern" id="veliTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Veli</th>
+                        <th>Email</th>
+                        <th>Öğrenci Sayısı</th>
+                        <th>Öğrencileri</th>
+                        <th>Kayıt</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% veliler.forEach(function(veli, index) { %>
+                    <tr>
+                        <td style="font-weight: 600; color: #94a3b8;"><%= index + 1 %></td>
+                        <td>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <div style="display: flex; align-items: center;">
+                                    <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #06b6d4, #3b82f6); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; margin-right: 12px;">
+                                        <%= (veli.ad_soyad || veli.username).charAt(0).toUpperCase() %>
+                                    </div>
+                                    <div>
+                                        <strong style="color: #1e293b; display: block;"><%= veli.ad_soyad || veli.username %></strong>
+                                        <% 
+                                            // Geçerli telefon kontrolü
+                                            let gecerliTelefon = null;
+                                            if (veli.telefon) {
+                                                let telefon = veli.telefon.toString();
+                                                // Geçersiz formatları kontrol et
+                                                if (!telefon.endsWith('.0') && !telefon.includes('.0@') && telefon.length > 5) {
+                                                    gecerliTelefon = telefon;
+                                                }
+                                            }
+                                        %>
+                                        <% if (gecerliTelefon) { %>
+                                            <small style="color: #64748b; display: block; margin-top: 2px;">
+                                                <i class="bi bi-telephone"></i> <%= gecerliTelefon %>
+                                            </small>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <% 
+                                // Geçerli email kontrolü
+                                let gecerliEmail = null;
+                                if (veli.email) {
+                                    let email = veli.email.toString();
+                                    // Geçersiz formatları kontrol et (@temp.com, .0@, sayı.0@)
+                                    if (!email.includes('@temp.com') && !email.includes('.0@') && !email.match(/^\d+\.0@/)) {
+                                        gecerliEmail = email;
+                                    }
+                                }
+                            %>
+                            <% if (gecerliEmail) { %>
+                                <a href="mailto:<%= gecerliEmail %>" style="color: #06b6d4; text-decoration: none;">
+                                    <i class="bi bi-envelope"></i> <%= gecerliEmail %>
+                                </a>
+                            <% } else { %>
+                                <span style="color: #94a3b8;">-</span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <% if (veli.ogrenci_sayisi > 0) { %>
+                                <span class="badge-modern bg-success"><%= veli.ogrenci_sayisi %> Öğrenci</span>
+                            <% } else { %>
+                                <span class="badge-modern bg-warning text-dark">Yok</span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <% if (veli.ogrenci_isimleri) { %>
+                                <small style="color: #64748b;"><%= veli.ogrenci_isimleri %></small>
+                            <% } else { %>
+                                <span style="color: #cbd5e1;">-</span>
+                            <% } %>
+                        </td>
+                        <td style="color: #64748b; font-size: 0.85rem;">
+                            <%= new Date(veli.created_at).toLocaleDateString('tr-TR') %>
+                        </td>
+                        <td>
+                            <% 
+                                // Email kontrolü (yukarıdaki ile aynı)
+                                let gecerliEmailBtn = null;
+                                if (veli.email) {
+                                    let email = veli.email.toString();
+                                    if (!email.includes('@temp.com') && !email.includes('.0@') && !email.match(/^\d+\.0@/)) {
+                                        gecerliEmailBtn = email;
+                                    }
+                                }
+                            %>
+                            <% if (gecerliEmailBtn) { %>
+                                <a href="mailto:<%= gecerliEmailBtn %>" class="btn btn-primary btn-sm btn-action">
+                                    <i class="bi bi-envelope"></i>
+                                </a>
+                            <% } %>
+                            <% if (veli.ogrenci_sayisi > 0) { %>
+                            <button class="btn btn-info btn-sm btn-action" onclick="ogrencileriGoster('<%= veli.username %>', '<%= veli.ogrenci_isimleri %>')">
+                                <i class="bi bi-people"></i>
+                            </button>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+        <% } else { %>
+        <div class="text-center py-5" style="padding: 60px 20px;">
+            <i class="bi bi-inbox" style="font-size: 4rem; color: #cbd5e1; margin-bottom: 16px;"></i>
+            <h5 style="color: #64748b; margin-bottom: 8px;">Henüz veli yok</h5>
+            <p style="color: #94a3b8; margin-bottom: 0;">Veliler kayıt oldukça burada görünecek</p>
+        </div>
+        <% } %>
+    </div>
+</div>
+
+<!-- Öğrenci Listesi Modal -->
+<div class="modal fade" id="ogrenciModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 20px; border: none;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #06b6d4, #3b82f6); color: white; border: none;">
+                <h5 class="modal-title" id="modalTitle" style="font-weight: 700;"></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <ul class="list-group" id="ogrenciList" style="border: none;">
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Arama fonksiyonu
+document.getElementById('searchInput')?.addEventListener('keyup', function() {
+    const searchTerm = this.value.toLowerCase();
+    const table = document.getElementById('veliTable');
+    if (!table) return;
+    
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const text = row.textContent.toLowerCase();
+        
+        if (text.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    }
+});
+
+function ogrencileriGoster(veliUsername, ogrenciIsimleri) {
+    document.getElementById('modalTitle').innerHTML = '<i class="bi bi-person-circle"></i> ' + veliUsername + ' - Öğrencileri';
+    
+    const ogrenciList = document.getElementById('ogrenciList');
+    ogrenciList.innerHTML = '';
+    
+    const ogrenciler = ogrenciIsimleri.split(', ');
+    ogrenciler.forEach(function(ogrenci) {
+        const li = document.createElement('li');
+        li.className = 'list-group-item border-0';
+        li.style = 'padding: 12px; background: #f8fafc; margin-bottom: 8px; border-radius: 8px;';
+        li.innerHTML = '<i class="bi bi-person-fill" style="color: #06b6d4; margin-right: 8px;"></i><strong>' + ogrenci + '</strong>';
+        ogrenciList.appendChild(li);
+    });
+    
+    const modal = new bootstrap.Modal(document.getElementById('ogrenciModal'));
+    modal.show();
+}
+</script>
+
+<%- include('partials/footer-dashboard') %>

@@ -1,0 +1,766 @@
+<%- include('partials/header', {title: 'Kayıt Ol', user: typeof user !== 'undefined' ? user : null}) %>
+
+<%- include('partials/common-styles') %>
+
+<style>
+    /* Reset */
+    body, html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow-x: hidden;
+    }
+    
+    /* Full Page Container */
+    .auth-full-container {
+        display: flex;
+        min-height: 100vh;
+        position: relative;
+    }
+    
+    /* Left Side - Branding */
+    .auth-left {
+        flex: 1;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 60px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .auth-left::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: rotate 30s linear infinite;
+    }
+    
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    /* Floating Shapes */
+    .shape {
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(40px);
+    }
+    
+    .shape-1 {
+        width: 350px;
+        height: 350px;
+        top: 5%;
+        right: -100px;
+        animation: float1 20s ease-in-out infinite;
+    }
+    
+    .shape-2 {
+        width: 250px;
+        height: 250px;
+        bottom: 5%;
+        left: -50px;
+        animation: float2 25s ease-in-out infinite;
+    }
+    
+    .shape-3 {
+        width: 180px;
+        height: 180px;
+        top: 40%;
+        left: 30%;
+        animation: float3 15s ease-in-out infinite;
+    }
+    
+    @keyframes float1 {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(-40px, 40px); }
+    }
+    
+    @keyframes float2 {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(30px, -40px); }
+    }
+    
+    @keyframes float3 {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(-20px, 30px); }
+    }
+    
+    .auth-left-content {
+        text-align: center;
+        color: white;
+        position: relative;
+        z-index: 1;
+        max-width: 500px;
+    }
+    
+    .auth-logo {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 30px;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        border-radius: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 4rem;
+        animation: logoPulse 3s ease-in-out infinite;
+    }
+    
+    @keyframes logoPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+    
+    .auth-left h1 {
+        font-size: 3rem;
+        font-weight: 900;
+        margin-bottom: 20px;
+        line-height: 1.2;
+    }
+    
+    .auth-left p {
+        font-size: 1.2rem;
+        opacity: 0.95;
+        line-height: 1.6;
+        margin-bottom: 40px;
+    }
+    
+    .features-list {
+        list-style: none;
+        padding: 0;
+        margin: 40px 0 0 0;
+        text-align: left;
+    }
+    
+    .features-list li {
+        padding: 15px 0;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .features-list i {
+        font-size: 1.5rem;
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Right Side - Form */
+    .auth-right {
+        flex: 1;
+        background: #f8f9fa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 60px;
+        overflow-y: auto;
+    }
+    
+    .auth-form-container {
+        width: 100%;
+        max-width: 520px;
+        animation: slideInRight 0.8s ease-out;
+    }
+    
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    .form-header {
+        margin-bottom: 40px;
+    }
+    
+    .form-header h2 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin-bottom: 10px;
+    }
+    
+    .form-header p {
+        font-size: 1.1rem;
+        color: #64748b;
+    }
+    
+    /* Floating Label Input */
+    .form-group {
+        position: relative;
+        margin-bottom: 28px;
+    }
+    
+    .form-group input {
+        width: 100%;
+        padding: 20px 20px 20px 55px;
+        border: 2px solid #e2e8f0;
+        border-radius: 16px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: white;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .form-group input:focus {
+        outline: none;
+        border-color: #f5576c;
+        box-shadow: 0 0 0 4px rgba(245, 87, 108, 0.1);
+    }
+    
+    .form-group input:focus + .floating-label,
+    .form-group input:not(:placeholder-shown) + .floating-label {
+        top: -10px;
+        left: 16px;
+        font-size: 0.75rem;
+        color: #f5576c;
+        background: white;
+        padding: 0 8px;
+    }
+    
+    .floating-label {
+        position: absolute;
+        top: 50%;
+        left: 55px;
+        transform: translateY(-50%);
+        font-size: 1rem;
+        color: #94a3b8;
+        transition: all 0.3s ease;
+        pointer-events: none;
+        font-weight: 500;
+    }
+    
+    .input-icon {
+        position: absolute;
+        left: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.3rem;
+        color: #94a3b8;
+        transition: all 0.3s ease;
+    }
+    
+    .form-group input:focus ~ .input-icon {
+        color: #f5576c;
+    }
+    
+    /* Password Toggle */
+    .password-toggle {
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.3rem;
+        color: #94a3b8;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        z-index: 2;
+    }
+    
+    .password-toggle:hover {
+        color: #f5576c;
+    }
+    
+    /* User Type Selection */
+    .user-type-section {
+        margin-bottom: 28px;
+    }
+    
+    .user-type-label {
+        display: block;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 16px;
+        font-size: 1rem;
+    }
+    
+    .user-type-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+    
+    .user-type-grid > div {
+        position: relative;
+    }
+    
+    .user-type-option {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+    
+    .user-type-card {
+        padding: 24px 20px;
+        border: 3px solid #e2e8f0;
+        border-radius: 16px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        text-align: center;
+        background: white;
+        position: relative;
+    }
+    
+    .user-type-card::after {
+        content: '';
+        position: absolute;
+        top: -3px;
+        left: -3px;
+        right: -3px;
+        bottom: -3px;
+        border-radius: 16px;
+        border: 0px solid #f5576c;
+        opacity: 0;
+        transition: all 0.3s ease;
+    }
+    
+    .user-type-card:hover {
+        border-color: #f5576c;
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(245, 87, 108, 0.15);
+    }
+    
+    .user-type-option:checked + .user-type-card {
+        border-color: #f5576c;
+        border-width: 4px;
+        background: linear-gradient(135deg, rgba(240, 147, 251, 0.15) 0%, rgba(245, 87, 108, 0.15) 100%);
+        box-shadow: 0 0 0 4px rgba(245, 87, 108, 0.2), 0 8px 30px rgba(245, 87, 108, 0.3);
+        transform: scale(1.02);
+    }
+    
+    .user-type-option:checked + .user-type-card::after {
+        border-width: 3px;
+        opacity: 1;
+    }
+    
+    .user-type-card > i {
+        font-size: 2.8rem;
+        color: #f5576c;
+        margin-bottom: 12px;
+        display: block;
+        transition: all 0.3s ease;
+    }
+    
+    .user-type-option:checked + .user-type-card > i {
+        transform: scale(1.15);
+        filter: drop-shadow(0 4px 8px rgba(245, 87, 108, 0.4));
+    }
+    
+    /* Checkmark Badge */
+    .user-type-card::before {
+        content: '\F26A';
+        font-family: 'bootstrap-icons' !important;
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        font-weight: bold;
+        opacity: 0;
+        transform: scale(0) rotate(-180deg);
+        transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+    }
+    
+    .user-type-option:checked + .user-type-card::before {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+    
+    .user-type-card > h4 {
+        font-size: 1.05rem;
+        font-weight: 700;
+        margin: 0 0 6px 0;
+        color: #1e293b;
+        transition: color 0.3s ease;
+    }
+    
+    .user-type-option:checked + .user-type-card > h4 {
+        color: #f5576c;
+    }
+    
+    .user-type-card > p {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin: 0;
+        transition: color 0.3s ease;
+    }
+    
+    .user-type-option:checked + .user-type-card > p {
+        color: #1e293b;
+    }
+    
+    /* Submit Button */
+    .btn-submit {
+        width: 100%;
+        padding: 18px 24px;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        border: none;
+        border-radius: 16px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.4s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        position: relative;
+        overflow: hidden;
+        margin-top: 10px;
+    }
+    
+    .btn-submit::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+    
+    .btn-submit:hover::before {
+        width: 450px;
+        height: 450px;
+    }
+    
+    .btn-submit:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 40px rgba(245, 87, 108, 0.4);
+    }
+    
+    .btn-submit span {
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* Alert */
+    .alert-box {
+        padding: 16px 20px;
+        border-radius: 16px;
+        margin-bottom: 30px;
+        font-size: 0.95rem;
+        border: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideDown 0.5s ease-out;
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .alert-box.danger {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+        color: white;
+    }
+    
+    .alert-box.success {
+        background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+        color: white;
+    }
+    
+    .alert-box i {
+        font-size: 1.5rem;
+    }
+    
+    /* Footer Link */
+    .form-footer {
+        text-align: center;
+        margin-top: 35px;
+        padding-top: 30px;
+        border-top: 2px solid #e2e8f0;
+    }
+    
+    .form-footer p {
+        color: #64748b;
+        font-size: 1rem;
+        margin: 0;
+    }
+    
+    .form-footer a {
+        color: #f5576c;
+        text-decoration: none;
+        font-weight: 700;
+        transition: all 0.3s ease;
+    }
+    
+    .form-footer a:hover {
+        color: #f093fb;
+    }
+    
+    /* Responsive */
+    @media (max-width: 992px) {
+        .auth-full-container {
+            flex-direction: column;
+        }
+        
+        .auth-left {
+            min-height: 40vh;
+            padding: 40px 30px;
+        }
+        
+        .auth-left h1 {
+            font-size: 2rem;
+        }
+        
+        .auth-left p {
+            font-size: 1rem;
+        }
+        
+        .features-list {
+            display: none;
+        }
+        
+        .auth-right {
+            padding: 40px 30px;
+        }
+        
+        .form-header h2 {
+            font-size: 2rem;
+        }
+        
+        .user-type-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .auth-logo {
+            width: 80px;
+            height: 80px;
+            font-size: 2.5rem;
+        }
+        
+        .auth-left h1 {
+            font-size: 1.7rem;
+        }
+        
+        .auth-right {
+            padding: 30px 20px;
+        }
+        
+        .form-header h2 {
+            font-size: 1.7rem;
+        }
+    }
+</style>
+
+<div class="auth-full-container">
+    <!-- Left Side - Branding -->
+    <div class="auth-left">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+        
+        <div class="auth-left-content">
+            <div class="auth-logo">
+                <i class="bi bi-rocket-takeoff"></i>
+            </div>
+            <h1>Hemen Başlayın</h1>
+            <p>Sınav merkezimize katılın ve öğrenci gelişimini kolayca takip edin</p>
+            
+            <ul class="features-list">
+                <li>
+                    <i class="bi bi-lightning-fill"></i>
+                    <span>Hızlı ve kolay kayıt</span>
+                </li>
+                <li>
+                    <i class="bi bi-shield-check"></i>
+                    <span>Güvenli veri saklama</span>
+                </li>
+                <li>
+                    <i class="bi bi-graph-up"></i>
+                    <span>Detaylı analiz raporları</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- Right Side - Form -->
+    <div class="auth-right">
+        <div class="auth-form-container">
+            <div class="form-header">
+                <h2>Hesap Oluştur</h2>
+                <p>Bilgilerinizi girerek başlayın</p>
+            </div>
+            
+            <% if (typeof error !== 'undefined' && error) { %>
+            <div class="alert-box danger">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <span><%= error %></span>
+            </div>
+            <% } %>
+            
+            <% if (typeof success !== 'undefined' && success) { %>
+            <div class="alert-box success">
+                <i class="bi bi-check-circle-fill"></i>
+                <span><%= success %></span>
+            </div>
+            <% } %>
+            
+            <form method="POST" action="/register" id="registerForm">
+                <div class="form-group">
+                    <i class="bi bi-person-fill input-icon"></i>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        placeholder=" "
+                        required
+                        autocomplete="username"
+                    >
+                    <label class="floating-label">Kullanıcı Adı</label>
+                </div>
+                
+                <div class="form-group">
+                    <i class="bi bi-envelope-fill input-icon"></i>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        placeholder=" "
+                        required
+                        autocomplete="email"
+                    >
+                    <label class="floating-label">E-posta</label>
+                </div>
+                
+                <div class="form-group">
+                    <i class="bi bi-lock-fill input-icon"></i>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        placeholder=" "
+                        required
+                        autocomplete="new-password"
+                        minlength="6"
+                    >
+                    <label class="floating-label">Şifre (En az 6 karakter)</label>
+                    <i class="bi bi-eye password-toggle" onclick="togglePassword()" id="toggleIcon"></i>
+                </div>
+                
+                <div class="user-type-section">
+                    <label class="user-type-label">
+                        <i class="bi bi-people-fill me-2"></i>Hesap Tipi
+                    </label>
+                    
+                    <div class="user-type-grid">
+                        <div>
+                            <input type="radio" name="user_type" value="veli" class="user-type-option" id="type-veli" required>
+                            <label class="user-type-card" for="type-veli">
+                                <i class="bi bi-person-hearts"></i>
+                                <h4>Veli</h4>
+                                <p>Öğrenci velisi</p>
+                            </label>
+                        </div>
+                        
+                        <div>
+                            <input type="radio" name="user_type" value="rehber_ogretmen" class="user-type-option" id="type-ogretmen" required>
+                            <label class="user-type-card" for="type-ogretmen">
+                                <i class="bi bi-mortarboard-fill"></i>
+                                <h4>Danışman</h4>
+                                <p>Rehber öğretmen</p>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-submit" id="submitBtn">
+                    <span>
+                        <i class="bi bi-rocket-takeoff me-2"></i>
+                        Hesap Oluştur
+                    </span>
+                </button>
+            </form>
+            
+            <div class="form-footer">
+                <p>Zaten hesabınız var mı? <a href="/login">Hemen Giriş Yapın</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Password Toggle
+    function togglePassword() {
+        const passwordInput = document.getElementById('password');
+        const toggleIcon = document.getElementById('toggleIcon');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.classList.remove('bi-eye');
+            toggleIcon.classList.add('bi-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.classList.remove('bi-eye-slash');
+            toggleIcon.classList.add('bi-eye');
+        }
+    }
+    
+    // Form Submit Animation
+    document.getElementById('registerForm').addEventListener('submit', function() {
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.style.opacity = '0.8';
+        submitBtn.querySelector('span').innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Hesap Oluşturuluyor...';
+    });
+    
+    // User Type Card Click Animation
+    document.querySelectorAll('.user-type-card').forEach(card => {
+        card.addEventListener('click', function() {
+            // Reset all cards
+            document.querySelectorAll('.user-type-card').forEach(c => {
+                c.style.transform = 'scale(1)';
+            });
+            
+            // Animate clicked card
+            setTimeout(() => {
+                this.style.transform = 'scale(1.05)';
+                setTimeout(() => {
+                    this.style.transform = 'scale(1.02)';
+                }, 150);
+            }, 50);
+        });
+    });
+</script>
+
+<%- include('partials/footer') %>

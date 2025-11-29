@@ -1,0 +1,1206 @@
+<%- include('../partials/header-dashboard', { title: 'Öğrenci Kayıtları - Kurum Paneli', user: user }) %>
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
+    }
+    
+    .header-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+    }
+    
+    .filters {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    
+    .filters .form-select {
+        min-width: 200px;
+        border-radius: 10px;
+        border: 2px solid #e2e8f0;
+    }
+    
+    .table-container {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .badge {
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    
+    .badge.bg-success {
+        background: #10b981 !important;
+    }
+    
+    .badge.bg-warning {
+        background: #f59e0b !important;
+        color: #fff !important;
+    }
+    
+    .badge.bg-info {
+        background: #06b6d4 !important;
+    }
+    
+    .badge.bg-secondary {
+        background: #64748b !important;
+    }
+    
+    .action-btns {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .btn-action {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .modal-content {
+        border-radius: 20px;
+        border: none;
+    }
+    
+    .modal-header {
+        border-radius: 20px 20px 0 0;
+        padding: 24px;
+    }
+    
+    .modal-body {
+        padding: 24px;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 8px;
+    }
+    
+    .form-control, .form-select {
+        border-radius: 10px;
+        border: 2px solid #e2e8f0;
+        padding: 10px 16px;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.1);
+    }
+    
+    table.dataTable {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    
+    table.dataTable thead th {
+        background: #f8fafc;
+        color: #1e293b;
+        font-weight: 700;
+        border-bottom: 2px solid #e2e8f0;
+        padding: 16px 12px;
+        white-space: nowrap;
+    }
+    
+    table.dataTable tbody td {
+        padding: 14px 12px;
+        vertical-align: middle;
+    }
+    
+    table.dataTable tbody tr:hover {
+        background: #f8fafc;
+    }
+    
+    /* Responsive DataTable */
+    table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control:before,
+    table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control:before {
+        background-color: #3b82f6;
+        box-shadow: 0 0 6px rgba(59, 130, 246, 0.3);
+    }
+    
+    table.dataTable.dtr-inline.collapsed > tbody > tr.parent > td.dtr-control:before,
+    table.dataTable.dtr-inline.collapsed > tbody > tr.parent > th.dtr-control:before {
+        background-color: #10b981;
+    }
+    
+    table.dataTable > tbody > tr.child {
+        background: #f8fafc;
+    }
+    
+    table.dataTable > tbody > tr.child ul.dtr-details {
+        padding: 16px;
+    }
+    
+    table.dataTable > tbody > tr.child ul.dtr-details > li {
+        padding: 8px 0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    table.dataTable > tbody > tr.child ul.dtr-details > li:last-child {
+        border-bottom: none;
+    }
+    
+    /* Tablo scroll için max-width */
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    @media (max-width: 1200px) {
+        .table-container {
+            margin: 0 -10px;
+            padding: 0 10px;
+        }
+    }
+    
+    .dt-buttons {
+        margin-bottom: 20px;
+    }
+    
+    .dt-button {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 8px 16px !important;
+        font-weight: 600 !important;
+        margin-right: 8px !important;
+    }
+    
+    .dt-button:hover {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+    }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container">
+        <h1 style="font-weight: 800; margin-bottom: 8px;">
+            <i class="bi bi-people-fill"></i> Öğrenci Kayıtları
+        </h1>
+        <p style="opacity: 0.9; margin: 0;">Öğrenci listesini görüntüleyin, Excel ile içe/dışa aktarın</p>
+        
+        <div class="header-actions">
+            <a href="/kurum/ogrenci-sablon-indir" class="btn btn-info">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Şablon İndir
+            </a>
+            <button class="btn btn-success" onclick="showImportModal()">
+                <i class="bi bi-upload"></i> Excel Yükle
+            </button>
+            <button class="btn btn-light" onclick="showAddModal()">
+                <i class="bi bi-plus-lg"></i> Yeni Öğrenci
+            </button>
+            <a href="/kurum/ogrenci-export-excel" class="btn btn-light">
+                <i class="bi bi-download"></i> Excel İndir
+            </a>
+            <button class="btn" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white;" onclick="kontrolHesapsizVeliler()">
+                <i class="bi bi-person-plus-fill"></i> Kullanıcı Oluştur
+            </button>
+            <button class="btn btn-danger" onclick="showDeleteAllModal()">
+                <i class="bi bi-trash3"></i> Tümünü Sil
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Filtreler -->
+<div class="filters">
+    <select id="sinifFilter" class="form-select">
+        <option value="">🎓 Tüm Sınıflar</option>
+        <% siniflar.forEach(sinif => { %>
+            <option><%= sinif %></option>
+        <% }); %>
+    </select>
+    
+    <select id="odemeDurumuFilter" class="form-select">
+        <option value="">💰 Tüm Ödeme Durumları</option>
+        <option>BEKLİYOR</option>
+        <option>YAPILDI</option>
+        <option>HAVALE</option>
+        <option>ÜCRETSİZ</option>
+    </select>
+</div>
+
+<!-- Tablo -->
+<div class="table-container">
+    <table id="ogrenciTable" class="table table-hover">
+        <thead>
+            <tr>
+                <th>Sınıf</th>
+                <th>Öğrenci Adı Soyadı</th>
+                <th>Telefon</th>
+                <th>T.C. Kimlik</th>
+                <th>Veli</th>
+                <th>Veli Telefon</th>
+                <th>Tutar</th>
+                <th>Ödeme Durumu</th>
+                <th>Ödeme Türü</th>
+                <th>Edesis</th>
+                <th>Taksit</th>
+                <th>İşlemler</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% ogrenciler.forEach(ogr => { %>
+            <tr>
+                <td><strong><%= ogr.sinif %></strong></td>
+                <td><%= ogr.ogrenci_adi_soyadi %></td>
+                <td><%= ogr.telefon || '-' %></td>
+                <td>
+                    <% 
+                        let tcNo = ogr.tc_kimlik_no;
+                        // .0 ile biten TC kimlik numaralarını temizle
+                        if (tcNo && tcNo.toString().endsWith('.0')) {
+                            tcNo = tcNo.toString().replace('.0', '');
+                        }
+                    %>
+                    <%= tcNo || '-' %>
+                </td>
+                <td><%= ogr.veli_adi || '-' %></td>
+                <td>
+                    <% 
+                        let veliTel = ogr.veli_telefon;
+                        // .0 ile biten telefon numaralarını temizle
+                        if (veliTel && veliTel.toString().endsWith('.0')) {
+                            veliTel = veliTel.toString().replace('.0', '');
+                        }
+                    %>
+                    <%= veliTel || '-' %>
+                </td>
+                <td><%= ogr.tutar || '-' %></td>
+                <td>
+                    <% 
+                    let badgeClass = 'secondary';
+                    if (ogr.odeme_durumu === 'YAPILDI') badgeClass = 'success';
+                    else if (ogr.odeme_durumu === 'BEKLİYOR') badgeClass = 'warning';
+                    else if (ogr.odeme_durumu === 'HAVALE') badgeClass = 'info';
+                    %>
+                    <span class="badge bg-<%= badgeClass %>">
+                        <%= ogr.odeme_durumu || 'BEKLİYOR' %>
+                    </span>
+                </td>
+                <td><%= ogr.odeme_turu || '-' %></td>
+                <td><%= ogr.edessis_kaydi || '-' %></td>
+                <td><%= ogr.taksit || '-' %></td>
+                <td>
+                    <div class="action-btns">
+                        <% 
+                            // Veli telefon formatını temizle (.0 ile biten)
+                            let veliTelForBtn = ogr.veli_telefon || '';
+                            if (veliTelForBtn && veliTelForBtn.toString().endsWith('.0')) {
+                                veliTelForBtn = veliTelForBtn.toString().replace('.0', '');
+                            }
+                        %>
+                        <button class="btn btn-info btn-action" onclick="showVeliBilgileri('<%= veliTelForBtn %>', '<%= ogr.veli_adi %>')" title="Veli Giriş Bilgileri">
+                            <i class="bi bi-person-lock"></i>
+                        </button>
+                        <button class="btn btn-primary btn-action" onclick='editOgrenci(<%= JSON.stringify(ogr) %>)' title="Düzenle">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-danger btn-action" onclick="deleteOgrenci(<%= ogr.id %>, '<%= ogr.ogrenci_adi_soyadi %>')" title="Sil">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            <% }); %>
+        </tbody>
+    </table>
+</div>
+
+<!-- Yeni Öğrenci Modal -->
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+                <h5 class="modal-title">
+                    <i class="bi bi-plus-circle"></i> Yeni Öğrenci Ekle
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Sınıf *</label>
+                            <select class="form-select" name="sinif" required>
+                                <option value="">Seçiniz</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                                <option value="9">9</option>
+                                <option value="10">10</option>
+                                <option value="11">11</option>
+                                <option value="12">12</option>
+                                <option value="Mezun">Mezun</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Öğrenci Adı Soyadı *</label>
+                            <input type="text" class="form-control" name="ogrenci_adi_soyadi" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Telefon</label>
+                            <input type="text" class="form-control" name="telefon">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">T.C. Kimlik No</label>
+                            <input type="text" class="form-control" name="tc_kimlik_no">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Veli Adı</label>
+                            <input type="text" class="form-control" name="veli_adi">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Veli Telefon</label>
+                            <input type="text" class="form-control" name="veli_telefon">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tutar</label>
+                            <input type="text" class="form-control" name="tutar" placeholder="Örn: 4.000 TRY">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Ödeme Durumu</label>
+                            <select class="form-select" name="odeme_durumu">
+                                <option value="BEKLİYOR">BEKLİYOR</option>
+                                <option value="YAPILDI">YAPILDI</option>
+                                <option value="HAVALE">HAVALE</option>
+                                <option value="ÜCRETSİZ">ÜCRETSİZ</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Ödeme Türü</label>
+                            <input type="text" class="form-control" name="odeme_turu">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Edesis Kaydı</label>
+                            <input type="text" class="form-control" name="edessis_kaydi">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Taksit</label>
+                            <select class="form-select" name="taksit">
+                                <option value="">Seçiniz</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="button" class="btn btn-secondary flex-grow-1" data-bs-dismiss="modal">İptal</button>
+                        <button type="submit" class="btn btn-primary flex-grow-1">
+                            <i class="bi bi-check-lg"></i> Kaydet
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Düzenle Modal -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); color: white;">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil-square"></i> Öğrenci Bilgilerini Düzenle
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="edit_id" name="id">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Sınıf *</label>
+                            <select class="form-select" id="edit_sinif" name="sinif" required>
+                                <option value="">Seçiniz</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                                <option value="9">9</option>
+                                <option value="10">10</option>
+                                <option value="11">11</option>
+                                <option value="12">12</option>
+                                <option value="Mezun">Mezun</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Öğrenci Adı Soyadı *</label>
+                            <input type="text" class="form-control" id="edit_ogrenci_adi_soyadi" name="ogrenci_adi_soyadi" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Telefon</label>
+                            <input type="text" class="form-control" id="edit_telefon" name="telefon">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">T.C. Kimlik No</label>
+                            <input type="text" class="form-control" id="edit_tc_kimlik_no" name="tc_kimlik_no">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Veli Adı</label>
+                            <input type="text" class="form-control" id="edit_veli_adi" name="veli_adi">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Veli Telefon</label>
+                            <input type="text" class="form-control" id="edit_veli_telefon" name="veli_telefon">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tutar</label>
+                            <input type="text" class="form-control" id="edit_tutar" name="tutar">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Ödeme Durumu</label>
+                            <select class="form-select" id="edit_odeme_durumu" name="odeme_durumu">
+                                <option value="BEKLİYOR">BEKLİYOR</option>
+                                <option value="YAPILDI">YAPILDI</option>
+                                <option value="HAVALE">HAVALE</option>
+                                <option value="ÜCRETSİZ">ÜCRETSİZ</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Ödeme Türü</label>
+                            <input type="text" class="form-control" id="edit_odeme_turu" name="odeme_turu">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Edesis Kaydı</label>
+                            <input type="text" class="form-control" id="edit_edessis_kaydi" name="edessis_kaydi">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Taksit</label>
+                            <select class="form-select" id="edit_taksit" name="taksit">
+                                <option value="">Seçiniz</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="button" class="btn btn-secondary flex-grow-1" data-bs-dismiss="modal">İptal</button>
+                        <button type="submit" class="btn btn-primary flex-grow-1">
+                            <i class="bi bi-save"></i> Güncelle
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Excel Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                <h5 class="modal-title">
+                    <i class="bi bi-upload"></i> Excel Dosyası Yükle
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 30px;">
+                <div style="background: #f0fdf4; border-left: 4px solid #10b981; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                    <h6 style="color: #059669; font-weight: 700; margin-bottom: 12px;">
+                        <i class="bi bi-info-circle"></i> Excel Formatı
+                    </h6>
+                    
+                    <div style="background: #dbeafe; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                        <p style="color: #1e40af; margin: 0; font-weight: 600;">
+                            💡 İlk kez yüklüyorsanız, önce <a href="/kurum/ogrenci-sablon-indir" style="color: #1d4ed8; text-decoration: underline;">Şablon İndir</a> butonuna tıklayıp örnek dosyayı indirin!
+                        </p>
+                    </div>
+                    
+                    <p style="color: #065f46; margin: 0 0 12px 0; font-size: 0.9rem;">
+                        <strong>📋 Gerekli Sütunlar:</strong><br>
+                        <code style="background: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; display: inline-block; margin-top: 6px;">
+                            ÖĞRENCI SINIF BİLGİSİ, ÖĞRENCI ADI SOYADI, TELEFON KAYDI, T.C KİMLİK NO, ÖĞRENCİ VELİ, VELİ TELEFON, TUTAR, ÖDEME DURUMU, ÖDEME TÜRÜ, EDESIS KAYDI, TAKSİT
+                        </code>
+                    </p>
+                    <p style="color: #065f46; margin: 0; font-size: 0.85rem;">
+                        <strong>✅ Örnek Değerler:</strong><br>
+                        • <strong>Sınıf:</strong> 1, 2, 3, ..., 12, Mezun<br>
+                        • <strong>Ödeme Durumu:</strong> BEKLİYOR, YAPILDI, HAVALE, ÜCRETSİZ<br>
+                        • <strong>Taksit:</strong> 1, 2, 3, 4, 5, 6 (veya boş)
+                    </p>
+                </div>
+                <form id="importForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label" style="font-weight: 600;">Excel Dosyası Seç</label>
+                        <input type="file" class="form-control" name="excelFile" accept=".xlsx,.xls" required>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary flex-grow-1" data-bs-dismiss="modal">İptal</button>
+                        <button type="submit" class="btn btn-success flex-grow-1">
+                            <i class="bi bi-upload"></i> Yükle
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Veli Giriş Bilgileri Modal -->
+<div class="modal fade" id="veliBilgiModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 20px; border: none;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); color: white; border-radius: 20px 20px 0 0;">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-lock"></i> Veli Giriş Bilgileri
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="veliBilgiContent" style="padding: 30px;">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2">Kontrol ediliyor...</p>
+                </div>
+            </div>
+            <div class="modal-footer" style="border: none; padding: 20px;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Kullanıcı Oluşturma Modal -->
+<div class="modal fade" id="kullaniciOlusturModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white;">
+                <h5 class="modal-title"><i class="bi bi-person-plus-fill me-2"></i>Kullanıcı Hesapları Oluştur</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="hesapsizVeliListesi">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Kontrol ediliyor...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-success" id="olusturBtn" onclick="topluVeliHesapOlustur()" style="display: none;">
+                    <i class="bi bi-check-circle"></i> Hesap Oluştur
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tümünü Sil Onay Modal -->
+<div class="modal fade" id="deleteAllModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 20px; border: none;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border-radius: 20px 20px 0 0;">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle-fill"></i> TEHLİKELİ İŞLEM!
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 30px;">
+                <div style="background: #fee2e2; border-left: 4px solid #ef4444; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                    <h6 style="color: #dc2626; font-weight: 700; margin-bottom: 8px;">
+                        ⚠️ UYARI
+                    </h6>
+                    <p style="color: #991b1b; margin: 0; font-size: 0.95rem;">
+                        <strong>TÜM öğrenci kayıtları silinecek!</strong><br>
+                        Bu işlem <strong>GERİ ALINAMAZ</strong>.<br>
+                        Devam etmek istediğinize emin misiniz?
+                    </p>
+                </div>
+                
+                <div style="background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                    <p style="color: #92400e; margin: 0; font-size: 0.9rem;">
+                        💡 <strong>İpucu:</strong> Silmeden önce "Excel İndir" ile yedek almanız önerilir.
+                    </p>
+                </div>
+                
+                <form id="deleteAllForm">
+                    <div class="mb-3">
+                        <label class="form-label" style="font-weight: 600; color: #1e293b;">
+                            Onaylamak için "<strong style="color: #ef4444;">SİL</strong>" yazın:
+                        </label>
+                        <input type="text" class="form-control" id="onayKodu" 
+                               style="border-radius: 12px; border: 2px solid #e2e8f0; text-align: center; font-weight: 700; font-size: 1.1rem;"
+                               placeholder="SİL" required autocomplete="off">
+                        <small class="text-muted">Tam olarak "SİL" yazmanız gerekiyor (büyük harfle)</small>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary flex-grow-1" data-bs-dismiss="modal" style="border-radius: 12px;">
+                            <i class="bi bi-x-lg"></i> İptal
+                        </button>
+                        <button type="submit" class="btn btn-danger flex-grow-1" style="border-radius: 12px;">
+                            <i class="bi bi-trash3"></i> Tümünü Sil
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 20px; text-align: center; padding: 30px;">
+            <div style="font-size: 4rem; color: #10b981; margin-bottom: 20px;">
+                <i class="bi bi-check-circle-fill"></i>
+            </div>
+            <h4 style="font-weight: 800; color: #1e293b; margin-bottom: 16px;">İşlem Başarılı!</h4>
+            <p id="successMessage" style="color: #64748b; margin-bottom: 30px;"></p>
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal" style="border-radius: 12px; padding: 12px 40px;" onclick="location.reload()">
+                Tamam
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+
+<script>
+let table;
+
+$(document).ready(function() {
+    // DataTable başlat
+    table = $('#ogrenciTable').DataTable({
+        responsive: {
+            details: {
+                type: 'column',
+                target: 'tr'
+            }
+        },
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/tr.json'
+        },
+        pageLength: 25,
+        order: [[0, 'asc'], [1, 'asc']],
+        columnDefs: [
+            { 
+                className: 'dtr-control',
+                orderable: false,
+                targets: 0
+            },
+            { 
+                orderable: false, 
+                targets: -1,
+                responsivePriority: 1
+            },
+            {
+                responsivePriority: 2,
+                targets: 1
+            },
+            {
+                responsivePriority: 3,
+                targets: 7
+            }
+        ],
+        dom: 'Bfrtip',
+        buttons: [
+            {
+                extend: 'excel',
+                text: '<i class="bi bi-file-earmark-excel"></i> Excel',
+                className: 'btn-sm'
+            },
+            {
+                extend: 'csv',
+                text: '<i class="bi bi-filetype-csv"></i> CSV',
+                className: 'btn-sm'
+            },
+            {
+                extend: 'print',
+                text: '<i class="bi bi-printer"></i> Yazdır',
+                className: 'btn-sm'
+            }
+        ]
+    });
+    
+    // Filtreler
+    $('#sinifFilter').on('change', function() {
+        table.column(0).search(this.value).draw();
+    });
+    
+    $('#odemeDurumuFilter').on('change', function() {
+        table.column(7).search(this.value).draw();
+    });
+});
+
+// Modal functions
+function showAddModal() {
+    document.getElementById('addForm').reset();
+    new bootstrap.Modal(document.getElementById('addModal')).show();
+}
+
+function showImportModal() {
+    document.getElementById('importForm').reset();
+    new bootstrap.Modal(document.getElementById('importModal')).show();
+}
+
+function showDeleteAllModal() {
+    document.getElementById('deleteAllForm').reset();
+    document.getElementById('onayKodu').value = '';
+    new bootstrap.Modal(document.getElementById('deleteAllModal')).show();
+}
+
+function editOgrenci(ogr) {
+    document.getElementById('edit_id').value = ogr.id;
+    document.getElementById('edit_sinif').value = ogr.sinif || '';
+    document.getElementById('edit_ogrenci_adi_soyadi').value = ogr.ogrenci_adi_soyadi || '';
+    document.getElementById('edit_telefon').value = ogr.telefon || '';
+    // TC kimlik formatını temizle (.0 ile biten)
+    let tcNo = ogr.tc_kimlik_no || '';
+    if (tcNo && tcNo.toString().endsWith('.0')) {
+        tcNo = tcNo.toString().replace('.0', '');
+    }
+    document.getElementById('edit_tc_kimlik_no').value = tcNo;
+    document.getElementById('edit_veli_adi').value = ogr.veli_adi || '';
+    // Veli telefon formatını temizle (.0 ile biten)
+    let veliTel = ogr.veli_telefon || '';
+    if (veliTel && veliTel.toString().endsWith('.0')) {
+        veliTel = veliTel.toString().replace('.0', '');
+    }
+    document.getElementById('edit_veli_telefon').value = veliTel;
+    document.getElementById('edit_tutar').value = ogr.tutar || '';
+    document.getElementById('edit_odeme_durumu').value = ogr.odeme_durumu || 'BEKLİYOR';
+    document.getElementById('edit_odeme_turu').value = ogr.odeme_turu || '';
+    document.getElementById('edit_edessis_kaydi').value = ogr.edessis_kaydi || '';
+    document.getElementById('edit_taksit').value = ogr.taksit || '';
+    
+    new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+
+async function deleteOgrenci(id, ad) {
+    if (!confirm(`"${ad}" adlı öğrenciyi silmek istediğinize emin misiniz?`)) return;
+    
+    try {
+        const response = await fetch(`/kurum/ogrenci-kayit-sil/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (error) {
+        console.error('Silme hatası:', error);
+        alert('❌ Silme sırasında bir hata oluştu!');
+    }
+}
+
+// Form submissions
+document.getElementById('addForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    
+    try {
+        const response = await fetch('/kurum/ogrenci-kayit-ekle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        
+        bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
+        
+        if (result.success) {
+            document.getElementById('successMessage').textContent = result.message;
+            new bootstrap.Modal(document.getElementById('successModal')).show();
+        } else {
+            alert('❌ ' + result.message);
+        }
+    } catch (error) {
+        console.error('Ekleme hatası:', error);
+        alert('❌ Kayıt eklenirken bir hata oluştu!');
+    }
+});
+
+document.getElementById('editForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    const id = document.getElementById('edit_id').value;
+    
+    try {
+        const response = await fetch(`/kurum/ogrenci-kayit-guncelle/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        
+        bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+        
+        if (result.success) {
+            document.getElementById('successMessage').textContent = result.message;
+            new bootstrap.Modal(document.getElementById('successModal')).show();
+        } else {
+            alert('❌ ' + result.message);
+        }
+    } catch (error) {
+        console.error('Güncelleme hatası:', error);
+        alert('❌ Güncelleme sırasında bir hata oluştu!');
+    }
+});
+
+document.getElementById('importForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    try {
+        const response = await fetch('/kurum/ogrenci-import-excel', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+        
+        bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
+        
+        if (result.success) {
+            document.getElementById('successMessage').textContent = result.message;
+            new bootstrap.Modal(document.getElementById('successModal')).show();
+        } else {
+            alert('❌ ' + result.message);
+        }
+    } catch (error) {
+        console.error('Import hatası:', error);
+        alert('❌ Excel yüklenirken bir hata oluştu!');
+    }
+});
+
+// Tümünü Sil Form
+document.getElementById('deleteAllForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const onayKodu = document.getElementById('onayKodu').value.trim();
+    
+    // Son bir kez daha onay iste
+    if (!confirm('⚠️ SON ONAY: TÜM kayıtlar silinecek! Emin misiniz?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/kurum/ogrenci-kayitlari-tumunu-sil', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ onayKodu: onayKodu })
+        });
+        const result = await response.json();
+        
+        bootstrap.Modal.getInstance(document.getElementById('deleteAllModal')).hide();
+        
+        if (result.success) {
+            document.getElementById('successMessage').textContent = result.message;
+            const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+            successModal.show();
+        } else {
+            alert('❌ ' + result.message);
+        }
+    } catch (error) {
+        console.error('Toplu silme hatası:', error);
+        alert('❌ Silme işlemi sırasında bir hata oluştu!');
+    }
+});
+
+// ============ VELİ GİRİŞ BİLGİLERİ ============
+
+async function showVeliBilgileri(veliTelefon, veliAdi) {
+    if (!veliTelefon || veliTelefon === '-') {
+        alert('Bu öğrenci için veli telefonu kayıtlı değil!');
+        return;
+    }
+    
+    // Telefon formatını temizle (.0 ile biten)
+    let temizTelefon = veliTelefon.toString();
+    if (temizTelefon.endsWith('.0')) {
+        temizTelefon = temizTelefon.replace('.0', '');
+    }
+    
+    const modal = new bootstrap.Modal(document.getElementById('veliBilgiModal'));
+    modal.show();
+    
+    try {
+        const response = await fetch(`/kurum/veli-giris-bilgisi?telefon=${encodeURIComponent(temizTelefon)}`);
+        const data = await response.json();
+        
+        const content = document.getElementById('veliBilgiContent');
+        
+        if (data.success && data.hesapVar) {
+            content.innerHTML = `
+                <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 16px; padding: 24px; margin-bottom: 20px;">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #06b6d4, #3b82f6); border-radius: 20px; display: inline-flex; align-items: center; justify-content: center; color: white; font-size: 2rem; font-weight: 800; margin-bottom: 12px;">
+                            ${(veliAdi || 'V').charAt(0).toUpperCase()}
+                        </div>
+                        <h5 style="color: #1e40af; font-weight: 700; margin: 0;">
+                            ${veliAdi || 'Veli'}
+                        </h5>
+                    </div>
+                    
+                    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+                        <div style="margin-bottom: 16px;">
+                            <label style="font-size: 0.85rem; color: #64748b; font-weight: 600; display: block; margin-bottom: 4px;">
+                                <i class="bi bi-person-badge"></i> Kullanıcı Adı
+                            </label>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <input type="text" value="${data.username}" readonly class="form-control" id="copyUsername" style="background: #f8fafc; border: 2px solid #e8ecf0; font-weight: 600; font-size: 1.1rem;">
+                                <button class="btn btn-outline-primary" onclick="copyToClipboard('${data.username}', 'Kullanıcı adı')" style="white-space: nowrap;">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label style="font-size: 0.85rem; color: #64748b; font-weight: 600; display: block; margin-bottom: 4px;">
+                                <i class="bi bi-key"></i> ${data.sifreDegismis ? 'İlk Şifre (Değiştirilmiş)' : 'Şifre'}
+                            </label>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <input type="text" value="${data.sifre}" readonly class="form-control" id="copyPassword" style="background: ${data.sifreDegismis ? '#fef3c7' : '#f8fafc'}; border: 2px solid ${data.sifreDegismis ? '#fbbf24' : '#e8ecf0'}; font-weight: 600; font-size: 1.1rem;">
+                                <button class="btn btn-outline-primary" onclick="copyToClipboard('${data.sifre}', 'Şifre')" style="white-space: nowrap;">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                            ${data.sifreDegismis ? `
+                                <small class="text-warning" style="display: block; margin-top: 4px;">
+                                    <i class="bi bi-exclamation-triangle"></i> Veli şifresini değiştirmiş. Yukarıdaki sadece ilk şifredir.
+                                </small>
+                            ` : ''}
+                        </div>
+                    </div>
+                    
+                    <div style="background: #e0f2fe; border-left: 4px solid #0891b2; border-radius: 8px; padding: 12px;">
+                        <p style="color: #164e63; margin: 0; font-size: 0.9rem;">
+                            <i class="bi bi-info-circle"></i> 
+                            <strong>Giriş Sayfası:</strong> ${window.location.origin}/login
+                        </p>
+                    </div>
+                </div>
+                
+                <div style="background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 12px;">
+                    <p style="color: #92400e; margin: 0; font-size: 0.85rem;">
+                        <i class="bi bi-shield-check"></i> 
+                        Bu bilgileri veliye SMS/WhatsApp ile gönderebilirsiniz.
+                    </p>
+                </div>
+            `;
+        } else {
+            content.innerHTML = `
+                <div class="alert alert-warning text-center" style="margin: 0;">
+                    <i class="bi bi-exclamation-triangle" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3">Hesap Bulunamadı!</h5>
+                    <p>Bu veli için sistemde hesap oluşturulmamış.</p>
+                    <hr>
+                    <p class="mb-0"><strong>Telefon:</strong> ${veliTelefon}</p>
+                    <button class="btn btn-primary mt-3" onclick="bootstrap.Modal.getInstance(document.getElementById('veliBilgiModal')).hide(); kontrolHesapsizVeliler();">
+                        <i class="bi bi-person-plus-fill"></i> Şimdi Hesap Oluştur
+                    </button>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Veli bilgi hatası:', error);
+        document.getElementById('veliBilgiContent').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> Bir hata oluştu!
+            </div>
+        `;
+    }
+}
+
+function copyToClipboard(text, label) {
+    navigator.clipboard.writeText(text).then(() => {
+        const toast = document.createElement('div');
+        toast.className = 'alert alert-success';
+        toast.style.position = 'fixed';
+        toast.style.top = '20px';
+        toast.style.right = '20px';
+        toast.style.zIndex = '9999';
+        toast.style.minWidth = '250px';
+        toast.innerHTML = `<i class="bi bi-check-circle"></i> ${label} kopyalandı!`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+    }).catch(err => {
+        alert('Kopyalama başarısız!');
+    });
+}
+
+// ============ KULLANICI OLUŞTUR SİSTEMİ ============
+
+// Hesapsız velileri kontrol et
+async function kontrolHesapsizVeliler() {
+    const modal = new bootstrap.Modal(document.getElementById('kullaniciOlusturModal'));
+    modal.show();
+    
+    try {
+        const response = await fetch('/kurum/kontrol-hesapsiz-veliler');
+        const data = await response.json();
+        
+        const liste = document.getElementById('hesapsizVeliListesi');
+        const olusturBtn = document.getElementById('olusturBtn');
+        
+        if (data.success && data.veliler.length > 0) {
+            liste.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <strong>${data.veliler.length} veli</strong> için sistemde hesap bulunamadı.
+                </div>
+                
+                <div style="max-height: 400px; overflow-y: auto; margin-bottom: 20px;">
+                    <table class="table table-sm table-hover">
+                        <thead style="background: #f8f9fa; position: sticky; top: 0;">
+                            <tr>
+                                <th>Veli Adı</th>
+                                <th>Telefon</th>
+                                <th>Öğrenci Sayısı</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.veliler.map(v => `
+                                <tr>
+                                    <td><strong>${v.veli_adi || 'Belirtilmemiş'}</strong></td>
+                                    <td><i class="bi bi-phone"></i> ${v.veli_telefon}</td>
+                                    <td><span class="badge bg-primary">${v.ogrenci_sayisi} öğrenci</span></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <i class="bi bi-shield-check me-2"></i>
+                    <strong>Oluşturulacak Hesap Bilgileri:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li><strong>Kullanıcı Adı:</strong> Telefon numarası</li>
+                        <li><strong>İlk Şifre:</strong> Veli2024!</li>
+                        <li><strong>Hesap Tipi:</strong> Veli</li>
+                    </ul>
+                    <p class="mt-2 mb-0 small">
+                        <i class="bi bi-lightbulb"></i> Velilere bu bilgileri SMS/WhatsApp ile bildirmeyi unutmayın!
+                    </p>
+                </div>
+            `;
+            olusturBtn.style.display = 'block';
+            olusturBtn.innerHTML = `<i class="bi bi-check-circle"></i> ${data.veliler.length} Hesap Oluştur`;
+        } else {
+            liste.innerHTML = `
+                <div class="alert alert-success text-center">
+                    <i class="bi bi-check-circle-fill" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3">Tüm Velilerin Hesabı Var!</h5>
+                    <p>Sistemde hesabı olmayan veli bulunamadı.</p>
+                </div>
+            `;
+            olusturBtn.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Kontrol hatası:', error);
+        document.getElementById('hesapsizVeliListesi').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> Bir hata oluştu!
+            </div>
+        `;
+    }
+}
+
+// Toplu hesap oluştur
+async function topluVeliHesapOlustur() {
+    if (!confirm('Seçilen veliler için hesap oluşturulsun mu?\n\nİlk şifre: Veli2024!')) return;
+    
+    const olusturBtn = document.getElementById('olusturBtn');
+    olusturBtn.disabled = true;
+    olusturBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Oluşturuluyor...';
+    
+    try {
+        const response = await fetch('/kurum/toplu-veli-hesap-olustur', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`✅ ${data.olusturulan} hesap başarıyla oluşturuldu!\n\nKullanıcı Adı: Telefon numarası\nİlk Şifre: Veli2024!`);
+            bootstrap.Modal.getInstance(document.getElementById('kullaniciOlusturModal')).hide();
+            location.reload();
+        } else {
+            alert('❌ ' + data.message);
+            olusturBtn.disabled = false;
+            olusturBtn.innerHTML = '<i class="bi bi-check-circle"></i> Hesap Oluştur';
+        }
+    } catch (error) {
+        console.error('Oluşturma hatası:', error);
+        alert('❌ Bir hata oluştu!');
+        olusturBtn.disabled = false;
+        olusturBtn.innerHTML = '<i class="bi bi-check-circle"></i> Hesap Oluştur';
+    }
+}
+</script>
+
+<%- include('../partials/footer-dashboard') %>
+

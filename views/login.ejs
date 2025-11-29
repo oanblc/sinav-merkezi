@@ -1,0 +1,566 @@
+<%- include('partials/header', {title: 'Giriş Yap', user: typeof user !== 'undefined' ? user : null}) %>
+
+<%- include('partials/common-styles') %>
+
+<style>
+    /* Reset */
+    body, html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow-x: hidden;
+    }
+    
+    /* Full Page Container */
+    .auth-full-container {
+        display: flex;
+        min-height: 100vh;
+        position: relative;
+    }
+    
+    /* Left Side - Branding */
+    .auth-left {
+        flex: 1;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 60px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .auth-left::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: rotate 30s linear infinite;
+    }
+    
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    /* Floating Shapes */
+    .shape {
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(40px);
+    }
+    
+    .shape-1 {
+        width: 300px;
+        height: 300px;
+        top: 10%;
+        left: -100px;
+        animation: float1 20s ease-in-out infinite;
+    }
+    
+    .shape-2 {
+        width: 200px;
+        height: 200px;
+        bottom: 10%;
+        right: -50px;
+        animation: float2 25s ease-in-out infinite;
+    }
+    
+    .shape-3 {
+        width: 150px;
+        height: 150px;
+        top: 50%;
+        left: 50%;
+        animation: float3 15s ease-in-out infinite;
+    }
+    
+    @keyframes float1 {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(50px, 50px); }
+    }
+    
+    @keyframes float2 {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(-30px, -50px); }
+    }
+    
+    @keyframes float3 {
+        0%, 100% { transform: translate(-50%, -50%); }
+        50% { transform: translate(-50%, -70%); }
+    }
+    
+    .auth-left-content {
+        text-align: center;
+        color: white;
+        position: relative;
+        z-index: 1;
+        max-width: 500px;
+    }
+    
+    .auth-logo {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 30px;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        border-radius: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 4rem;
+        animation: logoPulse 3s ease-in-out infinite;
+    }
+    
+    @keyframes logoPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+    
+    .auth-left h1 {
+        font-size: 3rem;
+        font-weight: 900;
+        margin-bottom: 20px;
+        line-height: 1.2;
+    }
+    
+    .auth-left p {
+        font-size: 1.2rem;
+        opacity: 0.95;
+        line-height: 1.6;
+        margin-bottom: 40px;
+    }
+    
+    .features-list {
+        list-style: none;
+        padding: 0;
+        margin: 40px 0 0 0;
+        text-align: left;
+    }
+    
+    .features-list li {
+        padding: 15px 0;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .features-list i {
+        font-size: 1.5rem;
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Right Side - Form */
+    .auth-right {
+        flex: 1;
+        background: #f8f9fa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 60px;
+    }
+    
+    .auth-form-container {
+        width: 100%;
+        max-width: 480px;
+        animation: slideInRight 0.8s ease-out;
+    }
+    
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    .form-header {
+        margin-bottom: 40px;
+    }
+    
+    .form-header h2 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin-bottom: 10px;
+    }
+    
+    .form-header p {
+        font-size: 1.1rem;
+        color: #64748b;
+    }
+    
+    /* Floating Label Input */
+    .form-group {
+        position: relative;
+        margin-bottom: 30px;
+    }
+    
+    .form-group input {
+        width: 100%;
+        padding: 20px 20px 20px 55px;
+        border: 2px solid #e2e8f0;
+        border-radius: 16px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: white;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .form-group input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    }
+    
+    .form-group input:focus + .floating-label,
+    .form-group input:not(:placeholder-shown) + .floating-label {
+        top: -10px;
+        left: 16px;
+        font-size: 0.75rem;
+        color: #667eea;
+        background: white;
+        padding: 0 8px;
+    }
+    
+    .floating-label {
+        position: absolute;
+        top: 50%;
+        left: 55px;
+        transform: translateY(-50%);
+        font-size: 1rem;
+        color: #94a3b8;
+        transition: all 0.3s ease;
+        pointer-events: none;
+        font-weight: 500;
+    }
+    
+    .input-icon {
+        position: absolute;
+        left: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.3rem;
+        color: #94a3b8;
+        transition: all 0.3s ease;
+    }
+    
+    .form-group input:focus ~ .input-icon {
+        color: #667eea;
+    }
+    
+    /* Password Toggle */
+    .password-toggle {
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.3rem;
+        color: #94a3b8;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        z-index: 2;
+    }
+    
+    .password-toggle:hover {
+        color: #667eea;
+    }
+    
+    /* Submit Button */
+    .btn-submit {
+        width: 100%;
+        padding: 18px 24px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 16px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.4s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        position: relative;
+        overflow: hidden;
+        margin-top: 10px;
+    }
+    
+    .btn-submit::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+    
+    .btn-submit:hover::before {
+        width: 400px;
+        height: 400px;
+    }
+    
+    .btn-submit:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-submit span {
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* Alert */
+    .alert-box {
+        padding: 16px 20px;
+        border-radius: 16px;
+        margin-bottom: 30px;
+        font-size: 0.95rem;
+        border: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideDown 0.5s ease-out;
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .alert-box.danger {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+        color: white;
+    }
+    
+    .alert-box.success {
+        background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+        color: white;
+    }
+    
+    .alert-box i {
+        font-size: 1.5rem;
+    }
+    
+    /* Footer Link */
+    .form-footer {
+        text-align: center;
+        margin-top: 35px;
+        padding-top: 30px;
+        border-top: 2px solid #e2e8f0;
+    }
+    
+    .form-footer p {
+        color: #64748b;
+        font-size: 1rem;
+        margin: 0;
+    }
+    
+    .form-footer a {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 700;
+        transition: all 0.3s ease;
+    }
+    
+    .form-footer a:hover {
+        color: #764ba2;
+    }
+    
+    /* Responsive */
+    @media (max-width: 992px) {
+        .auth-full-container {
+            flex-direction: column;
+        }
+        
+        .auth-left {
+            min-height: 40vh;
+            padding: 40px 30px;
+        }
+        
+        .auth-left h1 {
+            font-size: 2rem;
+        }
+        
+        .auth-left p {
+            font-size: 1rem;
+        }
+        
+        .features-list {
+            display: none;
+        }
+        
+        .auth-right {
+            padding: 40px 30px;
+        }
+        
+        .form-header h2 {
+            font-size: 2rem;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .auth-logo {
+            width: 80px;
+            height: 80px;
+            font-size: 2.5rem;
+        }
+        
+        .auth-left h1 {
+            font-size: 1.7rem;
+        }
+        
+        .auth-right {
+            padding: 30px 20px;
+        }
+        
+        .form-header h2 {
+            font-size: 1.7rem;
+        }
+    }
+</style>
+
+<div class="auth-full-container">
+    <!-- Left Side - Branding -->
+    <div class="auth-left">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+        
+        <div class="auth-left-content">
+            <div class="auth-logo">
+                <i class="bi bi-shield-lock"></i>
+            </div>
+            <h1>Sınav Merkezi</h1>
+            <p>Öğrenci başarısını izleyin, sınav sonuçlarını takip edin ve gelişimi analiz edin</p>
+            
+            <ul class="features-list">
+                <li>
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span>Kolay sınav yönetimi</span>
+                </li>
+                <li>
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span>Detaylı raporlama</span>
+                </li>
+                <li>
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span>Güvenli sistem</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- Right Side - Form -->
+    <div class="auth-right">
+        <div class="auth-form-container">
+            <div class="form-header">
+                <h2>Giriş Yap</h2>
+                <p>Hesabınıza erişim sağlayın</p>
+            </div>
+            
+            <% if (typeof error !== 'undefined' && error) { %>
+            <div class="alert-box danger">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <span><%= error %></span>
+            </div>
+            <% } %>
+            
+            <% if (typeof success !== 'undefined' && success) { %>
+            <div class="alert-box success">
+                <i class="bi bi-check-circle-fill"></i>
+                <span><%= success %></span>
+            </div>
+            <% } %>
+            
+            <form method="POST" action="/login" id="loginForm">
+                <div class="form-group">
+                    <i class="bi bi-person-fill input-icon"></i>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        placeholder=" "
+                        required
+                        autocomplete="username"
+                    >
+                    <label class="floating-label">Kullanıcı Adı</label>
+                </div>
+                
+                <div class="form-group">
+                    <i class="bi bi-lock-fill input-icon"></i>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        placeholder=" "
+                        required
+                        autocomplete="current-password"
+                    >
+                    <label class="floating-label">Şifre</label>
+                    <i class="bi bi-eye password-toggle" onclick="togglePassword()" id="toggleIcon"></i>
+                </div>
+                
+                <button type="submit" class="btn-submit" id="submitBtn">
+                    <span>
+                        <i class="bi bi-box-arrow-in-right me-2"></i>
+                        Giriş Yap
+                    </span>
+                </button>
+            </form>
+            
+            <div class="form-footer">
+                <p>Hesabınız yok mu? <a href="/register">Hemen Kayıt Olun</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Password Toggle
+    function togglePassword() {
+        const passwordInput = document.getElementById('password');
+        const toggleIcon = document.getElementById('toggleIcon');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.classList.remove('bi-eye');
+            toggleIcon.classList.add('bi-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.classList.remove('bi-eye-slash');
+            toggleIcon.classList.add('bi-eye');
+        }
+    }
+    
+    // Form Submit Animation
+    document.getElementById('loginForm').addEventListener('submit', function() {
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.style.opacity = '0.8';
+        submitBtn.querySelector('span').innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Giriş Yapılıyor...';
+    });
+</script>
+
+<%- include('partials/footer') %>

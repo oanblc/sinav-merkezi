@@ -1,0 +1,500 @@
+<%- include('partials/header', {title: 'İletişim', user: typeof user !== 'undefined' ? user : null}) %>
+
+<%- include('partials/common-styles') %>
+
+<style>
+    /* Breadcrumb */
+    .breadcrumb-container {
+        background: #f8f9fa;
+        padding: 16px 0;
+        margin-bottom: 30px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        flex-wrap: wrap;
+    }
+    
+    .breadcrumb-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.95rem;
+    }
+    
+    .breadcrumb-item a {
+        color: var(--primary);
+        text-decoration: none;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .breadcrumb-item a:hover {
+        color: var(--primary-dark);
+        text-decoration: underline;
+    }
+    
+    .breadcrumb-item a i {
+        font-size: 1rem;
+    }
+    
+    .breadcrumb-separator {
+        color: #999;
+        font-size: 0.85rem;
+    }
+    
+    .breadcrumb-item.active {
+        color: #666;
+        font-weight: 500;
+    }
+    
+    /* Page Header */
+    .page-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        padding: 80px 0;
+        margin-bottom: 60px;
+        text-align: center;
+    }
+    
+    .page-header h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 16px;
+    }
+    
+    .page-header p {
+        font-size: 1.2rem;
+        opacity: 0.95;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+    
+    /* Contact Section */
+    .contact-section {
+        padding: 60px 0;
+    }
+    
+    /* Contact Cards */
+    .contact-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 30px;
+        margin-bottom: 60px;
+    }
+    
+    .contact-card {
+        background: white;
+        padding: 40px 32px;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        border: 2px solid #f0f0f0;
+        text-align: center;
+    }
+    
+    .contact-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+        border-color: var(--primary);
+    }
+    
+    .contact-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 24px;
+    }
+    
+    .contact-icon i {
+        font-size: 2.5rem;
+        color: white;
+    }
+    
+    .contact-card h3 {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 12px;
+    }
+    
+    .contact-card p {
+        font-size: 1rem;
+        color: #666;
+        line-height: 1.7;
+        margin: 0;
+    }
+    
+    .contact-card a {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    
+    .contact-card a:hover {
+        color: var(--primary-dark);
+        text-decoration: underline;
+    }
+    
+    /* Contact Form */
+    .contact-form-container {
+        background: white;
+        padding: 50px;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+    
+    .contact-form-container h2 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary);
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .contact-form-container h2 i {
+        font-size: 2.2rem;
+    }
+    
+    .form-group {
+        margin-bottom: 24px;
+    }
+    
+    .form-label {
+        display: block;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 8px;
+        font-size: 0.95rem;
+    }
+    
+    .form-control,
+    .form-select {
+        width: 100%;
+        padding: 14px 16px;
+        border: 2px solid #e8ecf0;
+        border-radius: 12px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .form-control:focus,
+    .form-select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(0, 59, 120, 0.1);
+    }
+    
+    textarea.form-control {
+        min-height: 150px;
+        resize: vertical;
+    }
+    
+    .btn-submit {
+        width: 100%;
+        padding: 14px 24px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 59, 120, 0.3);
+    }
+    
+    /* Map */
+    .map-container {
+        margin-top: 60px;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+    
+    .map-container iframe {
+        width: 100%;
+        height: 450px;
+        border: none;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .page-header {
+            padding: 60px 20px;
+        }
+        
+        .page-header h1 {
+            font-size: 1.8rem;
+        }
+        
+        .page-header p {
+            font-size: 1rem;
+        }
+        
+        .contact-section {
+            padding: 40px 0;
+        }
+        
+        .contact-form-container {
+            padding: 32px 24px;
+        }
+        
+        .contact-form-container h2 {
+            font-size: 1.5rem;
+        }
+    }
+</style>
+
+<!-- Breadcrumb -->
+<div class="breadcrumb-container">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="/">
+                        <i class="bi bi-house-door"></i>
+                        Ana Sayfa
+                    </a>
+                </li>
+                <li class="breadcrumb-separator">
+                    <i class="bi bi-chevron-right"></i>
+                </li>
+                <li class="breadcrumb-item">
+                    <span>Kurumsal</span>
+                </li>
+                <li class="breadcrumb-separator">
+                    <i class="bi bi-chevron-right"></i>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">
+                    İletişim
+                </li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container">
+        <h1>
+            <i class="bi bi-telephone"></i>
+            İletişim
+        </h1>
+        <p>
+            Bize ulaşın, sorularınızı yanıtlayalım. 7/24 size hizmet vermek için buradayız.
+        </p>
+    </div>
+</div>
+
+<!-- Contact Section -->
+<section class="contact-section">
+    <div class="container">
+        <!-- Contact Cards -->
+        <div class="contact-grid">
+            <div class="contact-card">
+                <div class="contact-icon">
+                    <i class="bi bi-telephone-fill"></i>
+                </div>
+                <h3>Telefon</h3>
+                <p>
+                    <strong>Merkez:</strong><br>
+                    <a href="tel:+905053541230">0 (505) 354 12 30</a>
+                </p>
+                <p style="margin-top: 12px;">
+                    <strong>Destek:</strong><br>
+                    <a href="tel:+905053541231">0 (505) 354 12 31</a>
+                </p>
+            </div>
+            
+            <div class="contact-card">
+                <div class="contact-icon">
+                    <i class="bi bi-envelope-fill"></i>
+                </div>
+                <h3>E-posta</h3>
+                <p>
+                    <strong>Genel:</strong><br>
+                    <a href="mailto:info@sinavmerkezi.com">info@sinavmerkezi.com</a>
+                </p>
+                <p style="margin-top: 12px;">
+                    <strong>Destek:</strong><br>
+                    <a href="mailto:destek@sinavmerkezi.com">destek@sinavmerkezi.com</a>
+                </p>
+            </div>
+            
+            <div class="contact-card">
+                <div class="contact-icon">
+                    <i class="bi bi-geo-alt-fill"></i>
+                </div>
+                <h3>Adres</h3>
+                <p>
+                    Merkez Mahallesi, Eğitim Sokak<br>
+                    No: 123, Kadıköy<br>
+                    İstanbul, Türkiye<br>
+                    <strong>34734</strong>
+                </p>
+            </div>
+            
+            <div class="contact-card">
+                <div class="contact-icon">
+                    <i class="bi bi-clock-fill"></i>
+                </div>
+                <h3>Çalışma Saatleri</h3>
+                <p>
+                    <strong>Hafta İçi:</strong><br>
+                    09:00 - 18:00
+                </p>
+                <p style="margin-top: 12px;">
+                    <strong>Cumartesi:</strong><br>
+                    09:00 - 14:00
+                </p>
+                <p style="margin-top: 12px;">
+                    <strong>Pazar:</strong> Kapalı
+                </p>
+            </div>
+        </div>
+        
+        <!-- Contact Form -->
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <div class="contact-form-container">
+                    <h2>
+                        <i class="bi bi-send"></i>
+                        Bize Mesaj Gönderin
+                    </h2>
+                    
+                    <form action="#" method="POST">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="name" class="form-label">
+                                        <i class="bi bi-person me-2"></i>Ad Soyad
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        class="form-control" 
+                                        id="name" 
+                                        name="name" 
+                                        placeholder="Adınız ve soyadınız"
+                                        required
+                                    >
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="email" class="form-label">
+                                        <i class="bi bi-envelope me-2"></i>E-posta
+                                    </label>
+                                    <input 
+                                        type="email" 
+                                        class="form-control" 
+                                        id="email" 
+                                        name="email" 
+                                        placeholder="E-posta adresiniz"
+                                        required
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="phone" class="form-label">
+                                        <i class="bi bi-telephone me-2"></i>Telefon
+                                    </label>
+                                    <input 
+                                        type="tel" 
+                                        class="form-control" 
+                                        id="phone" 
+                                        name="phone" 
+                                        placeholder="Telefon numaranız"
+                                    >
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="subject" class="form-label">
+                                        <i class="bi bi-tag me-2"></i>Konu
+                                    </label>
+                                    <select class="form-select" id="subject" name="subject" required>
+                                        <option value="">Konu seçiniz...</option>
+                                        <option value="bilgi">Genel Bilgi</option>
+                                        <option value="sinav">Sınav Hakkında</option>
+                                        <option value="kayit">Kayıt İşlemleri</option>
+                                        <option value="teknik">Teknik Destek</option>
+                                        <option value="diger">Diğer</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="message" class="form-label">
+                                <i class="bi bi-chat-left-text me-2"></i>Mesajınız
+                            </label>
+                            <textarea 
+                                class="form-control" 
+                                id="message" 
+                                name="message" 
+                                placeholder="Mesajınızı buraya yazın..."
+                                required
+                            ></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn-submit">
+                            <i class="bi bi-send me-2"></i>
+                            Mesaj Gönder
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Map -->
+        <div class="map-container">
+            <iframe 
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3011.1874935586386!2d29.026662315434953!3d40.99044997930148!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14cab9d6c7a8e5b7%3A0x5c21a9c88842a7c8!2sKad%C4%B1k%C3%B6y%2C%20Istanbul!5e0!3m2!1sen!2str!4v1234567890123!5m2!1sen!2str" 
+                allowfullscreen="" 
+                loading="lazy" 
+                referrerpolicy="no-referrer-when-downgrade">
+            </iframe>
+        </div>
+    </div>
+</section>
+
+<%- include('partials/footer') %>
+
+<script>
+    // Form submit handler (örnek)
+    document.querySelector('form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        alert('Mesajınız başarıyla gönderildi! En kısa sürede size dönüş yapacağız.');
+        this.reset();
+    });
+</script>
+

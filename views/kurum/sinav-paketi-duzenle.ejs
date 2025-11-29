@@ -1,0 +1,328 @@
+<%- include('../partials/header-dashboard', { title: 'Sınav Paketi Düzenle - Kurum Paneli', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(236, 72, 153, 0.3);
+    }
+    
+    .form-card {
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 8px;
+    }
+    
+    .form-control, .form-select {
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        padding: 12px 16px;
+        transition: all 0.2s;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #ec4899;
+        box-shadow: 0 0 0 0.2rem rgba(236, 72, 153, 0.25);
+    }
+    
+    .sinav-item {
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    
+    .sinav-item:hover {
+        border-color: #ec4899;
+        background: #fdf2f8;
+    }
+    
+    .sinav-item.selected {
+        border-color: #ec4899;
+        background: #fdf2f8;
+    }
+    
+    .sinav-item input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container">
+        <h1 style="font-weight: 800; margin-bottom: 8px;">
+            <i class="bi bi-pencil-square"></i> Sınav Paketi Düzenle
+        </h1>
+        <p style="opacity: 0.9; margin: 0;"><%= paket.ad %></p>
+    </div>
+</div>
+
+<!-- Form -->
+<div class="form-card">
+    <form id="paketForm">
+        <!-- Paket Bilgileri -->
+        <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 24px;">
+            <i class="bi bi-info-circle"></i> Paket Bilgileri
+        </h4>
+        
+        <div class="row g-4 mb-4">
+            <div class="col-md-8">
+                <label class="form-label">
+                    <i class="bi bi-tag"></i> Paket Adı *
+                </label>
+                <input type="text" name="ad" class="form-control" placeholder="Örn: 9. Sınıf Yıllık Deneme Paketi" value="<%= paket.ad %>" required>
+            </div>
+            
+            <div class="col-md-4">
+                <label class="form-label">
+                    <i class="bi bi-mortarboard"></i> Sınıf *
+                </label>
+                <select name="sinif" class="form-select" required>
+                    <option value="">Seçiniz</option>
+                    <% siniflar.forEach(function(sinif) { %>
+                    <option value="<%= sinif %>" <%= paket.sinif == sinif ? 'selected' : '' %>><%= sinif %>. Sınıf</option>
+                    <% }); %>
+                </select>
+            </div>
+        </div>
+        
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <label class="form-label">
+                    <i class="bi bi-currency-dollar"></i> Fiyat (₺) *
+                </label>
+                <input type="number" name="fiyat" class="form-control" placeholder="0.00" min="0" step="0.01" value="<%= paket.fiyat || 0 %>" required>
+            </div>
+            
+            <div class="col-md-6">
+                <label class="form-label">
+                    <i class="bi bi-file-text"></i> Açıklama
+                </label>
+                <textarea name="aciklama" class="form-control" rows="3" placeholder="Paket hakkında açıklama giriniz..."><%= paket.aciklama || '' %></textarea>
+            </div>
+        </div>
+        
+        <hr style="margin: 32px 0;">
+        
+        <!-- Sınav Seçimi -->
+        <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 16px;">
+            <i class="bi bi-journals"></i> Sınavları Seçin
+        </h4>
+        <p style="color: #64748b; margin-bottom: 24px;">
+            Bu pakete eklemek istediğiniz sınavları seçin. Seçilen sınavlar pakete otomatik olarak eklenecektir.
+        </p>
+        
+        <% if (sinavlar.length === 0) { %>
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i> Henüz sınav eklenmemiş. Önce <a href="/kurum/sinavlar">Sınav Yönetimi</a> sayfasından sınav ekleyin.
+        </div>
+        <% } else { %>
+        
+        <!-- Hızlı Filtre -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <input type="text" id="sinavAra" class="form-control" placeholder="🔍 Sınav ara...">
+            </div>
+            <div class="col-md-4">
+                <select id="sinifFiltre" class="form-select">
+                    <option value="">Tüm Sınıflar</option>
+                    <% siniflar.forEach(function(sinif) { %>
+                    <option value="<%= sinif %>"><%= sinif %>. Sınıf</option>
+                    <% }); %>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button type="button" class="btn btn-outline-primary w-100" onclick="tumunuSec()">
+                    <i class="bi bi-check-all"></i> Tümünü Seç
+                </button>
+            </div>
+        </div>
+        
+        <!-- Sınav Listesi -->
+        <div id="sinavListesi" style="max-height: 400px; overflow-y: auto; padding-right: 10px;">
+            <% sinavlar.forEach(function(sinav) { %>
+            <div class="sinav-item" data-sinif="<%= sinav.sinif %>" data-ad="<%= sinav.ad.toLowerCase() %>" onclick="toggleSinav(this, <%= sinav.id %>)">
+                <div class="d-flex align-items-center gap-3">
+                    <input type="checkbox" name="sinav_ids[]" value="<%= sinav.id %>" onclick="event.stopPropagation();">
+                    <div class="flex-grow-1">
+                        <h6 style="font-weight: 600; color: #1e293b; margin: 0 0 4px 0;">
+                            <%= sinav.ad %>
+                        </h6>
+                        <p style="color: #64748b; font-size: 0.85rem; margin: 0;">
+                            <i class="bi bi-calendar"></i> <%= new Date(sinav.tarih).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) %>
+                            <% if (sinav.sinif) { %>
+                            | <i class="bi bi-mortarboard"></i> <%= sinav.sinif %>. Sınıf
+                            <% } %>
+                            <% if (sinav.ders) { %>
+                            | <i class="bi bi-book"></i> <%= sinav.ders %>
+                            <% } %>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <% }); %>
+        </div>
+        
+        <div id="secilenSinavSayisi" class="alert alert-info mt-3" style="display: none;">
+            <i class="bi bi-check-circle"></i> <span id="secilenSayi">0</span> sınav seçildi
+        </div>
+        
+        <% } %>
+        
+        <!-- Butonlar -->
+        <div class="d-flex gap-3 justify-content-end mt-4">
+            <a href="/kurum/sinav-paketleri" class="btn btn-secondary" style="border-radius: 12px; padding: 12px 32px; font-weight: 600;">
+                <i class="bi bi-x-circle"></i> İptal
+            </a>
+            <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); border: none; border-radius: 12px; padding: 12px 32px; font-weight: 600;">
+                <i class="bi bi-check-circle"></i> Paketi Kaydet
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+// Sayfa yüklendiğinde seçilen sayıyı güncelle
+document.addEventListener('DOMContentLoaded', function() {
+    updateSecilenSayi();
+});
+
+// Sınav toggle
+function toggleSinav(element, sinavId) {
+    const checkbox = element.querySelector('input[type="checkbox"]');
+    checkbox.checked = !checkbox.checked;
+    
+    if (checkbox.checked) {
+        element.classList.add('selected');
+    } else {
+        element.classList.remove('selected');
+    }
+    
+    updateSecilenSayi();
+}
+
+// Seçilen sayıyı güncelle
+function updateSecilenSayi() {
+    const secilenler = document.querySelectorAll('input[name="sinav_ids[]"]:checked');
+    const sayi = secilenler.length;
+    
+    document.getElementById('secilenSayi').textContent = sayi;
+    document.getElementById('secilenSinavSayisi').style.display = sayi > 0 ? 'block' : 'none';
+}
+
+// Tümünü seç
+function tumunuSec() {
+    const checkboxlar = document.querySelectorAll('#sinavListesi input[type="checkbox"]');
+    const tumSeciiliMi = Array.from(checkboxlar).every(cb => cb.checked);
+    
+    checkboxlar.forEach(cb => {
+        cb.checked = !tumSeciiliMi;
+        const parent = cb.closest('.sinav-item');
+        if (cb.checked) {
+            parent.classList.add('selected');
+        } else {
+            parent.classList.remove('selected');
+        }
+    });
+    
+    updateSecilenSayi();
+}
+
+// Arama
+document.getElementById('sinavAra')?.addEventListener('input', filtreUygula);
+document.getElementById('sinifFiltre')?.addEventListener('change', filtreUygula);
+
+function filtreUygula() {
+    const aramaMetni = document.getElementById('sinavAra')?.value.toLowerCase() || '';
+    const sinifFiltre = document.getElementById('sinifFiltre')?.value || '';
+    
+    document.querySelectorAll('.sinav-item').forEach(item => {
+        const ad = item.dataset.ad;
+        const sinif = item.dataset.sinif;
+        
+        const aramaUygun = !aramaMetni || ad.includes(aramaMetni);
+        const sinifUygun = !sinifFiltre || sinif === sinifFiltre;
+        
+        if (aramaUygun && sinifUygun) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+// Form submit
+document.getElementById('paketForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const sinavIds = Array.from(document.querySelectorAll('input[name="sinav_ids[]"]:checked')).map(cb => cb.value);
+    
+    if (sinavIds.length === 0) {
+        alert('❌ En az 1 sınav seçmelisiniz!');
+        return;
+    }
+    
+    const data = {
+        ad: formData.get('ad'),
+        aciklama: formData.get('aciklama'),
+        sinif: formData.get('sinif'),
+        fiyat: formData.get('fiyat'),
+        sinav_ids: sinavIds
+    };
+    
+    const btn = this.querySelector('button[type="submit"]');
+    const btnText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Kaydediliyor...';
+    
+    try {
+        const response = await fetch('/kurum/sinav-paketi-guncelle/<%= paket.id %>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ ' + result.message);
+            window.location.href = '/kurum/sinav-paketi-detay/<%= paket.id %>';
+        } else {
+            alert('❌ ' + result.message);
+            btn.disabled = false;
+            btn.innerHTML = btnText;
+        }
+    } catch (error) {
+        console.error('Kaydetme hatası:', error);
+        alert('Bir hata oluştu!');
+        btn.disabled = false;
+        btn.innerHTML = btnText;
+    }
+});
+
+// Checkbox değişimlerini dinle
+document.querySelectorAll('input[name="sinav_ids[]"]').forEach(cb => {
+    cb.addEventListener('change', updateSecilenSayi);
+});
+</script>
+
+<%- include('../partials/footer-dashboard') %>
+

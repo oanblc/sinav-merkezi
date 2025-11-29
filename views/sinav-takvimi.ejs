@@ -1,0 +1,662 @@
+<%- include('partials/header', {title: 'Sınav Takvimi', user: typeof user !== 'undefined' ? user : null}) %>
+
+<%- include('partials/common-styles') %>
+
+<style>
+    /* Modern Filter Card */
+    .filter-card {
+        background: white;
+        border-radius: 20px;
+        padding: 24px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border: 1px solid #e8ecf0;
+    }
+    
+    .filter-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--primary);
+        margin-bottom: 20px;
+    }
+    
+    .filter-header i {
+        font-size: 1.3rem;
+    }
+    
+    .filter-body {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        align-items: end;
+    }
+    
+    .filter-item {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .filter-item label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        color: #475569;
+        font-size: 0.9rem;
+    }
+    
+    .filter-item label i {
+        color: var(--primary);
+        font-size: 1rem;
+    }
+    
+    .filter-item .form-control,
+    .filter-item .form-select {
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        padding: 10px 14px;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        background: #f8fafc;
+    }
+    
+    .filter-item .form-control:focus,
+    .filter-item .form-select:focus {
+        border-color: var(--primary);
+        background: white;
+        box-shadow: 0 0 0 3px rgba(0, 59, 120, 0.1);
+    }
+    
+    .filter-item .form-select {
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23003b78' d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 12px;
+        padding-right: 36px;
+    }
+    
+    .filter-actions {
+        display: flex;
+        align-items: flex-end;
+    }
+    
+    .filter-actions .btn {
+        border-radius: 12px;
+        padding: 10px 20px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        justify-content: center;
+        transition: all 0.3s ease;
+    }
+    
+    .filter-actions .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 59, 120, 0.2);
+    }
+    
+    /* View Toggle */
+    .view-toggle {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin-bottom: 30px;
+    }
+    
+    .view-btn {
+        background: white;
+        border: 2px solid #e8ecf0;
+        border-radius: 16px;
+        padding: 12px 24px;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .view-btn:hover {
+        background: #f8fafc;
+        border-color: var(--primary);
+    }
+    
+    .view-btn.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+    
+    .view-btn i {
+        font-size: 1.1rem;
+    }
+    
+    /* Exam List */
+    .exam-container {
+        background: white;
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    
+    .exam-header {
+        margin-bottom: 20px;
+    }
+    
+    .exam-header h3 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+    }
+    
+    .exam-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .exam-item {
+        background: #f8fafc;
+        border-radius: 16px;
+        padding: 20px;
+        border: 2px solid #e8ecf0;
+        transition: all 0.3s ease;
+    }
+    
+    .exam-item:hover {
+        border-color: var(--primary);
+        box-shadow: 0 4px 16px rgba(0,59,120,0.1);
+    }
+    
+    .exam-row-1 {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    
+    .exam-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+    }
+    
+    .exam-number {
+        background: var(--primary);
+        color: white;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+    
+    .exam-name {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text);
+    }
+    
+    .exam-type {
+        background: var(--primary);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+    
+    .status-badge {
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+    
+    .status-completed {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .status-open {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+    
+    .exam-row-2 {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        color: #64748b;
+        font-size: 0.95rem;
+    }
+    
+    .exam-row-2 i {
+        color: var(--primary);
+        font-size: 1.1rem;
+    }
+    
+    /* Calendar View */
+    #takvimGorunum {
+        display: none;
+    }
+    
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 1px;
+        background: #e8ecf0;
+        border-radius: 16px;
+        overflow: hidden;
+    }
+    
+    .calendar-header-row {
+        display: contents;
+    }
+    
+    .calendar-day-header {
+        background: var(--primary);
+        color: white;
+        padding: 12px;
+        text-align: center;
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+    
+    .calendar-day {
+        background: white;
+        padding: 12px;
+        min-height: 100px;
+        position: relative;
+    }
+    
+    .calendar-day-number {
+        font-weight: 700;
+        color: #64748b;
+        margin-bottom: 8px;
+    }
+    
+    .calendar-day.other-month {
+        background: #f8fafc;
+        opacity: 0.5;
+    }
+    
+    .calendar-day.today {
+        background: #fffbeb;
+    }
+    
+    .calendar-event {
+        background: var(--primary);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        margin-bottom: 4px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+    
+    .calendar-event:hover {
+        opacity: 0.8;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #999;
+    }
+    
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 16px;
+        opacity: 0.4;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .filter-card {
+            padding: 20px;
+            border-radius: 16px;
+        }
+        
+        .filter-body {
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
+        
+        .view-toggle {
+            flex-direction: column;
+        }
+        
+        .view-btn {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .exam-container {
+            padding: 16px;
+            border-radius: 16px;
+        }
+        
+        .exam-row-1 {
+            flex-wrap: wrap;
+        }
+        
+        .exam-row-2 {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .calendar-grid {
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+        }
+        
+        .calendar-day {
+            min-height: 80px;
+            padding: 8px;
+        }
+        
+        .calendar-day-header {
+            padding: 8px;
+            font-size: 0.8rem;
+        }
+        
+        .calendar-event {
+            font-size: 0.65rem;
+            padding: 2px 4px;
+        }
+    }
+</style>
+
+<div class="container" style="margin: 40px auto 60px;">
+    <div class="page-header" style="text-align: center; margin-bottom: 40px;">
+        <h1 style="font-size: 2.5rem; font-weight: 800; color: var(--primary); margin-bottom: 10px;">
+            <i class="bi bi-calendar-event"></i> Sınav Takvimi
+        </h1>
+        <p style="font-size: 1.1rem; color: #64748b;">Yaklaşan sınav tarihlerini görüntüleyin</p>
+    </div>
+    
+    <!-- Modern Filtre Alanı -->
+    <div class="filter-card">
+        <div class="filter-header">
+            <i class="bi bi-funnel-fill"></i>
+            <span>Filtreler</span>
+        </div>
+        <div class="filter-body">
+            <div class="filter-item">
+                <label for="sinifFilter">
+                    <i class="bi bi-journal-text"></i>
+                    Sınıf
+                </label>
+                <select id="sinifFilter" class="form-select">
+                    <option value="">Tüm Sınıflar</option>
+                    <option value="1">1. Sınıf</option>
+                    <option value="2">2. Sınıf</option>
+                    <option value="3">3. Sınıf</option>
+                    <option value="4">4. Sınıf</option>
+                    <option value="5">5. Sınıf</option>
+                    <option value="6">6. Sınıf</option>
+                    <option value="7">7. Sınıf</option>
+                    <option value="8">8. Sınıf</option>
+                    <option value="9">9. Sınıf</option>
+                    <option value="10">10. Sınıf</option>
+                    <option value="11">11. Sınıf</option>
+                    <option value="12">12. Sınıf</option>
+                    <option value="Mezun">Mezun</option>
+                </select>
+            </div>
+            
+            <div class="filter-item">
+                <label for="sinavTarih">
+                    <i class="bi bi-calendar-event"></i>
+                    Sınav Tarihi
+                </label>
+                <input type="date" id="sinavTarih" class="form-control">
+            </div>
+            
+            <div class="filter-item">
+                <label for="aramaInput">
+                    <i class="bi bi-search"></i>
+                    Sınav Ara
+                </label>
+                <input type="text" id="aramaInput" class="form-control" placeholder="Sınav adı...">
+            </div>
+            
+            <div class="filter-actions">
+                <button class="btn btn-primary" onclick="filtreleriTemizle()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    Temizle
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Görünüm Toggle -->
+    <div class="view-toggle">
+        <button class="view-btn active" onclick="gorunumDegistir('liste')" id="listBtn">
+            <i class="bi bi-list-ul"></i>
+            Liste
+        </button>
+        <button class="view-btn" onclick="gorunumDegistir('takvim')" id="takvimBtn">
+            <i class="bi bi-calendar3"></i>
+            Takvim
+        </button>
+    </div>
+    
+    <!-- Liste Görünümü -->
+    <div id="listeGorunum" class="exam-container">
+        <div class="exam-header">
+            <h3><i class="bi bi-list-ul"></i> Sınav Listesi</h3>
+        </div>
+        
+        <% if (sinavlar && sinavlar.length > 0) { %>
+        <div class="exam-list">
+            <% sinavlar.forEach(function(sinav, index) { 
+                const sinavTarihi = new Date(sinav.tarih);
+                const sinifNumara = sinav.sinif ? sinav.sinif.match(/\d+/) : null;
+            %>
+            <div class="exam-item" 
+                 data-sinif="<%= sinifNumara ? sinifNumara[0] : '' %>"
+                 data-tarih="<%= sinav.tarih %>" 
+                 data-ad="<%= sinav.ad.toLowerCase() %>">
+                <div class="exam-row-1">
+                    <div class="exam-left">
+                        <span class="exam-name"><%= sinav.ad %></span>
+                        <% if (sinav.sinif) { 
+                            // Sınıf numarasını formatla
+                            const sinifText = sinav.sinif.includes('Sınıf') || sinav.sinif.includes('Mezun') 
+                                ? sinav.sinif 
+                                : sinav.sinif + '. Sınıf';
+                        %>
+                        <span class="exam-type"><%= sinifText %></span>
+                        <% } %>
+                        <% if (sinav.paket_id && sinav.paket_adi) { %>
+                        <span class="badge" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); color: white; padding: 6px 12px; border-radius: 8px; font-size: 0.85rem;">
+                            <i class="bi bi-box-seam"></i> <%= sinav.paket_adi %>
+                        </span>
+                        <% } %>
+                    </div>
+                    <% if (sinav.sinav_durumu === 'Sonuç açıklandı') { %>
+                    <a href="/login" class="status-badge status-completed text-decoration-none">
+                        <i class="bi bi-file-earmark-text-fill"></i>
+                        Sonuç Açıklandı
+                    </a>
+                    <% } else if (sinav.sinav_durumu) { %>
+                    <span class="status-badge status-open">
+                        <i class="bi bi-check-circle"></i>
+                        <%= sinav.sinav_durumu %>
+                    </span>
+                    <% } %>
+                </div>
+                <div class="exam-row-2">
+                    <i class="bi bi-calendar-event"></i>
+                    <span><%= sinavTarihi.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) %></span>
+                    <% if (sinav.aciklama) { %>
+                    <span style="color: #64748b;">• <%= sinav.aciklama %></span>
+                    <% } %>
+                </div>
+            </div>
+            <% }); %>
+        </div>
+        <% } else { %>
+        <div class="empty-state">
+            <i class="bi bi-calendar-x"></i>
+            <h5>Henüz sınav bulunmuyor</h5>
+            <p>Sınav takvimi yakında güncellenecektir.</p>
+        </div>
+        <% } %>
+    </div>
+    
+    <!-- Takvim Görünümü -->
+    <div id="takvimGorunum" class="exam-container">
+        <div class="exam-header">
+            <h3><i class="bi bi-calendar3"></i> Takvim Görünümü</h3>
+        </div>
+        <div id="takvimIcerik"></div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>
+
+<script>
+    const sinavlar = <%- JSON.stringify(sinavlar) %>;
+    
+    // Filtreleme fonksiyonu
+    function filtrele() {
+        const sinifFilter = document.getElementById('sinifFilter').value;
+        const sinavTarih = document.getElementById('sinavTarih').value;
+        const aramaText = document.getElementById('aramaInput').value.toLowerCase().trim();
+        
+        const items = document.querySelectorAll('.exam-item');
+        let gorunenSayisi = 0;
+        
+        items.forEach(item => {
+            const itemSinif = item.dataset.sinif;
+            const itemTarih = item.dataset.tarih;
+            const itemAd = item.dataset.ad;
+            
+            let sinifEslesti = !sinifFilter || itemSinif === sinifFilter || 
+                              (sinifFilter === 'Mezun' && itemSinif.includes('Mezun'));
+            let tarihEslesti = !sinavTarih || itemTarih === sinavTarih;
+            let aramaEslesti = !aramaText || itemAd.includes(aramaText);
+            
+            if (sinifEslesti && tarihEslesti && aramaEslesti) {
+                item.style.display = 'block';
+                gorunenSayisi++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+    
+    // Filtreleri temizle
+    function filtreleriTemizle() {
+        document.getElementById('sinifFilter').value = '';
+        document.getElementById('sinavTarih').value = '';
+        document.getElementById('aramaInput').value = '';
+        filtrele();
+    }
+    
+    // Event listener'lar
+    document.getElementById('sinifFilter').addEventListener('change', filtrele);
+    document.getElementById('sinavTarih').addEventListener('change', filtrele);
+    document.getElementById('aramaInput').addEventListener('input', filtrele);
+    
+    // Görünüm değiştir
+    function gorunumDegistir(gorunum) {
+        const listBtn = document.getElementById('listBtn');
+        const takvimBtn = document.getElementById('takvimBtn');
+        const listeGorunum = document.getElementById('listeGorunum');
+        const takvimGorunum = document.getElementById('takvimGorunum');
+        
+        if (gorunum === 'liste') {
+            listBtn.classList.add('active');
+            takvimBtn.classList.remove('active');
+            listeGorunum.style.display = 'block';
+            takvimGorunum.style.display = 'none';
+        } else {
+            listBtn.classList.remove('active');
+            takvimBtn.classList.add('active');
+            listeGorunum.style.display = 'none';
+            takvimGorunum.style.display = 'block';
+            takvimOlustur();
+        }
+    }
+    
+    // Takvim oluştur
+    function takvimOlustur() {
+        const takvimIcerik = document.getElementById('takvimIcerik');
+        const bugun = new Date();
+        const yil = bugun.getFullYear();
+        const ay = bugun.getMonth();
+        
+        // Ay başı ve sonu
+        const ayBasi = new Date(yil, ay, 1);
+        const aySonu = new Date(yil, ay + 1, 0);
+        const ilkGun = ayBasi.getDay();
+        const toplamGun = aySonu.getDate();
+        
+        // HTML oluştur
+        let html = '<div class="calendar-grid">';
+        
+        // Gün başlıkları
+        const gunler = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+        gunler.forEach(gun => {
+            html += `<div class="calendar-day-header">${gun}</div>`;
+        });
+        
+        // Boş günler (ayın başlangıcı)
+        for (let i = 0; i < (ilkGun === 0 ? 6 : ilkGun - 1); i++) {
+            html += '<div class="calendar-day other-month"></div>';
+        }
+        
+        // Günler
+        for (let gun = 1; gun <= toplamGun; gun++) {
+            const tarih = new Date(yil, ay, gun);
+            const tarihStr = tarih.toISOString().split('T')[0];
+            const bugunku = gun === bugun.getDate() && ay === bugun.getMonth();
+            
+            // Bu tarihteki sınavlar
+            const gunSinavlari = sinavlar.filter(s => s.tarih === tarihStr);
+            
+            html += `<div class="calendar-day ${bugunku ? 'today' : ''}">`;
+            html += `<div class="calendar-day-number">${gun}</div>`;
+            
+            gunSinavlari.forEach(sinav => {
+                html += `<div class="calendar-event" title="${sinav.ad}">${sinav.ad}</div>`;
+            });
+            
+            html += '</div>';
+        }
+        
+        html += '</div>';
+        takvimIcerik.innerHTML = html;
+    }
+</script>

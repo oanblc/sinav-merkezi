@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Sınav Dosyası Yükle - Sınav Merkezi{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="bi bi-upload"></i> Sınav Dosyası Yükle
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="sinav_adi" class="form-label">Sınav Adı</label>
+                        <input type="text" class="form-control" id="sinav_adi" name="sinav_adi" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sinav_tarihi" class="form-label">Sınav Tarihi</label>
+                        <input type="date" class="form-control" id="sinav_tarihi" name="sinav_tarihi" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Sınav Sonuçları Dosyası (Excel/CSV)</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls,.csv" required>
+                        <small class="form-text text-muted">
+                            Desteklenen formatlar: .xlsx, .xls, .csv (Max: 16MB)
+                        </small>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        <strong>Önemli:</strong> Dosyanızda öğrenci isimlerini içeren bir kolon bulunmalıdır. 
+                        Sistem otomatik olarak dosyayı sayfalara ayırır ve öğrenci isimleri ile eşleştirir.
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload"></i> Yükle ve İşle
+                    </button>
+                    <a href="{{ url_for('rehber_dashboard') }}" class="btn btn-secondary">İptal</a>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-question-circle"></i> Nasıl Çalışır?</h5>
+            </div>
+            <div class="card-body">
+                <ol>
+                    <li>Excel veya CSV dosyanızı hazırlayın</li>
+                    <li>Dosyada öğrenci isimlerini içeren bir kolon olmalı</li>
+                    <li>Sistem dosyayı otomatik olarak sayfalara ayırır (sayfa başına 50 kayıt)</li>
+                    <li>Öğrenci isimleri veritabanındaki kayıtlarla eşleştirilir</li>
+                    <li>Eşleşen öğrencilerin sonuçları kaydedilir</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

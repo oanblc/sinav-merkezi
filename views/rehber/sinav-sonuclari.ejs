@@ -1,0 +1,174 @@
+<%- include('../partials/header-dashboard', { title: 'Sınav Sonuçları - Rehber Öğretmen Paneli', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #003b78 0%, #0056b3 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(0, 59, 120, 0.3);
+    }
+    
+    .sonuc-card {
+        background: white;
+        border-radius: 20px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        border-left: 5px solid #003b78;
+    }
+    
+    .sonuc-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    }
+    
+    .sonuc-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 20px;
+    }
+    
+    .sonuc-info h4 {
+        font-weight: 800;
+        color: #1e293b;
+        margin-bottom: 8px;
+    }
+    
+    .sonuc-meta {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+    
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+    
+    .meta-item i {
+        color: #94a3b8;
+    }
+    
+    .btn-download {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-download:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+        color: white;
+    }
+    
+    .badge-kurum {
+        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="page-header">
+        <div class="container">
+            <h1 style="font-weight: 800; margin-bottom: 8px;">
+                <i class="bi bi-file-earmark-pdf-fill"></i> Sınav Sonuçları
+            </h1>
+            <p style="opacity: 0.9; margin: 0;">Onayladığınız öğrencilerin sınav sonuçlarını görüntüleyin ve indirin</p>
+        </div>
+    </div>
+
+    <!-- Sonuçlar Listesi -->
+    <div id="sonuclarListesi">
+        <% if (sonuclar.length === 0) { %>
+            <div class="alert alert-info text-center" style="border-radius: 20px; padding: 40px;">
+                <i class="bi bi-file-earmark-pdf" style="font-size: 3rem; opacity: 0.5;"></i>
+                <h5 class="mt-3">Henüz sınav sonucu bulunmuyor</h5>
+                <p class="text-muted">Onayladığınız öğrencilerin sınav sonuçları henüz yüklenmemiş.</p>
+            </div>
+        <% } else { %>
+            <% sonuclar.forEach(sonuc => { %>
+                <div class="sonuc-card">
+                    <div class="sonuc-header">
+                        <div class="sonuc-info">
+                            <h4>
+                                <i class="bi bi-mortarboard-fill"></i> <%= sonuc.ogrenci_ad_soyad %>
+                                <% if (sonuc.kaynak === 'kurum') { %>
+                                <span class="badge-kurum ms-2">Kurum</span>
+                                <% } %>
+                            </h4>
+                            <div class="sonuc-meta">
+                                <div class="meta-item">
+                                    <i class="bi bi-clipboard-check"></i>
+                                    <span><strong>Sınav:</strong> <%= sonuc.sinav_adi %></span>
+                                </div>
+                                <div class="meta-item">
+                                    <i class="bi bi-calendar"></i>
+                                    <span><strong>Tarih:</strong> <%= new Date(sonuc.sinav_tarihi).toLocaleDateString('tr-TR') %></span>
+                                </div>
+                                <% if (sonuc.ogrenci_sinif) { %>
+                                <div class="meta-item">
+                                    <i class="bi bi-book"></i>
+                                    <span><strong>Sınıf:</strong> <%= sonuc.ogrenci_sinif %></span>
+                                </div>
+                                <% } %>
+                                <% if (sonuc.pdf_goruldu) { %>
+                                <div class="meta-item">
+                                    <i class="bi bi-eye-fill" style="color: #10b981;"></i>
+                                    <span style="color: #10b981;"><strong>İncelendi</strong></span>
+                                </div>
+                                <% } %>
+                                <% if (sonuc.pdf_indirilme_sayisi > 0) { %>
+                                <div class="meta-item">
+                                    <i class="bi bi-download"></i>
+                                    <span><strong>İndirme:</strong> <%= sonuc.pdf_indirilme_sayisi %> kez</span>
+                                </div>
+                                <% } %>
+                            </div>
+                        </div>
+                        <a href="<%= sonuc.pdf_path %>" target="_blank" class="btn-download" onclick="pdfIndirildi(<%= sonuc.id %>)">
+                            <i class="bi bi-download"></i> PDF İndir
+                        </a>
+                    </div>
+                </div>
+            <% }); %>
+        <% } %>
+    </div>
+</div>
+
+<script>
+async function pdfIndirildi(sonucId) {
+    // PDF indirme takibi (opsiyonel - rehber öğretmen için gerekli değil ama ekleyebiliriz)
+    try {
+        await fetch('/rehber/pdf-indirildi', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sonuc_id: sonucId })
+        });
+    } catch (error) {
+        console.error('PDF indirme takibi hatası:', error);
+    }
+}
+</script>
+
+<%- include('../partials/footer-dashboard') %>
+

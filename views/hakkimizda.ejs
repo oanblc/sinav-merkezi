@@ -1,0 +1,582 @@
+<%- include('partials/header', {title: 'Hakkımızda', user: typeof user !== 'undefined' ? user : null}) %>
+
+<%- include('partials/common-styles') %>
+
+<style>
+    /* Breadcrumb */
+    .breadcrumb-container {
+        background: #f8f9fa;
+        padding: 16px 0;
+        margin-bottom: 30px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        flex-wrap: wrap;
+    }
+    
+    .breadcrumb-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.95rem;
+    }
+    
+    .breadcrumb-item a {
+        color: var(--primary);
+        text-decoration: none;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .breadcrumb-item a:hover {
+        color: var(--primary-dark);
+        text-decoration: underline;
+    }
+    
+    .breadcrumb-item a i {
+        font-size: 1rem;
+    }
+    
+    .breadcrumb-separator {
+        color: #999;
+        font-size: 0.85rem;
+    }
+    
+    .breadcrumb-item.active {
+        color: #666;
+        font-weight: 500;
+    }
+    
+    /* Hero Section */
+    .about-hero {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        padding: 80px 0;
+        margin-bottom: 60px;
+        text-align: center;
+    }
+    
+    .about-hero h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 16px;
+    }
+    
+    .about-hero p {
+        font-size: 1.2rem;
+        opacity: 0.95;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+    
+    /* Content Section */
+    .about-section {
+        padding: 60px 0;
+    }
+    
+    .about-section h2 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary);
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .about-section h2 i {
+        font-size: 2.2rem;
+    }
+    
+    .about-section p {
+        font-size: 1.1rem;
+        line-height: 1.8;
+        color: #666;
+        margin-bottom: 20px;
+    }
+    
+    /* Feature Cards */
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 30px;
+        margin-top: 40px;
+    }
+    
+    .feature-card {
+        background: white;
+        padding: 32px;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        border: 2px solid #f0f0f0;
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+        border-color: var(--primary);
+    }
+    
+    .feature-icon {
+        width: 70px;
+        height: 70px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+    
+    .feature-icon i {
+        font-size: 2rem;
+        color: white;
+    }
+    
+    .feature-card h3 {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 12px;
+    }
+    
+    .feature-card p {
+        font-size: 1rem;
+        color: #666;
+        line-height: 1.7;
+        margin: 0;
+    }
+    
+    /* Stats Section */
+    .stats-section {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        padding: 60px 0;
+        margin: 60px 0;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 40px;
+        text-align: center;
+    }
+    
+    .stat-item {
+        padding: 20px;
+    }
+    
+    .stat-number {
+        font-size: 3rem;
+        font-weight: 900;
+        display: block;
+        margin-bottom: 8px;
+    }
+    
+    .stat-label {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        font-weight: 500;
+    }
+    
+    /* Team Section */
+    .team-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 30px;
+        margin-top: 40px;
+    }
+    
+    .team-card {
+        background: white;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        text-align: center;
+    }
+    
+    .team-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+    }
+    
+    .team-image {
+        width: 100%;
+        height: 250px;
+        background: linear-gradient(135deg, #e8ecf0 0%, #f8f9fa 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .team-image i {
+        font-size: 5rem;
+        color: var(--primary);
+        opacity: 0.3;
+    }
+    
+    .team-info {
+        padding: 24px;
+    }
+    
+    .team-info h4 {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 8px;
+    }
+    
+    .team-info p {
+        font-size: 0.95rem;
+        color: #666;
+        margin: 0;
+    }
+    
+    /* Vision Mission */
+    .vision-mission {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 40px;
+        margin-top: 40px;
+    }
+    
+    .vm-card {
+        background: white;
+        padding: 40px;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        border-left: 4px solid var(--primary);
+    }
+    
+    .vm-card h3 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--primary);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .vm-card h3 i {
+        font-size: 1.8rem;
+    }
+    
+    .vm-card p {
+        font-size: 1.05rem;
+        line-height: 1.8;
+        color: #666;
+        margin: 0;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .about-hero {
+            padding: 60px 20px;
+        }
+        
+        .about-hero h1 {
+            font-size: 1.8rem;
+        }
+        
+        .about-hero p {
+            font-size: 1rem;
+        }
+        
+        .about-section {
+            padding: 40px 0;
+        }
+        
+        .about-section h2 {
+            font-size: 1.5rem;
+        }
+        
+        .about-section p {
+            font-size: 1rem;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+        }
+        
+        .vision-mission {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<!-- Breadcrumb -->
+<div class="breadcrumb-container">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="/">
+                        <i class="bi bi-house-door"></i>
+                        Ana Sayfa
+                    </a>
+                </li>
+                <li class="breadcrumb-separator">
+                    <i class="bi bi-chevron-right"></i>
+                </li>
+                <li class="breadcrumb-item">
+                    <span>Kurumsal</span>
+                </li>
+                <li class="breadcrumb-separator">
+                    <i class="bi bi-chevron-right"></i>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">
+                    Hakkımızda
+                </li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<!-- Hero Section -->
+<section class="about-hero">
+    <div class="container">
+        <h1>
+            <i class="bi bi-building"></i>
+            Türkiye'nin Simülasyon Sınav Merkezi
+        </h1>
+        <p>
+            30 yıllık eğitim tecrübesiyle, gerçek sınav ortamında öğrencilerimizi geleceğe hazırlıyoruz.
+            LGS, YKS ve tüm sınavlar için profesyonel deneme sınavları sunuyoruz.
+        </p>
+    </div>
+</section>
+
+<!-- About Content -->
+<section class="about-section">
+    <div class="container">
+        <h2>
+            <i class="bi bi-info-circle"></i>
+            Biz Kimiz?
+        </h2>
+        <p>
+            Sınav Merkezi, Türkiye'nin önde gelen simülasyon sınav organizasyonlarından biridir. 
+            1995 yılından bu yana öğrencilerimize gerçek sınav deneyimi yaşatarak, onları en iyi şekilde 
+            geleceğe hazırlamaktayız. MEB ve ÖSYM standartlarında, profesyonel kadromuz ve modern 
+            teknolojimiz ile her yıl binlerce öğrenciye hizmet veriyoruz.
+        </p>
+        <p>
+            Amacımız, öğrencilerin sınav günü yaşayacakları stresi en aza indirerek, kendilerini 
+            gerçek sınav ortamına adapte etmelerini sağlamaktır. Detaylı analizler ve raporlar ile 
+            öğrencilerimizin güçlü ve zayıf yönlerini tespit ediyor, başarılarını maksimize ediyoruz.
+        </p>
+        
+        <!-- Vision & Mission -->
+        <div class="vision-mission">
+            <div class="vm-card">
+                <h3>
+                    <i class="bi bi-eye"></i>
+                    Vizyonumuz
+                </h3>
+                <p>
+                    Türkiye'nin her köşesindeki öğrencilere ulaşarak, eğitimde fırsat eşitliğini 
+                    sağlamak ve her öğrencinin potansiyelini en üst düzeye çıkarmak için çalışmak.
+                    Dijital dönüşümle birlikte, coğrafi sınırları ortadan kaldırarak tüm Türkiye'ye 
+                    hizmet eden lider simülasyon sınav merkezi olmak.
+                </p>
+            </div>
+            
+            <div class="vm-card">
+                <h3>
+                    <i class="bi bi-bullseye"></i>
+                    Misyonumuz
+                </h3>
+                <p>
+                    MEB ve ÖSYM standartlarında, gerçek sınav ortamı sağlayarak öğrencileri 
+                    en iyi şekilde sınavlara hazırlamak. Detaylı analiz ve raporlarla öğrencilerin 
+                    eksiklerini tespit edip, başarı yolculuklarında rehber olmak. 30 yıllık 
+                    tecrübemizle, kaliteli ve güvenilir eğitim hizmeti sunmak.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="stats-section">
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-number">30+</span>
+                <span class="stat-label">Yıllık Tecrübe</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">500K+</span>
+                <span class="stat-label">Aktif Öğrenci</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">5M+</span>
+                <span class="stat-label">Yapılan Sınav</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">150+</span>
+                <span class="stat-label">Sınav Merkezi</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features -->
+<section class="about-section">
+    <div class="container">
+        <h2>
+            <i class="bi bi-star"></i>
+            Neden Bizi Tercih Etmelisiniz?
+        </h2>
+        
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+                <h3>Gerçek Sınav Ortamı</h3>
+                <p>
+                    MEB & ÖSYM standartlarında, gerçek sınav koşullarıyla birebir aynı ortamda sınavlar.
+                    Giriş belgesinden güvenliğe her detay gerçek gibi.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <h3>Detaylı Analizler</h3>
+                <p>
+                    Sınav sonrası detaylı karneler, net analizleri ve branş bazlı performans raporları.
+                    Eksiklerinizi görerek başarınızı artırın.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="bi bi-people"></i>
+                </div>
+                <h3>Deneyimli Kadro</h3>
+                <p>
+                    30 yıllık eğitim tecrübesi, profesyonel gözetmenler ve uzman ekibimizle
+                    yanınızdayız.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="bi bi-laptop"></i>
+                </div>
+                <h3>Modern Teknoloji</h3>
+                <p>
+                    Optik okuma sistemleri ve gelişmiş yazılımlarla hızlı ve hatasız sonuç bildirimi.
+                    Dijital platformda her yerden erişim imkanı.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+                <h3>Güvenilir Hizmet</h3>
+                <p>
+                    30 yıldır binlerce öğrencinin güvendiği, sektörün öncü kurumlarından biri olmaktan
+                    gurur duyuyoruz.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="bi bi-headset"></i>
+                </div>
+                <h3>7/24 Destek</h3>
+                <p>
+                    Öğrenci, veli ve danışman öğretmenlerimiz için kesintisiz destek hizmeti.
+                    Her sorunuzda yanınızdayız.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Team Section -->
+<section class="about-section" style="background: #f8f9fa;">
+    <div class="container">
+        <h2>
+            <i class="bi bi-people"></i>
+            Yönetim Kadromuz
+        </h2>
+        
+        <div class="team-grid">
+            <div class="team-card">
+                <div class="team-image">
+                    <i class="bi bi-person-circle"></i>
+                </div>
+                <div class="team-info">
+                    <h4>Ahmet Yılmaz</h4>
+                    <p>Genel Müdür</p>
+                </div>
+            </div>
+            
+            <div class="team-card">
+                <div class="team-image">
+                    <i class="bi bi-person-circle"></i>
+                </div>
+                <div class="team-info">
+                    <h4>Ayşe Demir</h4>
+                    <p>Eğitim Koordinatörü</p>
+                </div>
+            </div>
+            
+            <div class="team-card">
+                <div class="team-image">
+                    <i class="bi bi-person-circle"></i>
+                </div>
+                <div class="team-info">
+                    <h4>Mehmet Kaya</h4>
+                    <p>Sınav İşleri Müdürü</p>
+                </div>
+            </div>
+            
+            <div class="team-card">
+                <div class="team-image">
+                    <i class="bi bi-person-circle"></i>
+                </div>
+                <div class="team-info">
+                    <h4>Fatma Şahin</h4>
+                    <p>Teknoloji Direktörü</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<%- include('partials/footer') %>
+
+<script>
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+</script>
+

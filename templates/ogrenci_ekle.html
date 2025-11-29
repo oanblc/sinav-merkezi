@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Öğrenci Ekle - Sınav Merkezi{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="bi bi-person-plus"></i> Öğrenci Ekle
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('ogrenci_ekle') }}">
+                    <div class="mb-3">
+                        <label for="ad_soyad" class="form-label">Ad Soyad</label>
+                        <input type="text" class="form-control" id="ad_soyad" name="ad_soyad" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tc_no" class="form-label">TC Kimlik No (Opsiyonel)</label>
+                        <input type="text" class="form-control" id="tc_no" name="tc_no" maxlength="11">
+                    </div>
+                    <div class="mb-3">
+                        <label for="veli_username" class="form-label">Veli Kullanıcı Adı</label>
+                        <input type="text" class="form-control" id="veli_username" name="veli_username" required>
+                        <small class="form-text text-muted">
+                            Öğrencinin velisinin kullanıcı adını girin.
+                        </small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Öğrenci Ekle
+                    </button>
+                    <a href="{{ url_for('rehber_dashboard') }}" class="btn btn-secondary">İptal</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

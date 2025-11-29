@@ -1,0 +1,288 @@
+<%- include('partials/header-dashboard', { title: 'Sınav Takvimi - Sınav Merkezi', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3);
+    }
+    
+    .calendar-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+    
+    .exam-item {
+        padding: 24px 30px;
+        border-bottom: 1px solid #f1f5f9;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 24px;
+    }
+    
+    .exam-item:last-child {
+        border-bottom: none;
+    }
+    
+    .exam-item:hover {
+        background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+    }
+    
+    .exam-date {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: white;
+        border-radius: 16px;
+        padding: 16px;
+        text-align: center;
+        min-width: 80px;
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        flex-shrink: 0;
+    }
+    
+    .exam-date .day {
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1;
+        margin-bottom: 4px;
+    }
+    
+    .exam-date .month {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    .student-badge {
+        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        color: white;
+        padding: 6px 14px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+    }
+    
+    .exam-info {
+        flex: 1;
+    }
+    
+    .exam-title {
+        font-weight: 700;
+        color: #1e293b;
+        font-size: 1.1rem;
+        margin-bottom: 8px;
+    }
+    
+    .exam-details {
+        color: #64748b;
+        font-size: 0.95rem;
+    }
+    
+    .exam-badge {
+        padding: 8px 16px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+    }
+    
+    .empty-state {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-radius: 24px;
+        padding: 60px 40px;
+        text-align: center;
+        border: 2px dashed #cbd5e1;
+    }
+    
+    .empty-state i {
+        font-size: 5rem;
+        color: #94a3b8;
+        margin-bottom: 20px;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        text-align: center;
+    }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 style="font-weight: 800; margin-bottom: 8px;">
+                    <i class="bi bi-calendar-event"></i> Sınav Takvimi
+                </h1>
+                <p style="opacity: 0.9; margin: 0;">
+                    Tüm öğrencilerinizin yaklaşan sınavları
+                </p>
+            </div>
+            <a href="/veli/dashboard" class="btn btn-light btn-lg" style="border-radius: 12px; font-weight: 600;">
+                <i class="bi bi-arrow-left"></i> Geri
+            </a>
+        </div>
+    </div>
+</div>
+
+<% if (error) { %>
+<div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: 12px;">
+    <i class="bi bi-exclamation-triangle"></i> <%= error %>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<% } %>
+
+<% if (success) { %>
+<div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 12px;">
+    <i class="bi bi-check-circle"></i> <%= success %>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<% } %>
+
+<!-- İstatistikler -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card" style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); color: white;">
+            <div style="font-size: 2.5rem; font-weight: 800;"><%= ogrenciler.length %></div>
+            <div style="opacity: 0.9; margin-top: 8px;">Toplam Öğrenci</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white;">
+            <div style="font-size: 2.5rem; font-weight: 800;"><%= tumTakvim.length %></div>
+            <div style="opacity: 0.9; margin-top: 8px;">Toplam Sınav</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+            <div style="font-size: 2.5rem; font-weight: 800;">
+                <%= tumTakvim.filter(s => {
+                    const tarih = new Date(s.tarih);
+                    const bugun = new Date();
+                    const gunFarki = Math.ceil((tarih - bugun) / (1000 * 60 * 60 * 24));
+                    return gunFarki >= 0 && gunFarki <= 7;
+                }).length %>
+            </div>
+            <div style="opacity: 0.9; margin-top: 8px;">Bu Hafta</div>
+        </div>
+    </div>
+</div>
+
+<!-- Sınav Listesi -->
+<div class="calendar-card">
+    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 20px 30px;">
+        <h5 style="color: white; font-weight: 700; margin: 0;">
+            <i class="bi bi-calendar-check"></i> Yaklaşan Sınavlar
+        </h5>
+    </div>
+    
+    <% if (tumTakvim && tumTakvim.length > 0) { %>
+        <% tumTakvim.forEach(function(sinav) { 
+            const tarih = new Date(sinav.tarih);
+            const gun = tarih.getDate();
+            const ay = tarih.toLocaleDateString('tr-TR', { month: 'short' });
+            const tamTarih = tarih.toLocaleDateString('tr-TR');
+            const bugun = new Date();
+            const gunFarki = Math.ceil((tarih - bugun) / (1000 * 60 * 60 * 24));
+            
+            let durum = '';
+            let durumClass = '';
+            if (gunFarki < 0) {
+                durum = 'Geçti';
+                durumClass = 'bg-secondary';
+            } else if (gunFarki === 0) {
+                durum = 'Bugün!';
+                durumClass = 'bg-danger';
+            } else if (gunFarki <= 7) {
+                durum = `${gunFarki} gün kaldı`;
+                durumClass = 'bg-warning';
+            } else {
+                durum = `${gunFarki} gün kaldı`;
+                durumClass = 'bg-success';
+            }
+        %>
+        <div class="exam-item">
+            <div class="exam-date">
+                <div class="day"><%= gun %></div>
+                <div class="month"><%= ay.toUpperCase() %></div>
+            </div>
+            
+            <span class="student-badge">
+                <i class="bi bi-person"></i> <%= sinav.ogrenci_ad_soyad %>
+                <% if (sinav.ogrenci_no) { %>
+                    (<%= sinav.ogrenci_no %>)
+                <% } %>
+            </span>
+            
+            <div class="exam-info">
+                <div class="exam-title">
+                    <%= sinav.sinav_adi || 'Sınav' %>
+                </div>
+                <div class="exam-details">
+                    <i class="bi bi-calendar3"></i> <%= tamTarih %>
+                    <% if (sinav.saat) { %>
+                        • <i class="bi bi-clock"></i> <%= sinav.saat %>
+                    <% } %>
+                    <% if (sinav.yer) { %>
+                        • <i class="bi bi-geo-alt"></i> <%= sinav.yer %>
+                    <% } %>
+                </div>
+                <% if (sinav.aciklama) { %>
+                <div class="exam-details" style="margin-top: 8px;">
+                    <i class="bi bi-info-circle"></i> <%= sinav.aciklama %>
+                </div>
+                <% } %>
+            </div>
+            
+            <span class="exam-badge <%= durumClass %>">
+                <%= durum %>
+            </span>
+        </div>
+        <% }); %>
+    <% } else { %>
+        <div class="empty-state" style="margin: 40px;">
+            <i class="bi bi-calendar-x"></i>
+            <h4 style="font-weight: 700; color: #64748b; margin-bottom: 12px;">
+                Henüz Sınav Yok
+            </h4>
+            <p style="color: #94a3b8; margin: 0; font-size: 1.05rem;">
+                Öğrencileriniz için henüz planlanmış bir sınav bulunmamaktadır.<br>
+                Rehber öğretmeniniz sınav takvimini oluşturduğunda burada görünecektir.
+            </p>
+        </div>
+    <% } %>
+</div>
+
+<!-- Bilgi Kartı -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 20px; padding: 24px; border: 2px solid #93c5fd;">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5 style="font-weight: 700; color: #1e40af; margin-bottom: 8px;">
+                        <i class="bi bi-info-circle-fill"></i> Bilgi
+                    </h5>
+                    <p style="color: #1e40af; margin: 0; font-size: 0.95rem;">
+                        Bu sayfada tüm öğrencilerinizin sınav takvimleri bir arada gösterilmektedir. 
+                        Sınav takvimi rehber öğretmeniniz tarafından oluşturulur ve güncellenir.
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <i class="bi bi-calendar-event" style="font-size: 4rem; color: #8b5cf6; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer-dashboard') %>
+

@@ -1,0 +1,255 @@
+<%- include('partials/header-dashboard', { title: ogrenci.ad_soyad + ' - Öğrenci Detay - Sınav Merkezi', user: user }) %>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2>
+                <i class="bi bi-person-badge"></i> <%= ogrenci.ad_soyad %> - Öğrenci Profili
+            </h2>
+            <div>
+                <a href="/rehber/ogrenciler" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Öğrenci Listesine Dön
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Öğrenci Bilgileri Kartı -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-person-vcard"></i> Öğrenci Bilgileri</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless mb-0">
+                    <tr>
+                        <th width="40%">Ad Soyad:</th>
+                        <td><strong><%= ogrenci.ad_soyad %></strong></td>
+                    </tr>
+                    <tr>
+                        <th>TC No:</th>
+                        <td><%= ogrenci.tc_no || '-' %></td>
+                    </tr>
+                    <tr>
+                        <th>Veli:</th>
+                        <td>
+                            <% if (ogrenci.veli_username) { %>
+                                <span class="badge bg-info"><%= ogrenci.veli_username %></span>
+                            <% } else { %>
+                                <span class="text-muted">Belirsiz</span>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Veli Email:</th>
+                        <td><%= ogrenci.veli_email || '-' %></td>
+                    </tr>
+                    <tr>
+                        <th>Kayıt Tarihi:</th>
+                        <td><%= new Date(ogrenci.created_at).toLocaleString('tr-TR') %></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- İstatistik Kartları -->
+    <div class="col-md-8">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body text-center">
+                        <h1><%= pdf_sonuclari.length %></h1>
+                        <h5><i class="bi bi-file-pdf"></i> PDF Sınav Sonucu</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h1><%= excel_sonuclari.length %></h1>
+                        <h5><i class="bi bi-file-earmark-spreadsheet"></i> Excel/CSV Sonucu</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Son Sınav Bilgisi -->
+        <% if (pdf_sonuclari.length > 0) { 
+            const sonSinav = pdf_sonuclari[0];
+        %>
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h6 class="mb-0"><i class="bi bi-trophy"></i> Son Sınav</h6>
+            </div>
+            <div class="card-body">
+                <h5><%= sonSinav.sinav_adi %></h5>
+                <p class="mb-1"><strong>Tarih:</strong> <%= new Date(sonSinav.sinav_tarihi).toLocaleDateString('tr-TR') %></p>
+                <% if (sonSinav.puan) { %>
+                <p class="mb-1"><strong>Puan:</strong> <span class="badge bg-success"><%= sonSinav.puan %></span></p>
+                <% } %>
+                <% if (sonSinav.sinav_turu) { %>
+                <p class="mb-0"><strong>Tür:</strong> <span class="badge bg-info"><%= sonSinav.sinav_turu %></span></p>
+                <% } %>
+            </div>
+        </div>
+        <% } %>
+    </div>
+</div>
+
+<!-- PDF Sınav Sonuçları -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="bi bi-file-pdf-fill"></i> PDF Sınav Sonuçları (<%= pdf_sonuclari.length %>)</h5>
+            </div>
+            <div class="card-body">
+                <% if (pdf_sonuclari && pdf_sonuclari.length > 0) { %>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Sınav Adı</th>
+                                <th>Sınav Türü</th>
+                                <th>Sınav Tarihi</th>
+                                <th>Numara</th>
+                                <th>Sınıf</th>
+                                <th>Puan</th>
+                                <th>Yüklenme</th>
+                                <th>İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% pdf_sonuclari.forEach(function(sonuc, index) { %>
+                            <tr>
+                                <td><%= index + 1 %></td>
+                                <td><strong><%= sonuc.sinav_adi %></strong></td>
+                                <td>
+                                    <% if (sonuc.sinav_turu) { %>
+                                        <span class="badge bg-info"><%= sonuc.sinav_turu %></span>
+                                    <% } else { %>
+                                        -
+                                    <% } %>
+                                </td>
+                                <td><%= new Date(sonuc.sinav_tarihi).toLocaleDateString('tr-TR') %></td>
+                                <td><%= sonuc.numara || '-' %></td>
+                                <td><%= sonuc.sinif || '-' %></td>
+                                <td>
+                                    <% if (sonuc.puan) { %>
+                                        <span class="badge bg-success"><%= sonuc.puan %></span>
+                                    <% } else { %>
+                                        -
+                                    <% } %>
+                                </td>
+                                <td><%= new Date(sonuc.created_at).toLocaleDateString('tr-TR') %></td>
+                                <td>
+                                    <button class="btn btn-sm btn-danger" onclick="pdfGoster('<%= sonuc.pdf_path %>')">
+                                        <i class="bi bi-file-pdf"></i> PDF Aç
+                                    </button>
+                                </td>
+                            </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+                <% } else { %>
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle"></i> Bu öğrenci için henüz PDF sınav sonucu bulunmamaktadır.
+                </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Excel/CSV Sınav Sonuçları -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-file-spreadsheet-fill"></i> Excel/CSV Sınav Sonuçları (<%= excel_sonuclari.length %>)</h5>
+            </div>
+            <div class="card-body">
+                <% if (excel_sonuclari && excel_sonuclari.length > 0) { %>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Sınav Adı</th>
+                                <th>Sınav Tarihi</th>
+                                <th>Sayfa No</th>
+                                <th>Yüklenme</th>
+                                <th>İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% excel_sonuclari.forEach(function(sonuc, index) { %>
+                            <tr>
+                                <td><%= index + 1 %></td>
+                                <td><strong><%= sonuc.sinav_adi %></strong></td>
+                                <td><%= new Date(sonuc.sinav_tarihi).toLocaleDateString('tr-TR') %></td>
+                                <td><span class="badge bg-secondary">Sayfa <%= sonuc.sayfa_no %></span></td>
+                                <td><%= new Date(sonuc.created_at).toLocaleDateString('tr-TR') %></td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" onclick="detayGoster(<%= sonuc.id %>)">
+                                        <i class="bi bi-eye"></i> Detay
+                                    </button>
+                                </td>
+                            </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+                <% } else { %>
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle"></i> Bu öğrenci için henüz Excel/CSV sınav sonucu bulunmamaktadır.
+                </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PDF Modal -->
+<div class="modal fade" id="pdfModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">PDF Görüntüleyici</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div style="width: 100%; height: 70vh;">
+                    <iframe id="pdfIframe" style="width: 100%; height: 100%; border: none;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function pdfGoster(pdfPath) {
+    const cleanPath = pdfPath.replace(/\\/g, '/');
+    const pdfUrl = '/' + cleanPath;
+    
+    const modal = new bootstrap.Modal(document.getElementById('pdfModal'));
+    document.getElementById('pdfIframe').src = pdfUrl;
+    modal.show();
+}
+
+function detayGoster(sonucId) {
+    alert('Excel/CSV detay sayfası yakında eklenecek. Sonuç ID: ' + sonucId);
+}
+
+document.getElementById('pdfModal')?.addEventListener('hidden.bs.modal', function () {
+    document.getElementById('pdfIframe').src = '';
+});
+</script>
+
+<%- include('partials/footer-dashboard') %>
+

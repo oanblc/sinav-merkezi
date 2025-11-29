@@ -1,0 +1,389 @@
+<%- include('../partials/header-dashboard', { title: 'Sınav Sonuçları - Veli Paneli', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+    }
+    
+    .sonuc-card {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border-left: 5px solid #6366f1;
+        transition: all 0.3s ease;
+    }
+    
+    .sonuc-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+    
+    .sonuc-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 16px;
+    }
+    
+    .sinav-bilgi {
+        flex: 1;
+    }
+    
+    .sinav-baslik {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 8px;
+    }
+    
+    .sinav-detay {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+    
+    .sinav-detay span {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .ogrenci-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 16px;
+        background: #f1f5f9;
+        border-radius: 20px;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 12px;
+    }
+    
+    .ogrenci-tag i {
+        margin-right: 6px;
+        color: #6366f1;
+    }
+    
+    .durum-badge {
+        padding: 8px 16px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    
+    .durum-yuklendi {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    
+    .durum-bildirildi {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    
+    .indir-btn {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 10px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+        text-decoration: none;
+    }
+    
+    .indir-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3);
+        color: white;
+    }
+    
+    .indir-btn i {
+        font-size: 1.2rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .empty-state i {
+        font-size: 5rem;
+        color: #cbd5e1;
+        margin-bottom: 24px;
+    }
+    
+    .empty-state h4 {
+        color: #64748b;
+        margin-bottom: 12px;
+    }
+    
+    .empty-state p {
+        color: #94a3b8;
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    
+    .filter-section {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .filter-section .form-select {
+        border-radius: 10px;
+        border: 2px solid #e2e8f0;
+    }
+</style>
+
+<div class="container mt-4">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-2"><i class="bi bi-file-earmark-text"></i> Sınav Sonuçları</h1>
+                    <p class="mb-0 opacity-75">Öğrencilerinizin sınav sonuçlarını görüntüleyin</p>
+                </div>
+                <div>
+                    <a href="/veli/dashboard" class="btn btn-light">
+                        <i class="bi bi-arrow-left"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <% if (error) { %>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i><%= error %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <% } %>
+    <% if (success) { %>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i><%= success %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <% } %>
+
+    <% if (sonuclar.length === 0) { %>
+        <!-- Empty State -->
+        <div class="empty-state">
+            <i class="bi bi-inbox"></i>
+            <h4>Henüz sınav sonucu yok</h4>
+            <p>Öğrencilerinizin sınav sonuçları açıklandığında buradan görüntüleyebileceksiniz.</p>
+        </div>
+    <% } else { %>
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <div class="row">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Öğrenci</label>
+                    <select id="ogrenciFiltre" class="form-select">
+                        <option value="">Tüm Öğrenciler</option>
+                        <% 
+                        const uniqueOgrenciler = [...new Set(sonuclar.map(s => s.ogrenci_adi_soyadi))];
+                        uniqueOgrenciler.forEach(o => { 
+                        %>
+                            <option value="<%= o %>"><%= o %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Sınav</label>
+                    <select id="sinavFiltre" class="form-select">
+                        <option value="">Tüm Sınavlar</option>
+                        <% 
+                        const uniqueSinavlar = [...new Set(sonuclar.map(s => s.sinav_adi))];
+                        uniqueSinavlar.forEach(s => { 
+                        %>
+                            <option value="<%= s %>"><%= s %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Durum</label>
+                    <select id="durumFiltre" class="form-select">
+                        <option value="">Tüm Durumlar</option>
+                        <option value="yuklendi">Yüklendi</option>
+                        <option value="bildirildi">Bildirildi</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sonuç Listesi -->
+        <div id="sonucListesi">
+            <% sonuclar.forEach(sonuc => { %>
+                <div class="sonuc-card" 
+                     data-ogrenci="<%= sonuc.ogrenci_adi_soyadi %>" 
+                     data-sinav="<%= sonuc.sinav_adi %>"
+                     data-durum="<%= sonuc.sonuc_durumu %>">
+                    
+                    <div class="ogrenci-tag">
+                        <i class="bi bi-person-fill"></i>
+                        <%= sonuc.ogrenci_adi_soyadi %>
+                        <% if (sonuc.ogrenci_sinif) { %>
+                            <span class="ms-2 opacity-75">(<%= sonuc.ogrenci_sinif %>)</span>
+                        <% } %>
+                    </div>
+                    
+                    <div class="sonuc-header">
+                        <div class="sinav-bilgi">
+                            <div class="sinav-baslik">
+                                <i class="bi bi-journal-text text-primary me-2"></i>
+                                <%= sonuc.sinav_adi %>
+                            </div>
+                            <div class="sinav-detay">
+                                <span>
+                                    <i class="bi bi-calendar3"></i>
+                                    <%= new Date(sonuc.sinav_tarihi).toLocaleDateString('tr-TR') %>
+                                </span>
+                                <% if (sonuc.sinif) { %>
+                                    <span>
+                                        <i class="bi bi-mortarboard"></i>
+                                        <%= sonuc.sinif %>
+                                    </span>
+                                <% } %>
+                                <% if (sonuc.ders) { %>
+                                    <span>
+                                        <i class="bi bi-book"></i>
+                                        <%= sonuc.ders %>
+                                    </span>
+                                <% } %>
+                            </div>
+                        </div>
+                        
+                        <div class="text-end">
+                            <% if (sonuc.pdf_goruldu) { %>
+                                <div class="durum-badge mb-2" style="background: #dcfce7; color: #166534;">
+                                    <i class="bi bi-eye-fill"></i> İncelendi
+                                </div>
+                                <div class="text-muted small mb-2">
+                                    <i class="bi bi-clock"></i>
+                                    <%= new Date(sonuc.pdf_gorunme_tarihi).toLocaleString('tr-TR', { 
+                                        day: '2-digit', 
+                                        month: '2-digit', 
+                                        year: 'numeric', 
+                                        hour: '2-digit', 
+                                        minute: '2-digit' 
+                                    }) %>
+                                </div>
+                                <% if (sonuc.pdf_indirilme_sayisi > 1) { %>
+                                    <div class="text-muted small mb-2">
+                                        <i class="bi bi-download"></i> <%= sonuc.pdf_indirilme_sayisi %> kez indirildi
+                                    </div>
+                                <% } %>
+                            <% } else if (sonuc.sonuc_durumu === 'bildirildi') { %>
+                                <div class="durum-badge durum-bildirildi mb-2">
+                                    <i class="bi bi-check-circle"></i> Bildirildi
+                                </div>
+                            <% } else { %>
+                                <div class="durum-badge durum-yuklendi mb-2">
+                                    <i class="bi bi-upload"></i> Yüklendi
+                                </div>
+                            <% } %>
+                            
+                            <% if (sonuc.pdf_path) { %>
+                                <a href="/veli/sinav-sonuc-indir/<%= sonuc.id %>" class="indir-btn">
+                                    <i class="bi bi-file-pdf"></i>
+                                    PDF İndir
+                                </a>
+                            <% } else { %>
+                                <span class="text-muted small">PDF hazırlanıyor...</span>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+        
+        <div id="noResultsMessage" class="alert alert-info" style="display: none;">
+            <i class="bi bi-info-circle me-2"></i>
+            Seçilen filtrelere uygun sonuç bulunamadı.
+        </div>
+    <% } %>
+</div>
+
+<script>
+// Filtreleme
+document.getElementById('ogrenciFiltre')?.addEventListener('change', filterResults);
+document.getElementById('sinavFiltre')?.addEventListener('change', filterResults);
+document.getElementById('durumFiltre')?.addEventListener('change', filterResults);
+
+function filterResults() {
+    const ogrenciFiltre = document.getElementById('ogrenciFiltre')?.value.toLowerCase() || '';
+    const sinavFiltre = document.getElementById('sinavFiltre')?.value.toLowerCase() || '';
+    const durumFiltre = document.getElementById('durumFiltre')?.value.toLowerCase() || '';
+    
+    const cards = document.querySelectorAll('.sonuc-card');
+    let visibleCount = 0;
+    
+    cards.forEach(card => {
+        const ogrenci = card.dataset.ogrenci.toLowerCase();
+        const sinav = card.dataset.sinav.toLowerCase();
+        const durum = card.dataset.durum.toLowerCase();
+        
+        const ogrenciMatch = !ogrenciFiltre || ogrenci.includes(ogrenciFiltre);
+        const sinavMatch = !sinavFiltre || sinav.includes(sinavFiltre);
+        const durumMatch = !durumFiltre || durum === durumFiltre;
+        
+        if (ogrenciMatch && sinavMatch && durumMatch) {
+            card.style.display = 'block';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    const noResultsMsg = document.getElementById('noResultsMessage');
+    if (noResultsMsg) {
+        noResultsMsg.style.display = visibleCount === 0 ? 'block' : 'none';
+    }
+}
+
+// Highlight eğer URL'de highlight parametresi varsa
+const urlParams = new URLSearchParams(window.location.search);
+const highlightId = urlParams.get('highlight');
+if (highlightId) {
+    setTimeout(() => {
+        const card = document.querySelector(`.sonuc-card[data-sinav-id="${highlightId}"]`);
+        if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            card.style.animation = 'pulse 1s ease-in-out 3';
+        }
+    }, 500);
+}
+</script>
+
+<style>
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.02);
+    }
+}
+</style>
+
+<%- include('../partials/footer') %>
+

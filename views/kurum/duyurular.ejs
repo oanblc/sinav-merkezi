@@ -1,0 +1,329 @@
+<%- include('../partials/header-dashboard', { title: 'Duyuru Yönetimi - Kurum Paneli', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(16, 185, 129, 0.3);
+    }
+    
+    .duyuru-card {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        margin-bottom: 20px;
+        border-left: 4px solid #10b981;
+    }
+    
+    .duyuru-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    }
+    
+    .duyuru-card.pasif {
+        border-left-color: #94a3b8;
+        opacity: 0.7;
+    }
+    
+    .form-card {
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 8px;
+    }
+    
+    .form-control, .form-select {
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        padding: 12px 16px;
+        transition: all 0.2s;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #10b981;
+        box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.25);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 style="font-weight: 800; margin-bottom: 8px;">
+                    <i class="bi bi-megaphone-fill"></i> Duyuru Yönetimi
+                </h1>
+                <p style="opacity: 0.9; margin: 0;">Duyuruları ekleyin, düzenleyin ve yönetin</p>
+            </div>
+            <button class="btn btn-light" onclick="showAddModal()" style="border-radius: 12px; padding: 12px 24px; font-weight: 600;">
+                <i class="bi bi-plus-circle"></i> Yeni Duyuru Ekle
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Success/Error Messages -->
+<% if (success) { %>
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle"></i> <%= success %>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<% } %>
+
+<% if (error) { %>
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle"></i> <%= error %>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<% } %>
+
+<!-- Duyuru Listesi -->
+<div class="mb-4">
+    <h3 style="font-weight: 700; color: #1e293b;">
+        <i class="bi bi-list-ul"></i> Duyurular (<%= duyurular.length %>)
+    </h3>
+</div>
+
+<% if (duyurular.length === 0) { %>
+<div class="empty-state">
+    <i class="bi bi-megaphone" style="font-size: 4rem; color: #e2e8f0; margin-bottom: 20px;"></i>
+    <h4 style="color: #64748b; margin-bottom: 16px;">Henüz Duyuru Eklenmemiş</h4>
+    <p style="color: #94a3b8; margin-bottom: 24px;">İlk duyurunuzu ekleyerek başlayın</p>
+    <button class="btn btn-primary btn-lg" onclick="showAddModal()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; border-radius: 12px;">
+        <i class="bi bi-plus-circle"></i> Duyuru Ekle
+    </button>
+</div>
+<% } else { %>
+<div class="row g-4">
+    <% duyurular.forEach(function(duyuru) { %>
+    <div class="col-12">
+        <div class="duyuru-card <%= !duyuru.aktif ? 'pasif' : '' %>">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div class="flex-grow-1">
+                    <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 8px;">
+                        <%= duyuru.baslik %>
+                        <% if (!duyuru.aktif) { %>
+                        <span class="badge bg-secondary ms-2">Pasif</span>
+                        <% } else { %>
+                        <span class="badge bg-success ms-2">Aktif</span>
+                        <% } %>
+                        <% if (duyuru.sira) { %>
+                        <span class="badge bg-info ms-1">Sıra: <%= duyuru.sira %></span>
+                        <% } %>
+                    </h4>
+                    <% if (duyuru.tarih) { %>
+                    <p style="color: #64748b; font-size: 0.9rem; margin: 0;">
+                        <i class="bi bi-calendar"></i> <%= new Date(duyuru.tarih).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) %>
+                    </p>
+                    <% } %>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary btn-sm" onclick="editDuyuru(<%= JSON.stringify(duyuru) %>)" style="border-radius: 10px;">
+                        <i class="bi bi-pencil"></i> Düzenle
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteDuyuru(<%= duyuru.id %>, '<%= duyuru.baslik %>')" style="border-radius: 10px;">
+                        <i class="bi bi-trash"></i> Sil
+                    </button>
+                </div>
+            </div>
+            
+            <% if (duyuru.icerik) { %>
+            <div style="background: #f8fafc; border-radius: 12px; padding: 20px; margin-top: 16px;">
+                <p style="color: #475569; margin: 0; white-space: pre-wrap;"><%= duyuru.icerik %></p>
+            </div>
+            <% } %>
+        </div>
+    </div>
+    <% }); %>
+</div>
+<% } %>
+
+<!-- Duyuru Ekle/Düzenle Modal -->
+<div class="modal fade" id="duyuruModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius: 20px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border-radius: 20px 20px 0 0;">
+                <h5 class="modal-title" id="modalTitle">
+                    <i class="bi bi-plus-circle"></i> Yeni Duyuru Ekle
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 30px;">
+                <form id="duyuruForm">
+                    <input type="hidden" id="duyuruId" name="id">
+                    
+                    <div class="mb-4">
+                        <label class="form-label">
+                            <i class="bi bi-type"></i> Başlık *
+                        </label>
+                        <input type="text" name="baslik" id="duyuruBaslik" class="form-control" placeholder="Duyuru başlığını girin" required>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">
+                            <i class="bi bi-file-text"></i> İçerik
+                        </label>
+                        <textarea name="icerik" id="duyuruIcerik" class="form-control" rows="6" placeholder="Duyuru içeriğini girin..."></textarea>
+                    </div>
+                    
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">
+                                <i class="bi bi-calendar"></i> Tarih
+                            </label>
+                            <input type="date" name="tarih" id="duyuruTarih" class="form-control">
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">
+                                <i class="bi bi-sort-numeric-down"></i> Sıra
+                            </label>
+                            <input type="number" name="sira" id="duyuruSira" class="form-control" value="0" min="0">
+                            <small class="text-muted">Düşük sayı önce gösterilir</small>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">
+                                <i class="bi bi-toggle-on"></i> Durum
+                            </label>
+                            <select name="aktif" id="duyuruAktif" class="form-select">
+                                <option value="1" selected>Aktif</option>
+                                <option value="0">Pasif</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer" style="border: none; padding: 20px 30px;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 12px;">İptal</button>
+                <button type="button" class="btn btn-primary" onclick="saveDuyuru()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; border-radius: 12px; font-weight: 600;">
+                    <i class="bi bi-check-circle"></i> Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let duyuruModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    duyuruModal = new bootstrap.Modal(document.getElementById('duyuruModal'));
+});
+
+function showAddModal() {
+    document.getElementById('modalTitle').innerHTML = '<i class="bi bi-plus-circle"></i> Yeni Duyuru Ekle';
+    document.getElementById('duyuruForm').reset();
+    document.getElementById('duyuruId').value = '';
+    document.getElementById('duyuruTarih').value = new Date().toISOString().split('T')[0];
+    document.getElementById('duyuruAktif').value = '1';
+    duyuruModal.show();
+}
+
+function editDuyuru(duyuru) {
+    document.getElementById('modalTitle').innerHTML = '<i class="bi bi-pencil"></i> Duyuru Düzenle';
+    document.getElementById('duyuruId').value = duyuru.id;
+    document.getElementById('duyuruBaslik').value = duyuru.baslik || '';
+    document.getElementById('duyuruIcerik').value = duyuru.icerik || '';
+    document.getElementById('duyuruTarih').value = duyuru.tarih || new Date().toISOString().split('T')[0];
+    document.getElementById('duyuruSira').value = duyuru.sira || 0;
+    document.getElementById('duyuruAktif').value = duyuru.aktif ? '1' : '0';
+    duyuruModal.show();
+}
+
+async function saveDuyuru() {
+    const form = document.getElementById('duyuruForm');
+    const formData = new FormData(form);
+    const duyuruId = document.getElementById('duyuruId').value;
+    
+    const data = {
+        baslik: formData.get('baslik'),
+        icerik: formData.get('icerik'),
+        tarih: formData.get('tarih'),
+        sira: parseInt(formData.get('sira')) || 0,
+        aktif: formData.get('aktif') === '1'
+    };
+    
+    const url = duyuruId ? `/kurum/duyuru-guncelle/${duyuruId}` : '/kurum/duyuru-ekle';
+    const method = 'POST';
+    
+    const btn = event.target;
+    const btnText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Kaydediliyor...';
+    
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ ' + result.message);
+            location.reload();
+        } else {
+            alert('❌ ' + result.message);
+            btn.disabled = false;
+            btn.innerHTML = btnText;
+        }
+    } catch (error) {
+        console.error('Kaydetme hatası:', error);
+        alert('Bir hata oluştu!');
+        btn.disabled = false;
+        btn.innerHTML = btnText;
+    }
+}
+
+function deleteDuyuru(id, baslik) {
+    if (!confirm(`"${baslik}" duyurusunu silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz!`)) {
+        return;
+    }
+    
+    fetch(`/kurum/duyuru-sil/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ ' + data.message);
+            location.reload();
+        } else {
+            alert('❌ ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Silme hatası:', error);
+        alert('Bir hata oluştu!');
+    });
+}
+</script>
+
+<%- include('../partials/footer-dashboard') %>
+

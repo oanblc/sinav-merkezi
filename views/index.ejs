@@ -1,0 +1,498 @@
+<%- include('partials/header', {title: 'Ana Sayfa', user: typeof user !== 'undefined' ? user : null}) %>
+
+<%- include('partials/common-styles') %>
+<%- include('partials/index-styles') %>
+
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <div class="hero-content">
+                    <h1 class="hero-title">Türkiye'nin Simülasyon Sınav Merkezi</h1>
+                    <p class="hero-subtitle">
+                        30 yıllık eğitim tecrübesiyle, gerçek sınav ortamında öğrencilerimizi geleceğe hazırlıyoruz.
+                        LGS, YKS ve tüm sınavlar için profesyonel deneme sınavları.
+                    </p>
+                    <div class="mt-4">
+                        <a href="/register" class="btn btn-secondary btn-lg me-3">
+                            <i class="bi bi-person-plus me-2"></i>Hemen Kayıt Ol
+                        </a>
+                        <a href="/sinav-paketleri" class="btn btn-outline-light btn-lg">
+                            <i class="bi bi-book me-2"></i>Sınav Paketleri
+                        </a>
+                    </div>
+                    <div class="hero-stats">
+                        <div class="hero-stat">
+                            <span class="hero-stat-number"><%= istatistikler.ogrenci %></span>
+                            <span class="hero-stat-label">Aktif Öğrenci</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="hero-stat-number"><%= istatistikler.sinav %></span>
+                            <span class="hero-stat-label">Yapılan Sınav</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="hero-stat-number">30+</span>
+                            <span class="hero-stat-label">Yıllık Tecrübe</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Sınav Paketleri -->
+<section id="sinavlar" class="section bg-light">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Sınav Paketleri</h2>
+            <p class="section-subtitle">Size özel hazırlanmış sınav paketlerimiz</p>
+            <a href="/sinav-paketleri" class="btn btn-primary mt-3">
+                <i class="bi bi-arrow-right-circle me-2"></i>Tümünü Gör
+            </a>
+        </div>
+        
+        <% if ((satinAlinabilirSinavlar && satinAlinabilirSinavlar.length > 0) || (typeof sinavPaketleri !== 'undefined' && sinavPaketleri && sinavPaketleri.length > 0)) { %>
+        <!-- Sınavlar ve Paketler Grid -->
+        <div class="row g-4">
+            <% if (typeof sinavPaketleri !== 'undefined' && sinavPaketleri && sinavPaketleri.length > 0) { %>
+                <% sinavPaketleri.forEach(function(paket, paketIndex) { %>
+                    <div class="col-lg-4 col-md-6">
+                        <div class="pricing-card <%= paketIndex === 0 ? 'featured' : '' %>" style="border: 2px solid #06b6d4;">
+                            <% if (paketIndex === 0) { %>
+                            <div class="pricing-badge" style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);">
+                                <i class="bi bi-star-fill"></i> Paket
+                            </div>
+                            <% } %>
+                            
+                            <div class="pricing-header">
+                                <h3 class="pricing-title"><%= paket.ad %></h3>
+                                <p class="pricing-subtitle">
+                                    <%= paket.aciklama ? (paket.aciklama.length > 80 ? paket.aciklama.substring(0, 80) + '...' : paket.aciklama) : 'Sınav paketi' %>
+                                </p>
+                            </div>
+                            
+                            <div class="pricing-price">
+                                <span class="price-amount"><%= paket.fiyat ? paket.fiyat.toFixed(2) : '0.00' %></span>
+                                <span class="price-currency">₺</span>
+                                <div class="price-info">
+                                    <i class="bi bi-journals"></i> <%= paket.sinav_sayisi || 0 %> Sınav
+                                </div>
+                                <% if (paket.sinif) { %>
+                                <div class="price-info">
+                                    <i class="bi bi-person-workspace"></i> <%= paket.sinif %>. Sınıf
+                                </div>
+                                <% } %>
+                            </div>
+                            
+                            <div class="pricing-actions">
+                                <button class="pricing-btn primary" onclick="talepGonderPaket(<%= paket.id %>, '<%= paket.ad %>', 0)">
+                                    <i class="bi bi-send"></i>
+                                    <span>Talep Gönder</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                <% }); %>
+            <% } %>
+            
+            <% if (satinAlinabilirSinavlar && satinAlinabilirSinavlar.length > 0) { %>
+                <% satinAlinabilirSinavlar.forEach(function(sinav, sinavIndex) { %>
+                    <div class="col-lg-4 col-md-6">
+                        <div class="pricing-card <%= sinavIndex === 0 ? 'featured' : '' %>">
+                            <% if (sinavIndex === 0) { %>
+                            <div class="pricing-badge">
+                                <i class="bi bi-star-fill"></i> En Popüler
+                            </div>
+                            <% } %>
+                            
+                            <div class="pricing-header">
+                                <h3 class="pricing-title"><%= sinav.ad %></h3>
+                                <p class="pricing-subtitle">
+                                    <%= sinav.aciklama ? (sinav.aciklama.length > 80 ? sinav.aciklama.substring(0, 80) + '...' : sinav.aciklama) : '' %>
+                                </p>
+                            </div>
+                            
+                            <div class="pricing-price">
+                                <span class="price-amount"><%= sinav.fiyat %></span>
+                                <span class="price-currency">₺</span>
+                                <% if (sinav.sinif) { %>
+                                <div class="price-info">
+                                    <i class="bi bi-person-workspace"></i> <%= sinav.sinif %>
+                                </div>
+                                <% } %>
+                                <% if (sinav.ders) { %>
+                                <div class="price-info">
+                                    <i class="bi bi-book"></i> <%= sinav.ders %>
+                                </div>
+                                <% } %>
+                            </div>
+                            
+                            <%
+                                let ozellikler = sinav.ozellikler_parsed || [];
+                            %>
+                            <% if (ozellikler && ozellikler.length > 0) { %>
+                            <ul class="pricing-features">
+                                <% ozellikler.forEach(function(ozellik) { %>
+                                <li>
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    <span><%= ozellik %></span>
+                                </li>
+                                <% }); %>
+                            </ul>
+                            <% } %>
+                            
+                            <div class="pricing-actions">
+                                <button class="pricing-btn primary" onclick="talepGonder(<%= sinav.id %>, '<%= sinav.ad %>', <%= sinav.fiyat %>)">
+                                    <i class="bi bi-send"></i>
+                                    <span>Talep Gönder</span>
+                                </button>
+                                <a href="/sinav-paketleri" class="pricing-btn secondary">
+                                    <i class="bi bi-eye"></i>
+                                    <span>Tümünü Gör</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <% }); %>
+            <% } %>
+        </div>
+        <% } else { %>
+            <div class="empty-state">
+                <i class="bi bi-box-seam"></i>
+                <h5>Henüz satın alınabilecek sınav paketi bulunmamaktadır.</h5>
+            </div>
+        <% } %>
+    </div>
+</section>
+
+<!-- Özellikler -->
+<section class="section">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Neden Biz?</h2>
+            <p class="section-subtitle">Gerçek sınav deneyimi için profesyonel çözümler</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="info-card">
+                    <div class="info-card-icon">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <h3 class="info-card-title">Gerçek Sınav Ortamı</h3>
+                    <p class="info-card-text">
+                        MEB & ÖSYM standartlarında, gerçek sınav koşullarıyla birebir aynı ortamda sınavlar.
+                        Giriş belgesinden güvenliğe her detay gerçek gibi.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="info-card">
+                    <div class="info-card-icon">
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </div>
+                    <h3 class="info-card-title">Detaylı Analizler</h3>
+                    <p class="info-card-text">
+                        Sınav sonrası detaylı karneler, net analizleri ve branş bazlı performans raporları.
+                        Eksiklerinizi görerek başarınızı artırın.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="info-card">
+                    <div class="info-card-icon">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                    <h3 class="info-card-title">Deneyimli Kadro</h3>
+                    <p class="info-card-text">
+                        30 yıllık eğitim tecrübesi, profesyonel gözetmenler ve uzman ekibimizle
+                        yanınızdayız.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Duyurular -->
+<section id="duyurular" class="section bg-light">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Duyurular</h2>
+            <p class="section-subtitle">En son haberler ve önemli duyurular</p>
+            <a href="/duyurular" class="btn btn-primary mt-3">
+                <i class="bi bi-arrow-right-circle me-2"></i>Tümünü Gör
+            </a>
+        </div>
+        <div class="row g-3">
+            <% if (duyurular && duyurular.length > 0) { %>
+                <% duyurular.forEach(function(duyuru) { %>
+                <div class="col-12">
+                    <div class="content-card" style="overflow: visible;">
+                        <div class="content-card-body" style="padding: 24px; display: flex; justify-content: space-between; align-items: center;">
+                            <div style="flex: 1;">
+                                <h5 class="content-card-title mb-2" style="font-size: 1.2rem;"><%= duyuru.baslik %></h5>
+                                <p class="content-card-text mb-0">
+                                    <%= duyuru.icerik %>
+                                </p>
+                            </div>
+                            <% if (duyuru.tarih) { %>
+                            <div class="content-card-meta ms-3" style="white-space: nowrap;">
+                                <span><i class="bi bi-calendar-event"></i> <%= new Date(duyuru.tarih).toLocaleDateString('tr-TR') %></span>
+                            </div>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+                <% }); %>
+            <% } else { %>
+                <div class="col-12">
+                    <div class="empty-state">
+                        <i class="bi bi-megaphone"></i>
+                        <h5>Henüz duyuru bulunmamaktadır.</h5>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta-section">
+    <div class="container">
+        <div class="cta-content">
+            <h2 class="cta-title">Başarınız İçin Yanınızdayız</h2>
+            <p class="cta-text">
+                Hemen kaydolun ve gerçek sınav deneyimini yaşayın.
+                30 yıllık tecrübemizle öğrencilerimizi başarıya taşıyoruz.
+            </p>
+            <a href="/register" class="btn btn-secondary btn-lg me-3">
+                <i class="bi bi-person-plus me-2"></i>Ücretsiz Kayıt Ol
+            </a>
+            <a href="/login" class="btn btn-outline-light btn-lg">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Giriş Yap
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Talep Modal (Giriş Yapmamış Kullanıcılar İçin) -->
+<div class="modal fade" id="requestModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 24px; border: none; overflow: hidden;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); color: white; border: none; padding: 24px;">
+                <h5 class="modal-title">
+                    <i class="bi bi-send"></i> Talep Gönder
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 30px;">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                        <i class="bi bi-file-earmark-text" style="font-size: 2.5rem; color: #06b6d4;"></i>
+                    </div>
+                    <h4 id="modalSinavAd" style="font-weight: 700; color: #1e293b; margin-bottom: 12px;"></h4>
+                    <p style="color: #64748b; font-size: 0.9rem;">
+                        <i class="bi bi-info-circle"></i> Talep göndermek için bilgilerinizi girin
+                    </p>
+                </div>
+                
+                <form id="requestForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" style="font-weight: 600; color: #1e293b;">Ad Soyad *</label>
+                            <input type="text" class="form-control" id="ad_soyad" required 
+                                   style="border-radius: 12px; border: 2px solid #e2e8f0; padding: 12px;"
+                                   placeholder="Adınız Soyadınız">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" style="font-weight: 600; color: #1e293b;">Telefon *</label>
+                            <input type="tel" class="form-control" id="telefon" required 
+                                   style="border-radius: 12px; border: 2px solid #e2e8f0; padding: 12px;"
+                                   placeholder="0555 555 55 55">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label" style="font-weight: 600; color: #1e293b;">
+                            Talep Açıklaması <span class="text-muted">(İsteğe Bağlı)</span>
+                        </label>
+                        <textarea class="form-control" id="aciklama" rows="3" 
+                                  style="border-radius: 12px; border: 2px solid #e2e8f0; padding: 12px;"
+                                  placeholder="Talebiniz hakkında ek bilgi verebilirsiniz..."></textarea>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                        <p style="color: #1e40af; margin: 0; font-size: 0.85rem;">
+                            <i class="bi bi-shield-check"></i> Talebiniz kuruma iletilecektir.
+                        </p>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary flex-grow-1" data-bs-dismiss="modal" style="border-radius: 12px; padding: 12px;">
+                            İptal
+                        </button>
+                        <button type="submit" class="btn btn-primary flex-grow-1" style="border-radius: 12px; padding: 12px;">
+                            <i class="bi bi-send"></i> Talep Gönder
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Başarı Modal -->
+<div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 24px; border: none; overflow: hidden;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none;">
+                <h5 class="modal-title">
+                    <i class="bi bi-check-circle"></i> Talep Gönderildi!
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div style="text-align: center; padding: 20px;">
+                    <div style="width: 100px; height: 100px; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
+                        <i class="bi bi-check-circle-fill" style="font-size: 3rem; color: #059669;"></i>
+                    </div>
+                    <p id="successMessage" style="color: #1e293b; font-size: 1.1rem; margin-bottom: 24px;"></p>
+                    <button type="button" class="btn btn-success" data-bs-dismiss="modal" style="border-radius: 12px; padding: 12px 24px;">
+                        <i class="bi bi-check"></i> Tamam
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>
+
+<script>
+    // Talep gönderme değişkenleri
+    let currentSinavId = null;
+    let currentPaketId = null;
+    let isPaketTalep = false;
+    
+    // Talep gönderme fonksiyonları
+    function talepGonder(sinavId, sinavAd, fiyat) {
+        currentSinavId = sinavId;
+        currentPaketId = null;
+        isPaketTalep = false;
+        
+        document.getElementById('modalSinavAd').textContent = sinavAd;
+        const modal = new bootstrap.Modal(document.getElementById('requestModal'));
+        modal.show();
+    }
+    
+    function talepGonderPaket(paketId, paketAd, fiyat) {
+        currentSinavId = null;
+        currentPaketId = paketId;
+        isPaketTalep = true;
+        
+        document.getElementById('modalSinavAd').textContent = paketAd + ' (Paket)';
+        const modal = new bootstrap.Modal(document.getElementById('requestModal'));
+        modal.show();
+    }
+    
+    // Talep formu submit
+    const requestForm = document.getElementById('requestForm');
+    if (requestForm) {
+        requestForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!currentSinavId && !currentPaketId) return;
+            
+            const ad_soyad = document.getElementById('ad_soyad').value.trim();
+            const telefon = document.getElementById('telefon').value.trim();
+            const aciklama = document.getElementById('aciklama').value.trim();
+            
+            if (!ad_soyad || !telefon) {
+                alert('❌ Lütfen tüm zorunlu alanları doldurun!');
+                return;
+            }
+            
+            try {
+                const url = isPaketTalep ? '/paket-talep-gonder' : '/sinav-talep-gonder';
+                const body = isPaketTalep ? {
+                    paket_id: currentPaketId,
+                    ad_soyad: ad_soyad,
+                    telefon: telefon,
+                    aciklama: aciklama
+                } : {
+                    sinav_id: currentSinavId,
+                    ad_soyad: ad_soyad,
+                    telefon: telefon,
+                    aciklama: aciklama
+                };
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+                
+                const data = await response.json();
+                
+                const requestModal = bootstrap.Modal.getInstance(document.getElementById('requestModal'));
+                requestModal.hide();
+                
+                if (data.success) {
+                    document.getElementById('successMessage').textContent = data.message;
+                    const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                    successModal.show();
+                    
+                    requestForm.reset();
+                } else {
+                    alert('❌ ' + data.message);
+                }
+            } catch (error) {
+                console.error('Talep gönderme hatası:', error);
+                alert('❌ Talep gönderilirken bir hata oluştu!');
+            }
+        });
+    }
+    
+    // Exam Category Tab Navigation
+    document.addEventListener('DOMContentLoaded', function() {
+        const categoryBtns = document.querySelectorAll('.exam-category-btn');
+        const categoryContents = document.querySelectorAll('.exam-category-content');
+        
+        categoryBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const category = this.getAttribute('data-category');
+                
+                // Remove active class from all buttons
+                categoryBtns.forEach(b => b.classList.remove('active'));
+                // Add active class to clicked button
+                this.classList.add('active');
+                
+                // Hide all contents
+                categoryContents.forEach(content => content.classList.remove('active'));
+                // Show selected content
+                const selectedContent = document.querySelector(`.exam-category-content[data-category="${category}"]`);
+                if (selectedContent) {
+                    selectedContent.classList.add('active');
+                }
+            });
+        });
+    });
+
+    // Smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+</script>

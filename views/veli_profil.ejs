@@ -1,0 +1,412 @@
+<%- include('partials/header-dashboard', { title: 'Profilim - Sınav Merkezi', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(6, 182, 212, 0.3);
+    }
+    
+    .profile-card {
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+        overflow: hidden;
+        margin-bottom: 30px;
+    }
+    
+    .profile-header {
+        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        padding: 40px;
+        text-align: center;
+        color: white;
+    }
+    
+    .profile-avatar {
+        width: 120px;
+        height: 120px;
+        background: white;
+        border-radius: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 3rem;
+        font-weight: 800;
+        color: #06b6d4;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    }
+    
+    .profile-body {
+        padding: 40px;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 12px;
+        font-size: 0.95rem;
+    }
+    
+    .form-control-modern {
+        border: 2px solid #e8ecf0;
+        border-radius: 12px;
+        padding: 14px 20px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control-modern:focus {
+        border-color: #06b6d4;
+        box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.1);
+        outline: none;
+    }
+    
+    .input-icon {
+        position: absolute;
+        left: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #64748b;
+        font-size: 1.1rem;
+    }
+    
+    .input-with-icon {
+        padding-left: 50px !important;
+    }
+    
+    .btn-update {
+        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        border: none;
+        padding: 14px 40px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: white;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-update:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(6, 182, 212, 0.4);
+        color: white;
+    }
+    
+    .info-card {
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        border: 2px solid #93c5fd;
+        border-radius: 16px;
+        padding: 24px;
+    }
+    
+    .stat-mini {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    
+    .stat-mini h3 {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #06b6d4;
+        margin: 0;
+    }
+    
+    .stat-mini p {
+        margin: 8px 0 0;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 style="font-weight: 800; margin-bottom: 8px;">
+                    <i class="bi bi-person-circle"></i> Profilim
+                </h1>
+                <p style="opacity: 0.9; margin: 0;">Kişisel bilgilerinizi görüntüleyin ve güncelleyin</p>
+            </div>
+            <a href="/veli/dashboard" class="btn btn-light btn-lg" style="border-radius: 12px; font-weight: 600;">
+                <i class="bi bi-arrow-left"></i> Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<% if (error) { %>
+<div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: 12px;">
+    <i class="bi bi-exclamation-triangle"></i> <%= error %>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<% } %>
+
+<% if (success) { %>
+<div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 12px;">
+    <i class="bi bi-check-circle"></i> <%= success %>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<% } %>
+
+<div class="row">
+    <!-- Profil Kartı -->
+    <div class="col-lg-8">
+        <div class="profile-card">
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    <% if (kullanici.ad_soyad) { %>
+                        <%= kullanici.ad_soyad.split(' ').map(n => n.charAt(0)).join('').toUpperCase() %>
+                    <% } else { %>
+                        <%= kullanici.username.charAt(0).toUpperCase() %>
+                    <% } %>
+                </div>
+                <h3 style="font-weight: 700; margin-bottom: 8px;">
+                    <%= kullanici.ad_soyad || kullanici.username %>
+                </h3>
+                <p style="opacity: 0.9; margin: 0;">
+                    <i class="bi bi-person-badge"></i> Veli
+                </p>
+            </div>
+            
+            <div class="profile-body">
+                <form method="POST" action="/veli/profil">
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label">
+                                <i class="bi bi-person"></i> Ad Soyad <span class="text-danger">*</span>
+                            </label>
+                            <div class="position-relative">
+                                <i class="input-icon bi bi-person-fill"></i>
+                                <input type="text" name="ad_soyad" class="form-control form-control-modern input-with-icon" 
+                                       value="<%= kullanici.ad_soyad || '' %>" placeholder="Adınız Soyadınız" required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label">
+                                <i class="bi bi-telephone"></i> Telefon
+                            </label>
+                            <div class="position-relative">
+                                <i class="input-icon bi bi-telephone-fill"></i>
+                                <input type="tel" name="telefon" class="form-control form-control-modern input-with-icon" 
+                                       value="<%= kullanici.telefon || '' %>" placeholder="0555 555 55 55">
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label">
+                                <i class="bi bi-person-badge"></i> Kullanıcı Adı
+                            </label>
+                            <div class="position-relative">
+                                <i class="input-icon bi bi-person-badge-fill"></i>
+                                <input type="text" class="form-control form-control-modern input-with-icon" 
+                                       value="<%= kullanici.username %>" disabled style="background: #f8fafc;">
+                            </div>
+                            <small class="text-muted">Kullanıcı adı değiştirilemez</small>
+                        </div>
+
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label">
+                                <i class="bi bi-envelope"></i> E-posta
+                            </label>
+                            <div class="position-relative">
+                                <i class="input-icon bi bi-envelope-fill"></i>
+                                <input type="email" class="form-control form-control-modern input-with-icon" 
+                                       value="<%= kullanici.email %>" disabled style="background: #f8fafc;">
+                            </div>
+                            <small class="text-muted">E-posta değiştirilemez</small>
+                        </div>
+                    </div>
+
+                    <!-- Şifre Değiştirme Bölümü -->
+                    <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #fbbf24; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                        <h6 style="color: #92400e; font-weight: 700; margin-bottom: 16px;">
+                            <i class="bi bi-shield-lock"></i> Şifre Değiştir
+                        </h6>
+                        <p class="small text-muted mb-3">Şifrenizi değiştirmek isterseniz aşağıdaki alanı doldurun. Boş bırakırsanız mevcut şifreniz değişmez.</p>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    <i class="bi bi-key"></i> Mevcut Şifre
+                                </label>
+                                <div class="position-relative">
+                                    <i class="input-icon bi bi-key-fill"></i>
+                                    <input type="password" name="current_password" id="current_password" class="form-control form-control-modern input-with-icon" 
+                                           placeholder="Mevcut şifreniz">
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    <i class="bi bi-key"></i> Yeni Şifre
+                                </label>
+                                <div class="position-relative">
+                                    <i class="input-icon bi bi-key-fill"></i>
+                                    <input type="password" name="new_password" id="new_password" class="form-control form-control-modern input-with-icon" 
+                                           placeholder="Yeni şifreniz (min. 6 karakter)">
+                                </div>
+                            </div>
+                        </div>
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle"></i> 
+                            Şifre değiştirmek için önce mevcut şifrenizi girmelisiniz.
+                        </small>
+                    </div>
+
+                    <div class="d-flex gap-3 mt-4">
+                        <button type="submit" class="btn btn-update flex-grow-1">
+                            <i class="bi bi-check-circle"></i> Profili Güncelle
+                        </button>
+                        <a href="/veli/dashboard" class="btn btn-outline-secondary" style="padding: 14px 32px; border-radius: 12px; font-weight: 600;">
+                            İptal
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Yan Bilgiler -->
+    <div class="col-lg-4">
+        <div class="info-card mb-4">
+            <h5 style="color: #1e40af; font-weight: 700; margin-bottom: 16px;">
+                <i class="bi bi-info-circle-fill"></i> Hesap Bilgileri
+            </h5>
+            <div style="color: #1e40af;">
+                <p style="margin-bottom: 12px;">
+                    <strong>Kullanıcı Adı:</strong><br>
+                    <span style="font-size: 1.1rem; font-weight: 600;"><%= kullanici.username %></span>
+                </p>
+                <p style="margin-bottom: 12px;">
+                    <strong>Hesap Türü:</strong><br>
+                    <span class="badge bg-primary" style="font-size: 0.9rem;">Veli</span>
+                </p>
+                <p style="margin: 0;">
+                    <strong>Kayıt Tarihi:</strong><br>
+                    <%= new Date(kullanici.created_at).toLocaleDateString('tr-TR') %>
+                </p>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-12">
+                <div class="stat-mini">
+                    <i class="bi bi-calendar-check" style="font-size: 2rem; color: #06b6d4; margin-bottom: 8px;"></i>
+                    <h3><%= Math.floor((new Date() - new Date(kullanici.created_at)) / (1000 * 60 * 60 * 24)) %></h3>
+                    <p>Gün Sistemde</p>
+                </div>
+            </div>
+        </div>
+
+        <div style="background: white; border-radius: 16px; padding: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); margin-top: 20px;">
+            <h6 style="font-weight: 700; color: #1e293b; margin-bottom: 12px;">
+                <i class="bi bi-shield-check text-success"></i> Güvenlik
+            </h6>
+            <p style="color: #64748b; margin: 0; font-size: 0.9rem;">
+                Şifrenizi düzenli olarak değiştirmeniz önerilir. Şifre değiştirme özelliği yakında eklenecektir.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Talep Edilen Sınavlar -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div style="background: white; border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.08); overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); padding: 30px; color: white;">
+                <h3 style="font-weight: 800; margin-bottom: 8px;">
+                    <i class="bi bi-send-check"></i> Talep Edilen Sınavlar
+                </h3>
+                <p style="opacity: 0.9; margin: 0;">Sınav erişimi için gönderdiğiniz talepler</p>
+            </div>
+            
+            <div style="padding: 30px;">
+                <% if (talepEdilenSinavlar && talepEdilenSinavlar.length > 0) { %>
+                    <div class="row g-4">
+                        <% talepEdilenSinavlar.forEach(sinav => { %>
+                            <div class="col-md-6 col-lg-4">
+                                <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 2px solid #bae6fd; border-radius: 16px; padding: 24px; height: 100%; transition: all 0.3s ease; cursor: pointer;" 
+                                     onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 32px rgba(6, 182, 212, 0.2)'" 
+                                     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                                        <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                            <i class="bi bi-file-earmark-text" style="font-size: 1.8rem; color: white;"></i>
+                                        </div>
+                                        <% if (sinav.durum === 'beklemede') { %>
+                                            <span class="badge bg-warning text-dark" style="font-size: 0.85rem; padding: 6px 12px; border-radius: 8px;">
+                                                <i class="bi bi-clock"></i> Beklemede
+                                            </span>
+                                        <% } else if (sinav.durum === 'onaylandi') { %>
+                                            <span class="badge bg-success" style="font-size: 0.85rem; padding: 6px 12px; border-radius: 8px;">
+                                                <i class="bi bi-check-circle"></i> Onaylandı
+                                            </span>
+                                        <% } else if (sinav.durum === 'reddedildi') { %>
+                                            <span class="badge bg-danger" style="font-size: 0.85rem; padding: 6px 12px; border-radius: 8px;">
+                                                <i class="bi bi-x-circle"></i> Reddedildi
+                                            </span>
+                                        <% } %>
+                                    </div>
+                                    
+                                    <h5 style="font-weight: 700; color: #0c4a6e; margin-bottom: 12px;">
+                                        <%= sinav.ad %>
+                                    </h5>
+                                    
+                                    <div style="display: flex; align-items: center; gap: 8px; color: #0369a1; margin-bottom: 8px;">
+                                        <i class="bi bi-calendar-event"></i>
+                                        <span style="font-size: 0.9rem;">
+                                            <%= new Date(sinav.tarih).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) %>
+                                        </span>
+                                    </div>
+                                    
+                                    <div style="display: flex; align-items: center; gap: 8px; color: #0369a1; margin-bottom: 16px;">
+                                        <i class="bi bi-clock-history"></i>
+                                        <span style="font-size: 0.9rem;">
+                                            Talep: <%= new Date(sinav.talep_tarihi).toLocaleDateString('tr-TR') %>
+                                        </span>
+                                    </div>
+                                    
+                                    <% if (sinav.yanit) { %>
+                                    <div style="padding-top: 16px; border-top: 2px solid #7dd3fc; margin-top: 12px;">
+                                        <div style="background: #ffffff; border-radius: 8px; padding: 12px;">
+                                            <div style="font-weight: 600; color: #0c4a6e; margin-bottom: 4px; font-size: 0.85rem;">
+                                                <i class="bi bi-chat-left-text"></i> Yanıt:
+                                            </div>
+                                            <div style="color: #0369a1; font-size: 0.9rem;">
+                                                <%= sinav.yanit %>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <% } %>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                <% } else { %>
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <div style="width: 120px; height: 120px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 24px; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
+                            <i class="bi bi-inbox" style="font-size: 3.5rem; color: #06b6d4;"></i>
+                        </div>
+                        <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 12px;">
+                            Henüz Talep Gönderilmedi
+                        </h4>
+                        <p style="color: #64748b; margin-bottom: 24px;">
+                            Sınav paketleri sayfasından sınav erişimi için talep gönderebilirsiniz.
+                        </p>
+                        <a href="/sinav-paketleri" class="btn btn-lg" style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); border: none; border-radius: 12px; font-weight: 600; color: white; padding: 14px 32px;">
+                            <i class="bi bi-journals"></i> Sınav Paketleri
+                        </a>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer-dashboard') %>
+

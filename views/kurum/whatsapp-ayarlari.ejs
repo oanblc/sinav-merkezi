@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Ayarları - Sınav Merkezi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --whatsapp-primary: #25D366;
+            --whatsapp-secondary: #128C7E;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            min-height: 100vh;
+            padding: 40px 0;
+        }
+        
+        .whatsapp-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .whatsapp-header {
+            background: linear-gradient(135deg, var(--whatsapp-primary) 0%, var(--whatsapp-secondary) 100%);
+            color: white;
+            border-radius: 24px 24px 0 0;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .whatsapp-logo {
+            font-size: 4rem;
+            margin-bottom: 16px;
+        }
+        
+        .whatsapp-body {
+            background: white;
+            border-radius: 0 0 24px 24px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+        
+        .form-control, .form-select {
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+            padding: 12px 16px;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--whatsapp-primary);
+            box-shadow: 0 0 0 4px rgba(37, 211, 102, 0.1);
+        }
+        
+        .form-check-input:checked {
+            background-color: var(--whatsapp-primary);
+            border-color: var(--whatsapp-primary);
+        }
+        
+        .form-check {
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .form-check:hover {
+            border-color: var(--whatsapp-primary);
+        }
+        
+        .btn-save {
+            background: linear-gradient(135deg, var(--whatsapp-primary) 0%, var(--whatsapp-secondary) 100%);
+            border: none;
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(37, 211, 102, 0.3);
+            color: white;
+        }
+        
+        .info-box {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            border: 2px solid #93c5fd;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 30px;
+        }
+        
+        .info-box h5 {
+            color: #1e40af;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        
+        .info-box p {
+            color: #1e40af;
+            margin: 0;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .status-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-inactive {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container whatsapp-container">
+        <!-- Header -->
+        <div class="whatsapp-header">
+            <div class="whatsapp-logo">
+                <i class="bi bi-whatsapp"></i>
+            </div>
+            <h1 style="font-weight: 800; margin-bottom: 8px;">WhatsApp API Ayarları</h1>
+            <p style="opacity: 0.9; margin: 0;">Talep bildirimleri için WhatsApp entegrasyonunu yapılandırın</p>
+        </div>
+        
+        <div class="whatsapp-body">
+            <!-- Navigation -->
+            <div class="mb-4">
+                <a href="/kurum/dashboard" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Kurum Paneline Dön
+                </a>
+            </div>
+            
+            <!-- Alerts -->
+            <% if (error) { %>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle"></i> <%= error %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <% } %>
+            
+            <% if (success) { %>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="bi bi-check-circle"></i> <%= success %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <% } %>
+            
+            <!-- Status -->
+            <div class="text-center mb-4">
+                <span class="status-badge <%= ayarlar.aktif ? 'status-active' : 'status-inactive' %>">
+                    <i class="bi <%= ayarlar.aktif ? 'bi-check-circle' : 'bi-x-circle' %>"></i>
+                    <%= ayarlar.aktif ? 'Aktif' : 'Pasif' %>
+                </span>
+            </div>
+            
+            <!-- Info Box -->
+            <div class="info-box">
+                <h5><i class="bi bi-info-circle"></i> Whapi.cloud Kurulum Rehberi</h5>
+                <p>
+                    <strong>🚀 Kurulum Adımları:</strong><br>
+                    1. <a href="https://whapi.cloud/tr/docs" target="_blank" style="color: #1e40af; font-weight: 600;">whapi.cloud</a> sitesine gidin ve ücretsiz hesap oluşturun (5 gün deneme)<br>
+                    2. Dashboard'dan yeni bir kanal oluşturun ve WhatsApp'ı bağlayın<br>
+                    3. API Token'ınızı kopyalayın (Settings → API Token)<br>
+                    4. Aşağıdaki formu doldurun ve kaydedin<br>
+                    5. "Test Mesajı Gönder" ile kontrol edin<br><br>
+                    
+                    <strong>📱 API URL:</strong> <code>https://gate.whapi.cloud/messages/text</code><br>
+                    <strong>📞 Telefon Formatı:</strong> +90 ile başlamalı (örn: +905551234567)<br><br>
+                    
+                    <strong>✅ Entegrasyon Tamamlandı!</strong> Whapi.cloud API artık sisteminizde aktif.
+                </p>
+            </div>
+            
+            <!-- Form -->
+            <form method="POST" action="/kurum/whatsapp-ayarlari">
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-link-45deg"></i> API URL
+                        </label>
+                        <input type="url" name="api_url" class="form-control" 
+                               value="<%= ayarlar.api_url || 'https://gate.whapi.cloud/messages/text' %>" 
+                               placeholder="https://gate.whapi.cloud/messages/text">
+                        <small class="text-muted">Whapi.cloud API endpoint adresi (varsayılan doğru)</small>
+                    </div>
+                    
+                    <div class="col-12 mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-key"></i> API Token *
+                        </label>
+                        <input type="text" name="api_token" class="form-control" 
+                               value="<%= ayarlar.api_token || '' %>" 
+                               placeholder="your_whapi_token_here"
+                               required>
+                        <small class="text-muted">Whapi.cloud Dashboard → Settings → API Token (Bearer token)</small>
+                    </div>
+                    
+                    <div class="col-12 mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-telephone"></i> Alıcı Telefon Numarası *
+                        </label>
+                        <input type="tel" name="phone_number" class="form-control" 
+                               value="<%= ayarlar.phone_number || '' %>" 
+                               placeholder="+905551234567"
+                               pattern="^\+90[0-9]{10}$"
+                               required>
+                        <small class="text-muted">
+                            Talep bildirimlerinin gönderileceği numara (+90 ile başlamalı, örn: +905551234567)
+                        </small>
+                    </div>
+                    
+                    <div class="col-12 mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="aktif" id="aktif" 
+                                   <%= ayarlar.aktif ? 'checked' : '' %>>
+                            <label class="form-check-label" for="aktif">
+                                <strong><i class="bi bi-power"></i> Sistemi Aktif Et</strong>
+                                <br>
+                                <small class="text-muted">
+                                    İşaretlendiğinde yeni talep bildirimleri WhatsApp'a gönderilecektir
+                                </small>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="d-flex gap-3">
+                    <button type="submit" class="btn btn-save flex-grow-1">
+                        <i class="bi bi-check-circle"></i> Ayarları Kaydet
+                    </button>
+                    <a href="/kurum/dashboard" class="btn btn-outline-secondary" style="padding: 14px 32px; border-radius: 12px; font-weight: 600;">
+                        İptal
+                    </a>
+                </div>
+            </form>
+            
+            <!-- Test Section -->
+            <div style="margin-top: 40px; padding-top: 40px; border-top: 2px solid #e2e8f0;">
+                <h5 style="font-weight: 700; color: #1e293b; margin-bottom: 16px;">
+                    <i class="bi bi-lightning"></i> Test Bildirimi
+                </h5>
+                <p style="color: #64748b; margin-bottom: 20px;">
+                    Ayarlarınızı test etmek için bir deneme bildirimi gönderin
+                </p>
+                <button type="button" class="btn btn-outline-success" onclick="testBildirim()">
+                    <i class="bi bi-send"></i> Test Mesajı Gönder
+                </button>
+                <div id="testResult" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        async function testBildirim() {
+            const resultDiv = document.getElementById('testResult');
+            resultDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Test mesajı gönderiliyor...</div>';
+            
+            try {
+                const response = await fetch('/kurum/whatsapp-test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success alert-dismissible fade show">
+                            <i class="bi bi-check-circle"></i> ${data.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-danger alert-dismissible fade show">
+                            <i class="bi bi-x-circle"></i> ${data.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger alert-dismissible fade show">
+                        <i class="bi bi-x-circle"></i> Test mesajı gönderilemedi: ${error.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
+

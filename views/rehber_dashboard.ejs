@@ -1,0 +1,220 @@
+<%- include('partials/header-dashboard', { title: 'Rehber Öğretmen Paneli - Sınav Merkezi', user: user }) %>
+
+<style>
+    /* Modern Dashboard Styles */
+    .dashboard-header {
+        background: linear-gradient(135deg, #003b78 0%, #0056b3 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(0,59,120,0.15);
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        border: none !important;
+    }
+    
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 150px;
+        height: 150px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+        border-radius: 0 20px 0 100%;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+    }
+    
+    .stat-card.blue {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .stat-card.cyan {
+        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        color: white;
+    }
+    
+    .stat-card.red {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+    
+    .stat-card.green {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    
+    .stat-icon {
+        width: 64px;
+        height: 64px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        margin-bottom: 16px;
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin: 8px 0;
+        line-height: 1;
+    }
+    
+    .stat-label {
+        font-size: 0.95rem;
+        opacity: 0.9;
+        font-weight: 500;
+    }
+    
+    .action-card {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        text-align: center;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        border: 2px solid transparent;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .action-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        border-color: #003b78;
+    }
+    
+    .action-card i {
+        font-size: 2.5rem;
+        margin-bottom: 12px;
+        color: #003b78;
+    }
+    
+    .action-card.blue { border-color: #667eea; }
+    .action-card.blue:hover { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .action-card.blue:hover i { color: white; }
+    
+    .action-card.cyan { border-color: #06b6d4; }
+    .action-card.cyan:hover { background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); color: white; }
+    .action-card.cyan:hover i { color: white; }
+    
+    .action-card.green { border-color: #10b981; }
+    .action-card.green:hover { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
+    .action-card.green:hover i { color: white; }
+    
+    .action-card[style*="#8b5cf6"]:hover {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: white;
+    }
+    .action-card[style*="#8b5cf6"]:hover i {
+        color: white !important;
+    }
+    
+</style>
+
+<!-- Dashboard Header -->
+<div class="dashboard-header">
+    <div class="container">
+        <h1 style="font-weight: 800; margin-bottom: 8px;">
+            <i class="bi bi-clipboard-data"></i> Rehber Öğretmen Paneli
+        </h1>
+        <p style="opacity: 0.9; margin: 0;">Hoş geldiniz, <%= user.username %>! Öğrencilerinizi ve sınavları yönetin.</p>
+    </div>
+</div>
+
+<!-- İstatistik Kartları -->
+<div class="row g-4 mb-5">
+    <div class="col-md-4">
+        <div class="stat-card blue">
+            <div class="stat-icon">
+                <i class="bi bi-people-fill"></i>
+            </div>
+            <div class="stat-number"><%= istatistikler.ogrenci %></div>
+            <div class="stat-label">Toplam Öğrenci</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card cyan">
+            <div class="stat-icon">
+                <i class="bi bi-person-lines-fill"></i>
+            </div>
+            <div class="stat-number"><%= istatistikler.veli %></div>
+            <div class="stat-label">Toplam Veli</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <a href="/rehber/sinav-sonuclari" style="text-decoration: none; color: inherit;">
+            <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; cursor: pointer;">
+                <div class="stat-icon" style="background: rgba(255,255,255,0.2);">
+                    <i class="bi bi-file-earmark-pdf-fill"></i>
+                </div>
+                <div class="stat-number"><%= istatistikler.sinavSonucSayisi || 0 %></div>
+                <div class="stat-label">Sınav Sonuçları</div>
+                <small style="opacity: 0.9; font-size: 0.85rem; margin-top: 8px; display: block;">
+                    <i class="bi bi-arrow-right-circle"></i> İncele
+                </small>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Yönetim Butonları -->
+<div class="row g-4 mb-5">
+    <div class="col-md-3">
+        <a href="/rehber/profil" class="action-card" style="border-color: #8b5cf6;">
+            <i class="bi bi-person-circle" style="color: #8b5cf6;"></i>
+            <h5 style="margin: 0; font-weight: 600;">Profilim</h5>
+            <small style="opacity: 0.7;">Profil bilgilerinizi düzenleyin</small>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="/rehber/ogrenciler" class="action-card blue">
+            <i class="bi bi-people-fill"></i>
+            <h5 style="margin: 0; font-weight: 600;">Öğrenci Listesi</h5>
+            <small style="opacity: 0.7;">Tüm öğrencileri görüntüle</small>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="/rehber/veliler" class="action-card cyan">
+            <i class="bi bi-person-lines-fill"></i>
+            <h5 style="margin: 0; font-weight: 600;">Veli İletişim</h5>
+            <small style="opacity: 0.7;">Veli listesi ve iletişim</small>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="/rehber/talepler" class="action-card" style="border-color: #f59e0b; position: relative;">
+            <i class="bi bi-inbox-fill" style="color: #f59e0b;"></i>
+            <h5 style="margin: 0; font-weight: 600;">
+                Gelen Talepler
+                <% if (istatistikler.bekleyenTalep > 0) { %>
+                <span class="badge bg-danger ms-2" style="font-size: 0.7rem;"><%= istatistikler.bekleyenTalep %></span>
+                <% } %>
+            </h5>
+            <small style="opacity: 0.7;">Size gönderilen talepleri görüntüle</small>
+        </a>
+    </div>
+</div>
+
+<%- include('partials/footer-dashboard') %>

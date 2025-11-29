@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Sınav Sonuçları - {{ ogrenci.ad_soyad }} - Sınav Merkezi{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="bi bi-clipboard-data"></i> {{ ogrenci.ad_soyad }} - Sınav Sonuçları
+        </h2>
+        <a href="{{ url_for('veli_dashboard') }}" class="btn btn-secondary mb-3">
+            <i class="bi bi-arrow-left"></i> Geri Dön
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        {% if sinav_sonuclari %}
+            {% for sinav_id, sinav_data in sinav_sonuclari.items() %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-file-earmark-text"></i> {{ sinav_data.sinav.ad }}
+                        <small class="text-muted">({{ sinav_data.sinav.tarih.strftime('%d.%m.%Y') }})</small>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for sonuc in sinav_data.sonuclar %}
+                    <div class="mb-3">
+                        <h6>Sayfa {{ sonuc.sayfa_no }}</h6>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm">
+                                {% set veri = sonuc.sonuc_verisi|from_json %}
+                                {% if veri %}
+                                <thead>
+                                    <tr>
+                                        {% for key in veri.keys() %}
+                                        <th>{{ key }}</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        {% for value in veri.values() %}
+                                        <td>{{ value }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                </tbody>
+                                {% else %}
+                                <tbody>
+                                    <tr>
+                                        <td colspan="100%" class="text-center text-muted">Veri bulunamadı</td>
+                                    </tr>
+                                </tbody>
+                                {% endif %}
+                            </table>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> Bu öğrenci için henüz sınav sonucu bulunmamaktadır.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// JSON parse için filter
+document.addEventListener('DOMContentLoaded', function() {
+    // Flask template'te from_json filter'ı kullanılıyor
+});
+</script>
+{% endblock %}
+

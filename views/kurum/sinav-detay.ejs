@@ -1,0 +1,738 @@
+<%- include('../partials/header-dashboard', { title: 'Sınav Detay - Kurum Paneli', user: user }) %>
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3);
+    }
+    
+    .info-card {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+    }
+    
+    .info-item {
+        padding: 16px;
+        background: #f8fafc;
+        border-radius: 12px;
+        border-left: 4px solid #8b5cf6;
+    }
+    
+    .info-item label {
+        font-size: 0.85rem;
+        color: #64748b;
+        font-weight: 600;
+        margin-bottom: 4px;
+        display: block;
+    }
+    
+    .info-item .value {
+        font-size: 1.1rem;
+        color: #1e293b;
+        font-weight: 700;
+    }
+    
+    .table-container {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .action-btns {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .btn-action {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .inceleme-durumu {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .inceleme-durumu .badge {
+        font-size: 0.75rem;
+    }
+    
+    .inceleme-durumu .small {
+        font-size: 0.7rem;
+        line-height: 1.2;
+    }
+    
+    .modal-content {
+        border-radius: 20px;
+        border: none;
+    }
+    
+    .modal-header {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: white;
+        border-radius: 20px 20px 0 0;
+        padding: 24px;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 8px;
+    }
+    
+    .form-control, .form-select {
+        border-radius: 10px;
+        border: 2px solid #e2e8f0;
+        padding: 10px 16px;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #8b5cf6;
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    }
+    
+    .ogrenci-item {
+        padding: 12px;
+        background: #f8fafc;
+        border-radius: 10px;
+        margin-bottom: 8px;
+        border: 2px solid transparent;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    
+    .ogrenci-item:hover {
+        background: #ede9fe;
+        border-color: #8b5cf6;
+    }
+    
+    .ogrenci-item input[type="checkbox"]:checked + label {
+        color: #7c3aed;
+        font-weight: 600;
+    }
+    
+    .ogrenci-list {
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 12px;
+        background: white;
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #94a3b8;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        display: block;
+    }
+</style>
+
+<div class="container mt-4">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-2"><i class="bi bi-card-checklist"></i> <%= sinav.ad %></h1>
+                    <p class="mb-0 opacity-75">
+                        <i class="bi bi-calendar3"></i> <%= new Date(sinav.tarih).toLocaleDateString('tr-TR') %>
+                        <% if (sinav.sinif) { %>
+                            | <i class="bi bi-mortarboard"></i> <%= sinav.sinif %>
+                        <% } %>
+                        <% if (sinav.ders) { %>
+                            | <i class="bi bi-book"></i> <%= sinav.ders %>
+                        <% } %>
+                    </p>
+                </div>
+                <div>
+                    <a href="/kurum/sinavlar" class="btn btn-light">
+                        <i class="bi bi-arrow-left"></i> Geri
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <% if (error) { %>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i><%= error %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <% } %>
+    <% if (success) { %>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i><%= success %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <% } %>
+
+    <!-- Sınav Bilgileri -->
+    <div class="info-card">
+        <h5 class="mb-3"><i class="bi bi-info-circle-fill text-primary me-2"></i>Sınav Bilgileri</h5>
+        <div class="info-grid">
+            <div class="info-item">
+                <label>Katılımcı Sayısı</label>
+                <div class="value"><%= katilimcilar.length %> Öğrenci</div>
+            </div>
+            <div class="info-item">
+                <label>Durum</label>
+                <div class="value">
+                    <% if (sinav.sinav_durumu === 'Sonuç açıklandı') { %>
+                        <span class="badge bg-success">Sonuç Açıklandı</span>
+                    <% } else if (sinav.sinav_durumu === 'Uygulama aşaması tamamlandı') { %>
+                        <span class="badge bg-info">Uygulama Aşaması Tamamlandı</span>
+                    <% } else if (sinav.sinav_durumu === 'Başvuru aşamasında') { %>
+                        <span class="badge bg-warning">Başvuru Aşamasında</span>
+                    <% } else { %>
+                        <span class="badge bg-secondary">Taslak</span>
+                    <% } %>
+                </div>
+            </div>
+            <div class="info-item">
+                <label>İşlemler</label>
+                <div class="value">
+                    <a href="/kurum/sinav-sonuc-yukle/<%= sinav.id %>" class="btn btn-sm btn-success me-2">
+                        <i class="bi bi-upload"></i> Sonuç Yükle
+                    </a>
+                    <% if (sinav.sonuc_yuklendi) { %>
+                        <button class="btn btn-sm btn-info" onclick="whatsappGonder()">
+                            <i class="bi bi-whatsapp"></i> WhatsApp Gönder
+                        </button>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+        <% if (sinav.aciklama) { %>
+            <div class="mt-3 p-3 bg-light rounded">
+                <strong>Açıklama:</strong> <%= sinav.aciklama %>
+            </div>
+        <% } %>
+        
+        <!-- Cevap Anahtarı Yükleme -->
+        <div class="mt-4 p-3 border rounded">
+            <h6 class="mb-3"><i class="bi bi-file-earmark-text text-success me-2"></i>Cevap Anahtarı</h6>
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <% if (sinav.cevap_anahtari_pdf) { %>
+                        <p class="mb-0 text-success">
+                            <i class="bi bi-check-circle-fill me-2"></i>Cevap anahtarı yüklendi
+                            <a href="/<%= sinav.cevap_anahtari_pdf %>" target="_blank" class="btn btn-sm btn-outline-success ms-2">
+                                <i class="bi bi-eye"></i> Görüntüle
+                            </a>
+                        </p>
+                    <% } else { %>
+                        <p class="mb-0 text-muted">Henüz yüklenmedi</p>
+                    <% } %>
+                </div>
+                <div class="col-md-6">
+                    <form id="cevapAnahtariForm" enctype="multipart/form-data">
+                        <div class="input-group">
+                            <input type="file" class="form-control" id="cevapAnahtariInput" accept=".pdf" required>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-upload"></i> Yükle
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sınav Durumu -->
+        <div class="mt-3 p-3 border rounded">
+            <h6 class="mb-3"><i class="bi bi-check2-square text-info me-2"></i>Sınav Durumu</h6>
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <select class="form-select" id="sinavDurumuSelect">
+                        <option value="Başvuru aşamasında" <%= sinav.sinav_durumu === 'Başvuru aşamasında' ? 'selected' : '' %>>
+                            Başvuru aşamasında
+                        </option>
+                        <option value="Uygulama aşaması tamamlandı" <%= sinav.sinav_durumu === 'Uygulama aşaması tamamlandı' ? 'selected' : '' %>>
+                            Uygulama aşaması tamamlandı
+                        </option>
+                        <option value="Sonuç açıklandı" <%= sinav.sinav_durumu === 'Sonuç açıklandı' ? 'selected' : '' %>>
+                            Sonuç açıklandı
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <button class="btn btn-info" onclick="sinavDurumuGuncelle()">
+                        <i class="bi bi-save"></i> Durumu Güncelle
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Katılımcı Listesi -->
+    <div class="table-container">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5><i class="bi bi-people-fill text-primary me-2"></i>Katılımcı Listesi</h5>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ogrenciEkleModal">
+                <i class="bi bi-person-plus"></i> Öğrenci Ekle
+            </button>
+        </div>
+
+        <% if (katilimcilar.length === 0) { %>
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <h5>Henüz katılımcı eklenmemiş</h5>
+                <p>Sınava öğrenci eklemek için yukarıdaki "Öğrenci Ekle" butonunu kullanın.</p>
+            </div>
+        <% } else { %>
+            <table id="katilimciTable" class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Öğrenci Adı</th>
+                        <th>Sınıf</th>
+                        <th>Telefon</th>
+                        <th>Veli</th>
+                        <th>Sonuç Durumu</th>
+                        <th>İnceleme Durumu</th>
+                        <th>İşlem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% katilimcilar.forEach((k, index) => { %>
+                        <tr>
+                            <td><%= index + 1 %></td>
+                            <td>
+                                <strong><%= k.ad_soyad %></strong>
+                                <% if (k.kaynak === 'veli') { %><span class="badge bg-info ms-2">Veli</span><% } %>
+                            </td>
+                            <td><%= k.sinif || '-' %></td>
+                            <td><%= k.telefon || '-' %></td>
+                            <td><%= k.veli_adi || '-' %></td>
+                            <td>
+                                <% if (k.sonuc_durumu === 'bildirildi') { %>
+                                    <span class="badge bg-success">Bildirildi</span>
+                                <% } else if (k.sonuc_durumu === 'yuklendi') { %>
+                                    <span class="badge bg-info">Yüklendi</span>
+                                <% } else { %>
+                                    <span class="badge bg-warning">Beklemede</span>
+                                <% } %>
+                            </td>
+                            <td>
+                                <% if (k.pdf_goruldu) { %>
+                                    <div class="inceleme-durumu">
+                                        <span class="badge bg-success mb-1">
+                                            <i class="bi bi-eye-fill"></i> İncelendi
+                                        </span>
+                                        <div class="text-muted small">
+                                            <i class="bi bi-clock"></i>
+                                            <%= new Date(k.pdf_gorunme_tarihi).toLocaleString('tr-TR', { 
+                                                day: '2-digit', 
+                                                month: '2-digit', 
+                                                hour: '2-digit', 
+                                                minute: '2-digit' 
+                                            }) %>
+                                        </div>
+                                        <% if (k.pdf_indirilme_sayisi > 1) { %>
+                                            <div class="text-muted small">
+                                                <i class="bi bi-download"></i> <%= k.pdf_indirilme_sayisi %>x
+                                            </div>
+                                        <% } %>
+                                    </div>
+                                <% } else if (k.sonuc_durumu === 'yuklendi' || k.sonuc_durumu === 'bildirildi') { %>
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-eye-slash"></i> Görülmedi
+                                    </span>
+                                <% } else { %>
+                                    <span class="text-muted">-</span>
+                                <% } %>
+                            </td>
+                            <td>
+                                <div class="action-btns">
+                                    <% if (k.pdf_path) { %>
+                                        <a href="/<%= k.pdf_path %>" target="_blank" class="btn-action btn-info" title="PDF İndir">
+                                            <i class="bi bi-file-pdf"></i>
+                                        </a>
+                                    <% } %>
+                                    <button class="btn-action btn-danger" onclick="katilimciSil(<%= k.id %>, '<%= k.ad_soyad %>')" title="Çıkar">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        <% } %>
+    </div>
+</div>
+
+<!-- Öğrenci Ekleme Modalı -->
+<div class="modal fade" id="ogrenciEkleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Öğrenci Ekle</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Filtreleme -->
+                <div class="mb-3">
+                    <label class="form-label">Sınıf Filtresi</label>
+                    <select id="sinifFiltre" class="form-select">
+                        <option value="">Tüm Sınıflar</option>
+                        <% siniflar.forEach(s => { %>
+                            <option value="<%= s %>"><%= s %></option>
+                        <% }) %>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Öğrenci Ara</label>
+                    <input type="text" id="ogrenciAra" class="form-control" placeholder="İsim yazın...">
+                </div>
+
+                <!-- Öğrenci Listesi -->
+                <div class="ogrenci-list" id="ogrenciListesi">
+                    <div class="form-check ogrenci-item">
+                        <input class="form-check-input" type="checkbox" id="tumunuSec" onchange="tumunuSec(this)">
+                        <label class="form-check-label" for="tumunuSec">
+                            <strong>Tümünü Seç</strong>
+                        </label>
+                    </div>
+                    <% tumOgrenciler.forEach(o => { %>
+                        <div class="form-check ogrenci-item" data-sinif="<%= o.sinif %>" data-isim="<%= o.ad_soyad.toLowerCase() %>">
+                            <input class="form-check-input ogrenci-checkbox" type="checkbox" value="<%= o.unique_id %>" id="ogr_<%= o.unique_id %>">
+                            <label class="form-check-label" for="ogr_<%= o.unique_id %>">
+                                <strong><%= o.ad_soyad %></strong> 
+                                <% if (o.sinif) { %> - <%= o.sinif %><% } %>
+                                <% if (o.kaynak === 'veli') { %><span class="badge bg-info ms-2">Veli Kaydı</span><% } %>
+                                <% if (o.telefon) { %><small class="text-muted ms-2"><%= o.telefon %></small><% } %>
+                            </label>
+                        </div>
+                    <% }) %>
+                </div>
+
+                <div id="secimBilgi" class="mt-3 p-3 bg-light rounded text-center" style="display: none;">
+                    <strong><span id="secilenSayisi">0</span> öğrenci seçildi</strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary" onclick="ogrenciEkle()">
+                    <i class="bi bi-check-lg me-2"></i>Ekle
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-center p-4">
+            <div class="text-success mb-3" style="font-size: 4rem;">
+                <i class="bi bi-check-circle-fill"></i>
+            </div>
+            <h5 id="successMessage">İşlem başarılı!</h5>
+            <button class="btn btn-success mt-3" data-bs-dismiss="modal">Tamam</button>
+        </div>
+    </div>
+</div>
+
+<!-- jQuery (DataTables için gerekli) -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+
+<script>
+// DataTable
+$(document).ready(function() {
+    if ($('#katilimciTable').length) {
+        $('#katilimciTable').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/tr.json'
+            },
+            responsive: true,
+            order: [[1, 'asc']],
+            pageLength: 25
+        });
+    }
+});
+
+// Filtreleme
+document.getElementById('sinifFiltre').addEventListener('change', function() {
+    filtreOgrenciler();
+});
+
+document.getElementById('ogrenciAra').addEventListener('input', function() {
+    filtreOgrenciler();
+});
+
+function filtreOgrenciler() {
+    const sinif = document.getElementById('sinifFiltre').value.trim();
+    const arama = document.getElementById('ogrenciAra').value.toLowerCase().trim();
+    const items = document.querySelectorAll('.ogrenci-item:not(:first-child)');
+    
+    let gosterilen = 0;
+    
+    items.forEach(item => {
+        const itemSinif = (item.dataset.sinif || '').trim();
+        const itemIsim = (item.dataset.isim || '').toLowerCase().trim();
+        
+        // Sınıf eşleştirmesi - Her türlü formatı destekle
+        let sinifEslesti = true;
+        if (sinif) {
+            // Hem itemSinif hem de sinif'ten sayıları çıkar
+            const itemNumara = itemSinif.match(/\d+/)?.[0] || '';
+            const seciliNumara = sinif.match(/\d+/)?.[0] || sinif;
+            
+            // Karşılaştır: tam eşleşme veya numara eşleşmesi
+            sinifEslesti = (
+                itemSinif.toLowerCase() === sinif.toLowerCase() || 
+                itemSinif.toLowerCase().includes(sinif.toLowerCase()) ||
+                itemNumara === seciliNumara ||
+                itemSinif === sinif
+            );
+        }
+        
+        // İsim araması
+        const aramaEslesti = !arama || itemIsim.includes(arama);
+        
+        // Sonuç
+        const goster = sinifEslesti && aramaEslesti;
+        
+        if (goster) {
+            item.style.display = 'block';
+            gosterilen++;
+        } else {
+            item.style.display = 'none';
+        }
+    });
+    
+    console.log(`Filtreleme: Sınıf="${sinif}" Arama="${arama}" → ${gosterilen} öğrenci gösteriliyor`);
+}
+
+// Checkbox seçim takibi
+document.querySelectorAll('.ogrenci-checkbox').forEach(cb => {
+    cb.addEventListener('change', updateSecimBilgi);
+});
+
+function updateSecimBilgi() {
+    const secilenler = document.querySelectorAll('.ogrenci-checkbox:checked').length;
+    const bilgi = document.getElementById('secimBilgi');
+    const sayi = document.getElementById('secilenSayisi');
+    
+    if (secilenler > 0) {
+        sayi.textContent = secilenler;
+        bilgi.style.display = 'block';
+    } else {
+        bilgi.style.display = 'none';
+    }
+}
+
+function tumunuSec(checkbox) {
+    const visibleCheckboxes = Array.from(document.querySelectorAll('.ogrenci-item:not(:first-child)'))
+        .filter(item => item.style.display !== 'none')
+        .map(item => item.querySelector('.ogrenci-checkbox'));
+    
+    visibleCheckboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+    });
+    
+    updateSecimBilgi();
+}
+
+// Öğrenci Ekle
+async function ogrenciEkle() {
+    const secilenler = Array.from(document.querySelectorAll('.ogrenci-checkbox:checked')).map(cb => cb.value);
+    
+    if (secilenler.length === 0) {
+        alert('Lütfen en az bir öğrenci seçin!');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/kurum/sinav-katilimci-ekle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sinav_id: <%= sinav.id %>,
+                ogrenci_ids: secilenler
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Modalı kapat
+            bootstrap.Modal.getInstance(document.getElementById('ogrenciEkleModal')).hide();
+            
+            // Başarı mesajı göster
+            document.getElementById('successMessage').textContent = data.message;
+            new bootstrap.Modal(document.getElementById('successModal')).show();
+            
+            // Sayfayı yenile
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (error) {
+        console.error('Hata:', error);
+        alert('❌ Bir hata oluştu!');
+    }
+}
+
+// Katılımcı Sil
+async function katilimciSil(id, isim) {
+    if (!confirm(`"${isim}" öğrencisini sınavdan çıkarmak istediğinize emin misiniz?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/kurum/sinav-katilimci-sil/${id}`, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('successMessage').textContent = data.message;
+            new bootstrap.Modal(document.getElementById('successModal')).show();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (error) {
+        console.error('Hata:', error);
+        alert('❌ Bir hata oluştu!');
+    }
+}
+
+// WhatsApp Gönder
+async function whatsappGonder() {
+    if (!confirm('Tüm velilere WhatsApp bildirimi gönderilecek. Onaylıyor musunuz?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/kurum/sinav-sonuc-whatsapp-gonder/<%= sinav.id %>', {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`✅ ${data.message}`);
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (error) {
+        console.error('Hata:', error);
+        alert('❌ Bir hata oluştu!');
+    }
+}
+
+// Cevap Anahtarı Yükleme
+document.getElementById('cevapAnahtariForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const fileInput = document.getElementById('cevapAnahtariInput');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('❌ Lütfen bir PDF dosyası seçin!');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('cevapAnahtari', file);
+    
+    try {
+        const response = await fetch('/kurum/cevap-anahtari-yukle/<%= sinav.id %>', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ ' + data.message);
+            location.reload();
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (error) {
+        console.error('Hata:', error);
+        alert('❌ Bir hata oluştu!');
+    }
+});
+
+// Sınav Durumu Güncelleme
+async function sinavDurumuGuncelle() {
+    const durum = document.getElementById('sinavDurumuSelect').value;
+    
+    if (!durum) {
+        alert('❌ Lütfen bir durum seçin!');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/kurum/sinav-durumu-guncelle/<%= sinav.id %>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ sinav_durumu: durum })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ ' + data.message);
+            location.reload();
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (error) {
+        console.error('Hata:', error);
+        alert('❌ Bir hata oluştu!');
+    }
+}
+</script>
+
+<%- include('../partials/footer') %>
+

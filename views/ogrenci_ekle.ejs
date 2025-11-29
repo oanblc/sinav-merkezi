@@ -1,0 +1,446 @@
+<%- include('partials/header-dashboard', { title: 'Öğrenci Ekle - Sınav Merkezi', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(16, 185, 129, 0.3);
+    }
+    
+    .search-card {
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+        overflow: hidden;
+        margin-bottom: 30px;
+    }
+    
+    .search-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        padding: 32px;
+        border-bottom: 2px solid #e8ecf0;
+    }
+    
+    .search-body {
+        padding: 40px;
+    }
+    
+    .search-input-group {
+        position: relative;
+        margin-bottom: 20px;
+    }
+    
+    .search-input {
+        width: 100%;
+        border: 3px solid #e8ecf0;
+        border-radius: 16px;
+        padding: 20px 60px 20px 60px;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .search-input:focus {
+        border-color: #10b981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        outline: none;
+    }
+    
+    .search-icon {
+        position: absolute;
+        left: 24px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.5rem;
+        color: #10b981;
+    }
+    
+    .search-btn {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: none;
+        padding: 12px 28px;
+        border-radius: 12px;
+        color: white;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .search-btn:hover {
+        transform: translateY(-50%) scale(1.05);
+        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+    }
+    
+    .result-card {
+        background: white;
+        border: 2px solid #e8ecf0;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 16px;
+        transition: all 0.3s ease;
+    }
+    
+    .result-card:hover {
+        border-color: #10b981;
+        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.1);
+        transform: translateY(-2px);
+    }
+    
+    .student-avatar {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 800;
+        font-size: 1.5rem;
+    }
+    
+    .badge-info {
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-right: 8px;
+    }
+    
+    .veli-select {
+        border: 2px solid #e8ecf0;
+        border-radius: 12px;
+        padding: 10px 16px;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+    }
+    
+    .veli-select:focus {
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        outline: none;
+    }
+    
+    .btn-add {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: none;
+        padding: 10px 24px;
+        border-radius: 10px;
+        color: white;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-add:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        color: white;
+    }
+    
+    .info-box {
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        border: 2px solid #93c5fd;
+        border-radius: 16px;
+        padding: 24px;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+    
+    .empty-state i {
+        font-size: 5rem;
+        color: #cbd5e1;
+        margin-bottom: 20px;
+    }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 style="font-weight: 800; margin-bottom: 8px;">
+                    <i class="bi bi-person-plus-fill"></i> Öğrenci Ekle
+                </h1>
+                <p style="opacity: 0.9; margin: 0;">Öğrenci numarası veya adı ile arayın ve veliye ekleyin</p>
+            </div>
+            <a href="/rehber/dashboard" class="btn btn-light btn-lg" style="border-radius: 12px; font-weight: 600;">
+                <i class="bi bi-arrow-left"></i> İptal
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Arama Kartı -->
+    <div class="col-lg-8">
+        <div class="search-card">
+            <div class="search-header">
+                <h4 style="margin: 0; font-weight: 700; color: #1e293b;">
+                    <i class="bi bi-search"></i> Öğrenci Ara
+                </h4>
+            </div>
+            
+            <div class="search-body">
+                <div class="search-input-group">
+                    <i class="search-icon bi bi-search"></i>
+                    <input type="text" id="aramaInput" class="search-input" 
+                           placeholder="Öğrenci numarası veya adı soyadı girin..." 
+                           autocomplete="off">
+                    <button class="search-btn" onclick="ogrenciAra()">
+                        <i class="bi bi-search"></i> Ara
+                    </button>
+                </div>
+                
+                <div class="text-muted" style="font-size: 0.9rem;">
+                    <i class="bi bi-lightbulb"></i> 
+                    <strong>İpucu:</strong> Öğrenci numarası (örn: 2024001) veya ad soyad (örn: Ahmet Yılmaz) ile arayabilirsiniz
+                </div>
+            </div>
+        </div>
+
+        <!-- Arama Sonuçları -->
+        <div id="sonuclarAlani"></div>
+    </div>
+
+    <!-- Bilgi Kartı -->
+    <div class="col-lg-4">
+        <div class="info-box">
+            <h5 style="color: #1e40af; font-weight: 700; margin-bottom: 16px;">
+                <i class="bi bi-info-circle-fill"></i> Nasıl Çalışır?
+            </h5>
+            <ol style="color: #1e40af; margin: 0; padding-left: 20px;">
+                <li class="mb-2">Öğrenci numarası veya adını girin</li>
+                <li class="mb-2">Arama butonuna tıklayın</li>
+                <li class="mb-2">Çıkan sonuçlardan doğru öğrenciyi seçin</li>
+                <li class="mb-2">Velisini listeden seçin</li>
+                <li>Ekle butonuna tıklayın</li>
+            </ol>
+        </div>
+
+        <div style="background: white; border-radius: 16px; padding: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); margin-top: 20px;">
+            <h6 style="font-weight: 700; color: #1e293b; margin-bottom: 12px;">
+                <i class="bi bi-people-fill text-success"></i> Kayıtlı Veliler
+            </h6>
+            <div style="max-height: 300px; overflow-y: auto;">
+                <% if (veliler && veliler.length > 0) { %>
+                    <% veliler.forEach(function(veli) { %>
+                    <div style="padding: 10px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center;">
+                        <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #06b6d4, #3b82f6); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.85rem; margin-right: 10px;">
+                            <%= veli.username.charAt(0).toUpperCase() %>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #1e293b; font-size: 0.9rem;"><%= veli.username %></div>
+                            <div style="font-size: 0.75rem; color: #64748b;"><%= veli.email %></div>
+                        </div>
+                    </div>
+                    <% }); %>
+                <% } else { %>
+                    <p style="color: #94a3b8; margin: 0; font-size: 0.9rem;">Henüz kayıtlı veli yok</p>
+                <% } %>
+            </div>
+        </div>
+                    </div>
+                    </div>
+
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 20px; border: none;">
+            <div class="modal-body text-center" style="padding: 40px;">
+                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                    <i class="bi bi-check-lg" style="font-size: 3rem; color: white;"></i>
+                    </div>
+                <h4 style="font-weight: 700; margin-bottom: 12px;">Öğrenci Eklendi!</h4>
+                <p style="color: #64748b; margin-bottom: 24px;" id="successMessage"></p>
+                <button type="button" class="btn btn-primary" onclick="window.location.href='/rehber/ogrenciler'" style="border-radius: 12px; padding: 12px 32px; margin-right: 8px;">
+                    Öğrenci Listesine Git
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 12px; padding: 12px 32px;">
+                    Kapat
+                    </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Enter tuşu ile arama
+document.getElementById('aramaInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        ogrenciAra();
+    }
+});
+
+async function ogrenciAra() {
+    const arama = document.getElementById('aramaInput').value.trim();
+    
+    if (arama.length < 2) {
+        showError('En az 2 karakter girin');
+        return;
+    }
+    
+    // Loading göster
+    document.getElementById('sonuclarAlani').innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Aranıyor...</span>
+            </div>
+            <p class="mt-3 text-muted">Öğrenciler aranıyor...</p>
+        </div>
+    `;
+    
+    try {
+        const response = await fetch('/rehber/ogrenci-ara', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ arama })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            gosterSonuclar(data.sonuclar);
+        } else {
+            showError(data.message);
+        }
+    } catch (error) {
+        console.error('Arama hatası:', error);
+        showError('Arama sırasında bir hata oluştu');
+    }
+}
+
+function gosterSonuclar(sonuclar) {
+    const alan = document.getElementById('sonuclarAlani');
+    
+    if (sonuclar.length === 0) {
+        alan.innerHTML = `
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <h5 style="color: #64748b; margin-bottom: 8px;">Sonuç Bulunamadı</h5>
+                <p style="color: #94a3b8;">Arama kriterlerinize uygun öğrenci bulunamadı. Başka bir terimle deneyin.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `<div style="background: white; border-radius: 20px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+        <h5 style="font-weight: 700; margin-bottom: 20px; color: #1e293b;">
+            <i class="bi bi-list-check"></i> Bulunan Öğrenciler (${sonuclar.length})
+        </h5>`;
+    
+    sonuclar.forEach(ogr => {
+        html += `
+            <div class="result-card">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <div class="student-avatar">${ogr.ad_soyad.charAt(0)}</div>
+                    </div>
+                    <div class="col">
+                        <h6 style="font-weight: 700; margin-bottom: 8px; color: #1e293b;">${ogr.ad_soyad}</h6>
+                        <div>
+                            <span class="badge-info bg-primary">${ogr.no}</span>
+                            <span class="badge-info bg-info">${ogr.sinif}</span>
+                            <span class="badge-info bg-secondary">${ogr.okul}</span>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        ${ogr.zatenOnaylanmis ? 
+                            '<span class="badge bg-success" style="padding: 10px 20px; border-radius: 10px; font-size: 0.9rem;"><i class="bi bi-check-circle"></i> Kayıtlı</span>' :
+                            ogr.talepGonderilmis ? 
+                            '<span class="badge bg-warning text-dark" style="padding: 10px 20px; border-radius: 10px; font-size: 0.9rem;"><i class="bi bi-clock-history"></i> Talep Gönderildi</span>' : 
+                            `<button class="btn-add" onclick="talepGonder(${ogr.id}, '${ogr.ad_soyad.replace(/'/g, "\\'")}')">
+                                <i class="bi bi-send"></i> Talep Gönder
+                            </button>`
+                        }
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    alan.innerHTML = html;
+}
+
+async function talepGonder(ogrenci_id, ad_soyad) {
+    if (!confirm(`${ad_soyad} için veliye talep göndermek istediğinizden emin misiniz?\n\nVeli talebi onayladığında bu öğrenciyi görebilir ve takip edebilirsiniz.`)) {
+        return;
+    }
+    
+    try {
+        console.log('📨 Talep gönderiliyor:', { ogrenci_id, ad_soyad });
+        
+        const response = await fetch('/rehber/ogrenci-talep', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ogrenci_id })
+        });
+        
+        console.log('📥 Response alındı:', response.status, response.ok);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('📦 Data:', data);
+        
+        if (data.success) {
+            console.log('✅ Başarılı, modal gösteriliyor...');
+            
+            // Modal elementlerini kontrol et
+            const successMessageEl = document.getElementById('successMessage');
+            const successModalEl = document.getElementById('successModal');
+            
+            if (!successMessageEl) {
+                console.error('❌ successMessage elementi bulunamadı!');
+                alert(data.message);
+                return;
+            }
+            
+            if (!successModalEl) {
+                console.error('❌ successModal elementi bulunamadı!');
+                alert(data.message);
+                return;
+            }
+            
+            successMessageEl.textContent = data.message;
+            const modal = new bootstrap.Modal(successModalEl);
+            modal.show();
+            console.log('✅ Modal gösterildi');
+            
+            // Aramayı yenile
+            const aramaInput = document.getElementById('aramaInput');
+            if (aramaInput && aramaInput.value.trim().length >= 2) {
+                console.log('🔄 Arama yenileniyor...');
+                ogrenciAra();
+            }
+        } else {
+            console.log('⚠️ İşlem başarısız:', data.message);
+            alert(data.message);
+        }
+    } catch (error) {
+        console.error('❌ Talep gönderme hatası:', error);
+        console.error('Hata detayı:', error.message, error.stack);
+        alert('Talep gönderilirken bir hata oluştu: ' + error.message);
+    }
+}
+
+function showError(message) {
+    document.getElementById('sonuclarAlani').innerHTML = `
+        <div class="alert alert-warning" style="border-radius: 16px; border: 2px solid #fbbf24;">
+            <i class="bi bi-exclamation-triangle"></i> ${message}
+        </div>
+    `;
+}
+</script>
+
+<%- include('partials/footer-dashboard') %>

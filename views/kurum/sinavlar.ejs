@@ -1,0 +1,295 @@
+<%- include('../partials/header-dashboard', { title: 'Sınav Yönetimi - Kurum Paneli', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(6, 182, 212, 0.3);
+    }
+    
+    .sinav-card {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border-left: 5px solid #06b6d4;
+        transition: all 0.3s ease;
+    }
+    
+    .sinav-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+    
+    .sinav-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 16px;
+    }
+    
+    .sinav-baslik {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 8px;
+    }
+    
+    .sinav-detay {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        color: #64748b;
+        font-size: 0.9rem;
+        margin-bottom: 12px;
+    }
+    
+    .sinav-detay span {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .durum-badge {
+        padding: 8px 16px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 16px;
+    }
+    
+    .btn-action {
+        padding: 10px 20px;
+        border-radius: 10px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .modal-content {
+        border-radius: 20px;
+        border: none;
+    }
+    
+    .modal-header {
+        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        color: white;
+        border-radius: 20px 20px 0 0;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .empty-state i {
+        font-size: 5rem;
+        color: #cbd5e1;
+        margin-bottom: 24px;
+    }
+</style>
+
+<div class="container mt-4">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-2"><i class="bi bi-journals"></i> Sınav Yönetimi</h1>
+                    <p class="mb-0 opacity-75">Tüm sınavları buradan yönetin</p>
+                </div>
+                <div>
+                    <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sinavEkleModal">
+                        <i class="bi bi-plus-lg"></i> Yeni Sınav
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <% if (error) { %>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i><%= error %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <% } %>
+    <% if (success) { %>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i><%= success %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <% } %>
+
+    <% if (sinavlar.length === 0) { %>
+        <div class="empty-state">
+            <i class="bi bi-inbox"></i>
+            <h4>Henüz sınav eklenmemiş</h4>
+            <p>Yeni sınav eklemek için yukarıdaki "Yeni Sınav" butonunu kullanın.</p>
+        </div>
+    <% } else { %>
+        <% sinavlar.forEach(sinav => { %>
+            <div class="sinav-card">
+                <div class="sinav-header">
+                    <div class="flex-grow-1">
+                        <div class="sinav-baslik">
+                            <i class="bi bi-journal-text text-primary me-2"></i>
+                            <%= sinav.ad %>
+                        </div>
+                        <div class="sinav-detay">
+                            <span>
+                                <i class="bi bi-calendar3"></i>
+                                <%= new Date(sinav.tarih).toLocaleDateString('tr-TR') %>
+                            </span>
+                            <% if (sinav.sinif) { %>
+                                <span>
+                                    <i class="bi bi-mortarboard"></i>
+                                    <%= sinav.sinif %>
+                                </span>
+                            <% } %>
+                            <% if (sinav.ders) { %>
+                                <span>
+                                    <i class="bi bi-book"></i>
+                                    <%= sinav.ders %>
+                                </span>
+                            <% } %>
+                            <span>
+                                <i class="bi bi-people"></i>
+                                <%= sinav.katilimci_sayisi || 0 %> Katılımcı
+                            </span>
+                        </div>
+                        
+                        <% if (sinav.sinav_durumu === 'Sonuç açıklandı' || sinav.sonuc_yuklendi) { %>
+                            <span class="durum-badge" style="background: #d1fae5; color: #065f46;">
+                                <i class="bi bi-check-circle"></i> Sonuç Açıklandı
+                            </span>
+                        <% } else if (sinav.sinav_durumu === 'Uygulama aşaması tamamlandı') { %>
+                            <span class="durum-badge" style="background: #dbeafe; color: #1e40af;">
+                                <i class="bi bi-clock-history"></i> Uygulama Aşaması Tamamlandı
+                            </span>
+                        <% } else if (sinav.sinav_durumu === 'Başvuru aşamasında') { %>
+                            <span class="durum-badge" style="background: #fef3c7; color: #d97706;">
+                                <i class="bi bi-hourglass-split"></i> Başvuru Aşamasında
+                            </span>
+                        <% } else { %>
+                            <span class="durum-badge" style="background: #f1f5f9; color: #64748b;">
+                                <i class="bi bi-file-earmark"></i> Taslak
+                            </span>
+                        <% } %>
+                    </div>
+                </div>
+                
+                <% if (sinav.aciklama) { %>
+                    <div class="mb-3 p-3 bg-light rounded">
+                        <small><strong>Açıklama:</strong> <%= sinav.aciklama %></small>
+                    </div>
+                <% } %>
+                
+                <div class="action-buttons">
+                    <a href="/kurum/sinav-detay/<%= sinav.id %>" class="btn btn-primary btn-action">
+                        <i class="bi bi-eye"></i> Detay & Katılımcılar
+                    </a>
+                    
+                    <% if (sinav.katilimci_sayisi > 0 && !sinav.sonuc_yuklendi) { %>
+                        <a href="/kurum/sinav-sonuc-yukle/<%= sinav.id %>" class="btn btn-success btn-action">
+                            <i class="bi bi-upload"></i> Sonuç Yükle
+                        </a>
+                    <% } %>
+                    
+                    <button class="btn btn-danger btn-action" onclick="sinavSil(<%= sinav.id %>, '<%= sinav.ad %>')">
+                        <i class="bi bi-trash"></i> Sil
+                    </button>
+                </div>
+            </div>
+        <% }) %>
+    <% } %>
+</div>
+
+<!-- Sınav Ekleme Modalı -->
+<div class="modal fade" id="sinavEkleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Yeni Sınav Ekle</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/kurum/sinav-ekle">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Sınav Adı *</label>
+                        <input type="text" class="form-control" name="ad" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tarih *</label>
+                        <input type="date" class="form-control" name="tarih" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Sınıf</label>
+                        <select class="form-select" name="sinif">
+                            <option value="">Seçiniz...</option>
+                            <% for(let i=1; i<=12; i++) { %>
+                                <option value="<%= i %>"><%= i %>. Sınıf</option>
+                            <% } %>
+                            <option value="Mezun">Mezun</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Açıklama</label>
+                        <textarea class="form-control" name="aciklama" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg"></i> Ekle
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+async function sinavSil(id, ad) {
+    if (!confirm(`"${ad}" sınavını silmek istediğinize emin misiniz? Bu işlem geri alınamaz!`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/kurum/sinav-sil/${id}`, {
+            method: 'POST'
+        });
+        
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('❌ Silme işlemi başarısız!');
+        }
+    } catch (error) {
+        console.error('Hata:', error);
+        alert('❌ Bir hata oluştu!');
+    }
+}
+</script>
+
+<%- include('../partials/footer') %>
+

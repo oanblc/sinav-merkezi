@@ -1,0 +1,653 @@
+<%- include('partials/header', {title: 'Sınav Merkezleri', user: typeof user !== 'undefined' ? user : null}) %>
+
+<%- include('partials/common-styles') %>
+
+<style>
+    /* Breadcrumb */
+    .breadcrumb-container {
+        background: #f8f9fa;
+        padding: 16px 0;
+        margin-bottom: 30px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        flex-wrap: wrap;
+    }
+    
+    .breadcrumb-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.95rem;
+    }
+    
+    .breadcrumb-item a {
+        color: var(--primary);
+        text-decoration: none;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .breadcrumb-item a:hover {
+        color: var(--primary-dark);
+        text-decoration: underline;
+    }
+    
+    .breadcrumb-item a i {
+        font-size: 1rem;
+    }
+    
+    .breadcrumb-separator {
+        color: #999;
+        font-size: 0.85rem;
+    }
+    
+    .breadcrumb-item.active {
+        color: #666;
+        font-weight: 500;
+    }
+    
+    /* Page Header */
+    .page-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        padding: 80px 0;
+        margin-bottom: 60px;
+        text-align: center;
+    }
+    
+    .page-header h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 16px;
+    }
+    
+    .page-header p {
+        font-size: 1.2rem;
+        opacity: 0.95;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+    
+    /* Centers Section */
+    .centers-section {
+        padding: 60px 0;
+    }
+    
+    .centers-section h2 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary);
+        margin-bottom: 40px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .centers-section h2 i {
+        font-size: 2.2rem;
+    }
+    
+    /* City Tabs */
+    .city-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 40px;
+        justify-content: center;
+    }
+    
+    .city-tab {
+        background: white;
+        border: 2px solid #e8ecf0;
+        border-radius: 12px;
+        padding: 12px 24px;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    
+    .city-tab:hover {
+        background: rgba(0, 59, 120, 0.05);
+        border-color: var(--primary);
+        transform: translateY(-2px);
+    }
+    
+    .city-tab.active {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        border-color: var(--primary);
+        box-shadow: 0 4px 16px rgba(0, 59, 120, 0.2);
+    }
+    
+    /* Center Cards */
+    .centers-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 30px;
+    }
+    
+    .center-card {
+        background: white;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        border: 2px solid #f0f0f0;
+    }
+    
+    .center-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+        border-color: var(--primary);
+    }
+    
+    .center-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        padding: 24px;
+    }
+    
+    .center-header h3 {
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .center-header h3 i {
+        font-size: 1.5rem;
+    }
+    
+    .center-body {
+        padding: 24px;
+    }
+    
+    .center-info {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 16px;
+        color: #666;
+        line-height: 1.6;
+    }
+    
+    .center-info i {
+        color: var(--primary);
+        font-size: 1.2rem;
+        margin-top: 2px;
+        flex-shrink: 0;
+    }
+    
+    .center-info strong {
+        color: var(--text);
+        display: block;
+        margin-bottom: 4px;
+    }
+    
+    .center-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #e8ecf0;
+    }
+    
+    .center-btn {
+        flex: 1;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-decoration: none;
+        text-align: center;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .btn-map {
+        background: var(--primary);
+        color: white;
+        border: none;
+    }
+    
+    .btn-map:hover {
+        background: var(--primary-dark);
+        color: white;
+        transform: translateY(-2px);
+    }
+    
+    .btn-phone {
+        background: white;
+        color: var(--primary);
+        border: 2px solid var(--primary);
+    }
+    
+    .btn-phone:hover {
+        background: var(--primary);
+        color: white;
+    }
+    
+    /* Stats */
+    .stats-banner {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        padding: 60px 0;
+        margin: 60px 0;
+        text-align: center;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 40px;
+    }
+    
+    .stat-item {
+        padding: 20px;
+    }
+    
+    .stat-number {
+        font-size: 3rem;
+        font-weight: 900;
+        display: block;
+        margin-bottom: 8px;
+    }
+    
+    .stat-label {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        font-weight: 500;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .page-header {
+            padding: 60px 20px;
+        }
+        
+        .page-header h1 {
+            font-size: 1.8rem;
+        }
+        
+        .page-header p {
+            font-size: 1rem;
+        }
+        
+        .centers-section {
+            padding: 40px 0;
+        }
+        
+        .centers-section h2 {
+            font-size: 1.5rem;
+        }
+        
+        .centers-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .center-actions {
+            flex-direction: column;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+        }
+    }
+</style>
+
+<!-- Breadcrumb -->
+<div class="breadcrumb-container">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="/">
+                        <i class="bi bi-house-door"></i>
+                        Ana Sayfa
+                    </a>
+                </li>
+                <li class="breadcrumb-separator">
+                    <i class="bi bi-chevron-right"></i>
+                </li>
+                <li class="breadcrumb-item">
+                    <span>Kurumsal</span>
+                </li>
+                <li class="breadcrumb-separator">
+                    <i class="bi bi-chevron-right"></i>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">
+                    Sınav Merkezleri
+                </li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container">
+        <h1>
+            <i class="bi bi-geo-alt"></i>
+            Sınav Merkezlerimiz
+        </h1>
+        <p>
+            Türkiye'nin her köşesinde, modern ve güvenli sınav merkezlerimizle hizmetinizdeyiz.
+        </p>
+    </div>
+</div>
+
+<!-- Stats Banner -->
+<div class="stats-banner">
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-number">150+</span>
+                <span class="stat-label">Sınav Merkezi</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">81</span>
+                <span class="stat-label">İl</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">500+</span>
+                <span class="stat-label">Sınav Salonu</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">100K+</span>
+                <span class="stat-label">Kapasite</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Centers Section -->
+<section class="centers-section">
+    <div class="container">
+        <h2>
+            <i class="bi bi-building"></i>
+            Şehir Seçiniz
+        </h2>
+        
+        <!-- City Tabs -->
+        <div class="city-tabs">
+            <button class="city-tab active" data-city="istanbul">İstanbul</button>
+            <button class="city-tab" data-city="ankara">Ankara</button>
+            <button class="city-tab" data-city="izmir">İzmir</button>
+            <button class="city-tab" data-city="bursa">Bursa</button>
+            <button class="city-tab" data-city="antalya">Antalya</button>
+        </div>
+        
+        <!-- Centers Grid -->
+        <div class="centers-grid" id="centers-container">
+            <!-- İstanbul Centers -->
+            <div class="center-card" data-city="istanbul">
+                <div class="center-header">
+                    <h3>
+                        <i class="bi bi-building"></i>
+                        Kadıköy Merkez
+                    </h3>
+                </div>
+                <div class="center-body">
+                    <div class="center-info">
+                        <i class="bi bi-geo-alt"></i>
+                        <div>
+                            <strong>Adres:</strong>
+                            Merkez Mahallesi, Eğitim Sokak No:123, Kadıköy, İstanbul
+                        </div>
+                    </div>
+                    
+                    <div class="center-info">
+                        <i class="bi bi-telephone"></i>
+                        <div>
+                            <strong>Telefon:</strong>
+                            0 (216) 555 12 30
+                        </div>
+                    </div>
+                    
+                    <div class="center-info">
+                        <i class="bi bi-people"></i>
+                        <div>
+                            <strong>Kapasite:</strong>
+                            2.500 Kişi
+                        </div>
+                    </div>
+                    
+                    <div class="center-actions">
+                        <a href="#" class="center-btn btn-map">
+                            <i class="bi bi-map"></i>
+                            Haritada Gör
+                        </a>
+                        <a href="tel:+902165551230" class="center-btn btn-phone">
+                            <i class="bi bi-telephone"></i>
+                            Ara
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="center-card" data-city="istanbul">
+                <div class="center-header">
+                    <h3>
+                        <i class="bi bi-building"></i>
+                        Beşiktaş Kampüs
+                    </h3>
+                </div>
+                <div class="center-body">
+                    <div class="center-info">
+                        <i class="bi bi-geo-alt"></i>
+                        <div>
+                            <strong>Adres:</strong>
+                            Üniversite Caddesi No:45, Beşiktaş, İstanbul
+                        </div>
+                    </div>
+                    
+                    <div class="center-info">
+                        <i class="bi bi-telephone"></i>
+                        <div>
+                            <strong>Telefon:</strong>
+                            0 (212) 555 45 67
+                        </div>
+                    </div>
+                    
+                    <div class="center-info">
+                        <i class="bi bi-people"></i>
+                        <div>
+                            <strong>Kapasite:</strong>
+                            1.800 Kişi
+                        </div>
+                    </div>
+                    
+                    <div class="center-actions">
+                        <a href="#" class="center-btn btn-map">
+                            <i class="bi bi-map"></i>
+                            Haritada Gör
+                        </a>
+                        <a href="tel:+902125554567" class="center-btn btn-phone">
+                            <i class="bi bi-telephone"></i>
+                            Ara
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="center-card" data-city="istanbul">
+                <div class="center-header">
+                    <h3>
+                        <i class="bi bi-building"></i>
+                        Pendik Merkez
+                    </h3>
+                </div>
+                <div class="center-body">
+                    <div class="center-info">
+                        <i class="bi bi-geo-alt"></i>
+                        <div>
+                            <strong>Adres:</strong>
+                            Kurtköy Mahallesi, Sınav Sokak No:78, Pendik, İstanbul
+                        </div>
+                    </div>
+                    
+                    <div class="center-info">
+                        <i class="bi bi-telephone"></i>
+                        <div>
+                            <strong>Telefon:</strong>
+                            0 (216) 555 89 00
+                        </div>
+                    </div>
+                    
+                    <div class="center-info">
+                        <i class="bi bi-people"></i>
+                        <div>
+                            <strong>Kapasite:</strong>
+                            2.000 Kişi
+                        </div>
+                    </div>
+                    
+                    <div class="center-actions">
+                        <a href="#" class="center-btn btn-map">
+                            <i class="bi bi-map"></i>
+                            Haritada Gör
+                        </a>
+                        <a href="tel:+902165558900" class="center-btn btn-phone">
+                            <i class="bi bi-telephone"></i>
+                            Ara
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Diğer şehir merkezleri gizli -->
+            <div class="center-card" data-city="ankara" style="display: none;">
+                <div class="center-header">
+                    <h3>
+                        <i class="bi bi-building"></i>
+                        Çankaya Merkez
+                    </h3>
+                </div>
+                <div class="center-body">
+                    <div class="center-info">
+                        <i class="bi bi-geo-alt"></i>
+                        <div>
+                            <strong>Adres:</strong>
+                            Kızılay Caddesi No:25, Çankaya, Ankara
+                        </div>
+                    </div>
+                    
+                    <div class="center-info">
+                        <i class="bi bi-telephone"></i>
+                        <div>
+                            <strong>Telefon:</strong>
+                            0 (312) 555 11 22
+                        </div>
+                    </div>
+                    
+                    <div class="center-info">
+                        <i class="bi bi-people"></i>
+                        <div>
+                            <strong>Kapasite:</strong>
+                            3.000 Kişi
+                        </div>
+                    </div>
+                    
+                    <div class="center-actions">
+                        <a href="#" class="center-btn btn-map">
+                            <i class="bi bi-map"></i>
+                            Haritada Gör
+                        </a>
+                        <a href="tel:+903125551122" class="center-btn btn-phone">
+                            <i class="bi bi-telephone"></i>
+                            Ara
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="center-card" data-city="izmir" style="display: none;">
+                <div class="center-header">
+                    <h3>
+                        <i class="bi bi-building"></i>
+                        Bornova Kampüs
+                    </h3>
+                </div>
+                <div class="center-body">
+                    <div class="center-info">
+                        <i class="bi bi-geo-alt"></i>
+                        <div>
+                            <strong>Adres:</strong>
+                            Üniversite Bulvarı No:150, Bornova, İzmir
+                        </div>
+                    </div>
+                    
+                    <div class="center-info">
+                        <i class="bi bi-telephone"></i>
+                        <div>
+                            <strong>Telefon:</strong>
+                            0 (232) 555 33 44
+                        </div>
+                    </div>
+                    
+                    <div class="center-info">
+                        <i class="bi bi-people"></i>
+                        <div>
+                            <strong>Kapasite:</strong>
+                            2.200 Kişi
+                        </div>
+                    </div>
+                    
+                    <div class="center-actions">
+                        <a href="#" class="center-btn btn-map">
+                            <i class="bi bi-map"></i>
+                            Haritada Gör
+                        </a>
+                        <a href="tel:+902325553344" class="center-btn btn-phone">
+                            <i class="bi bi-telephone"></i>
+                            Ara
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<%- include('partials/footer') %>
+
+<script>
+    // City tab switching
+    document.querySelectorAll('.city-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            const city = this.getAttribute('data-city');
+            
+            // Update active tab
+            document.querySelectorAll('.city-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Show/hide centers
+            document.querySelectorAll('.center-card').forEach(card => {
+                if (card.getAttribute('data-city') === city) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>
+

@@ -1,0 +1,208 @@
+<%- include('partials/header-dashboard', { title: 'Kurum Paneli - Sınav Merkezi', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(6, 182, 212, 0.3);
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    }
+    
+    a:has(.stat-card):hover .stat-card {
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 8px 32px rgba(236, 72, 153, 0.2);
+    }
+    
+    .stat-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin-bottom: 20px;
+    }
+    
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+    }
+    
+    .stat-label {
+        color: #64748b;
+        font-size: 1rem;
+        font-weight: 500;
+    }
+    
+    .menu-card {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: block;
+        height: 100%;
+    }
+    
+    .menu-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+        text-decoration: none;
+    }
+    
+    .menu-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        margin-bottom: 16px;
+        color: white;
+    }
+    
+    .menu-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 8px;
+    }
+    
+    .menu-desc {
+        color: #64748b;
+        font-size: 0.9rem;
+        margin: 0;
+    }
+    
+    /* Kompakt Stat Card Hover */
+    .row a > div[style*="transition"] {
+        cursor: pointer;
+    }
+    
+    .row a > div[style*="transition"]:hover {
+        transform: translateY(-4px) !important;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15) !important;
+    }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container">
+        <h1 style="font-weight: 800; margin-bottom: 8px;">
+            <i class="bi bi-building"></i> Kurum Yönetim Paneli
+        </h1>
+        <p style="opacity: 0.9; margin: 0;">Sınav sistemini ve tüm ayarları buradan yönetebilirsiniz</p>
+    </div>
+</div>
+
+<!-- 🔥 YÖNETİM MENÜSÜ - EN ÜST KISIM -->
+<h3 style="font-weight: 800; color: #1e293b; margin-bottom: 24px;">
+    <span><i class="bi bi-gear-fill"></i> Yönetim Menüsü</span>
+</h3>
+
+<div class="row g-4 mb-5">
+    <!-- Öğrenci Kayıtları -->
+    <div class="col-md-4">
+        <a href="/kurum/ogrenci-kayitlari" class="menu-card" style="position: relative;">
+            <div class="menu-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                <i class="bi bi-people-fill"></i>
+            </div>
+            <div class="menu-title">Öğrenci Kayıtları</div>
+            <p class="menu-desc">Öğrenci listesi, Excel import/export</p>
+            <% if (istatistikler.ogrenciKayit > 0) { %>
+            <span class="badge bg-primary" style="position: absolute; top: 20px; right: 20px; font-size: 1rem; padding: 8px 12px;">
+                <%= istatistikler.ogrenciKayit %>
+            </span>
+            <% } %>
+        </a>
+    </div>
+    
+    <!-- Sınav Yönetimi -->
+    <div class="col-md-4">
+        <a href="/kurum/sinavlar" class="menu-card">
+            <div class="menu-icon" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
+                <i class="bi bi-journals"></i>
+            </div>
+            <div class="menu-title">Sınav Yönetimi</div>
+            <p class="menu-desc">Sınav ekle, düzenle, sonuç yükle</p>
+        </a>
+    </div>
+    
+    <!-- Sınav Paketleri -->
+    <div class="col-md-4">
+        <a href="/kurum/sinav-paketleri" class="menu-card" style="position: relative;">
+            <div class="menu-icon" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);">
+                <i class="bi bi-box-seam"></i>
+            </div>
+            <div class="menu-title">Sınav Paketleri</div>
+            <p class="menu-desc">Paket oluştur, öğrenci ata</p>
+            <% if (istatistikler.paket > 0) { %>
+            <span class="badge bg-danger" style="position: absolute; top: 20px; right: 20px; font-size: 1rem; padding: 8px 12px;">
+                <%= istatistikler.paket %>
+            </span>
+            <% } %>
+        </a>
+    </div>
+    
+    <!-- Talepler -->
+    <div class="col-md-4">
+        <a href="/kurum/talepler" class="menu-card" style="position: relative;">
+            <div class="menu-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <i class="bi bi-inbox-fill"></i>
+            </div>
+            <div class="menu-title">Talepler</div>
+            <p class="menu-desc">Paket talepleri, onay/red işlemleri</p>
+            <% if (istatistikler.talepBeklemede > 0) { %>
+            <span class="badge bg-warning" style="position: absolute; top: 20px; right: 20px; font-size: 1rem; padding: 8px 12px;">
+                <%= istatistikler.talepBeklemede %>
+            </span>
+            <% } %>
+        </a>
+    </div>
+    
+    <!-- Duyurular -->
+    <div class="col-md-4">
+        <a href="/kurum/duyurular" class="menu-card">
+            <div class="menu-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <i class="bi bi-megaphone-fill"></i>
+            </div>
+            <div class="menu-title">Duyurular</div>
+            <p class="menu-desc">Duyuru yayınla, yönet</p>
+        </a>
+    </div>
+    
+    <!-- WhatsApp Bildirimleri -->
+    <div class="col-md-4">
+        <a href="/kurum/whatsapp-ayarlari" class="menu-card">
+            <div class="menu-icon" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);">
+                <i class="bi bi-whatsapp"></i>
+            </div>
+            <div class="menu-title">WhatsApp Bildirimleri</div>
+            <p class="menu-desc">WhatsApp API ayarları</p>
+        </a>
+    </div>
+</div>
+
+
+<%- include('partials/footer-dashboard') %>
+
