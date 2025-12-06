@@ -4475,9 +4475,18 @@ app.post('/kurum/sinav-katilimci-ekle', requireAuth, async (req, res) => {
       [yeniSayi.sayi, sinav_id]
     );
     
+    // Eğer hiçbir öğrenci eklenemediyse (hepsi zaten ekliyse), uyarı ver
+    if (eklenenSayisi === 0 && mevcutSayisi > 0) {
+      return res.json({ 
+        success: false, 
+        message: `⚠️ Seçtiğiniz ${mevcutSayisi} öğrenci zaten bu sınava ekli! Tekrar ekleme yapılamaz.` 
+      });
+    }
+    
+    // Bazıları eklendi, bazıları mevcuttu
     res.json({ 
       success: true, 
-      message: `${eklenenSayisi} öğrenci eklendi${mevcutSayisi > 0 ? `, ${mevcutSayisi} öğrenci zaten ekli` : ''}!` 
+      message: `✅ ${eklenenSayisi} öğrenci eklendi${mevcutSayisi > 0 ? `\n⚠️ ${mevcutSayisi} öğrenci zaten ekli olduğu için atlandı` : ''}!` 
     });
   } catch (error) {
     console.error('Katılımcı ekleme hatası:', error);

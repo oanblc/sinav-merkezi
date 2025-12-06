@@ -686,12 +686,13 @@ async function ogrenciEkle() {
             bootstrap.Modal.getInstance(document.getElementById('ogrenciEkleModal')).hide();
             
             // Başarı mesajı göster
-            document.getElementById('successMessage').textContent = data.message;
+            document.getElementById('successMessage').innerHTML = data.message.replace(/\n/g, '<br>');
             new bootstrap.Modal(document.getElementById('successModal')).show();
             
             // Sayfayı yenile
             setTimeout(() => location.reload(), 1500);
         } else {
+            // Uyarı mesajını daha belirgin göster
             alert('❌ ' + data.message);
         }
     } catch (error) {
