@@ -16,6 +16,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ============================================
+// RAILWAY PROXY CONFIGURATION
+// ============================================
+// Railway Metal Edge proxy kullanıyor, Express'e güvenmesini söyle
+app.set('trust proxy', 1);
+
+// ============================================
 // RATE LIMITING - DDoS KORUMASI
 // ============================================
 
@@ -1749,11 +1755,12 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: { 
-    secure: process.env.NODE_ENV === 'production', // HTTPS'de true
+    secure: false, // Railway proxy arkasında çalıştığı için false
     httpOnly: true, // XSS koruması
     maxAge: 24 * 60 * 60 * 1000, // 24 saat
-    sameSite: 'strict' // CSRF koruması
-  }
+    sameSite: 'lax' // Railway için lax daha uygun
+  },
+  proxy: true // Railway proxy desteği
 }));
 
 // Upload klasörü
