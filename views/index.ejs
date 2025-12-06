@@ -74,7 +74,7 @@
                             </div>
                             
                             <div class="pricing-price">
-                                <span class="price-amount"><%= paket.fiyat ? paket.fiyat.toFixed(2) : '0.00' %></span>
+                                <span class="price-amount"><%= paket.fiyat ? paket.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '0' %></span>
                                 <span class="price-currency">₺</span>
                                 <div class="price-info">
                                     <i class="bi bi-journals"></i> <%= paket.sinav_sayisi || 0 %> Sınav
@@ -115,7 +115,7 @@
                             </div>
                             
                             <div class="pricing-price">
-                                <span class="price-amount"><%= sinav.fiyat %></span>
+                                <span class="price-amount"><%= typeof sinav.fiyat === 'number' ? sinav.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : sinav.fiyat %></span>
                                 <span class="price-currency">₺</span>
                                 <% if (sinav.sinif) { %>
                                 <div class="price-info">

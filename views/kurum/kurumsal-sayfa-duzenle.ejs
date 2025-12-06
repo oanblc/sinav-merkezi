@@ -1,0 +1,130 @@
+<%- include('../partials/header-dashboard', { title: 'İçerik Düzenle', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 24px 0;
+        margin: -30px -15px 24px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="page-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-2"><i class="bi bi-pencil-square"></i> İçerik Düzenle</h2>
+                    <p class="mb-0 opacity-75"><%= sayfa.sayfa_adi %> sayfasını düzenliyorsunuz</p>
+                </div>
+                <a href="/kurum/kurumsal-sayfalar" class="btn btn-light">
+                    <i class="bi bi-arrow-left"></i> Geri
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form id="editForm">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Başlık *</label>
+                            <input type="text" class="form-control" id="baslik" value="<%= sayfa.baslik %>" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Alt Başlık</label>
+                            <input type="text" class="form-control" id="alt_baslik" value="<%= sayfa.alt_baslik || '' %>">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">İçerik (HTML)</label>
+                            <textarea class="form-control" id="icerik" rows="15" style="font-family: 'Courier New', monospace;"><%= sayfa.icerik || '' %></textarea>
+                            <small class="text-muted">HTML etiketlerini kullanabilirsiniz</small>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Durum</label>
+                            <select class="form-select" id="aktif">
+                                <option value="1" <%= sayfa.aktif ? 'selected' : '' %>>Aktif</option>
+                                <option value="0" <%= !sayfa.aktif ? 'selected' : '' %>>Pasif</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Sıra</label>
+                            <input type="number" class="form-control" id="sira" value="<%= sayfa.sira || 0 %>" min="0">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Meta Description</label>
+                            <textarea class="form-control" id="seo_aciklama" rows="3"><%= sayfa.seo_aciklama || '' %></textarea>
+                            <small class="text-muted">SEO için önemli</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">SEO Başlık</label>
+                            <input type="text" class="form-control" id="seo_baslik" value="<%= sayfa.seo_baslik || '' %>">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="/kurum/kurumsal-sayfalar" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> İptal
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('editForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        sayfa_adi: '<%= sayfa.sayfa_adi %>',
+        baslik: document.getElementById('baslik').value,
+        icerik: document.getElementById('icerik').value,
+        seo_baslik: document.getElementById('seo_baslik').value,
+        seo_aciklama: document.getElementById('seo_aciklama').value,
+        aktif: document.getElementById('aktif').value,
+        sira: document.getElementById('sira').value
+    };
+    
+    try {
+        const response = await fetch('/kurum/kurumsal-sayfa-guncelle/<%= sayfa.id %>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Sayfa başarıyla güncellendi!');
+            window.location.href = '/kurum/kurumsal-sayfalar';
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (error) {
+        console.error('Hata:', error);
+        alert('❌ Bir hata oluştu!');
+    }
+});
+</script>
+
+<%- include('../partials/footer-dashboard') %>
+

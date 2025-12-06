@@ -171,7 +171,14 @@
         <div class="container">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h1 class="mb-2"><i class="bi bi-card-checklist"></i> <%= sinav.ad %></h1>
+                    <h1 class="mb-2">
+                        <i class="bi bi-card-checklist"></i> <%= sinav.ad %>
+                        <% if (sinav.sonuclar_aciklandi) { %>
+                            <span class="badge bg-success fs-6 ms-2 align-middle">YAYINDA</span>
+                        <% } else { %>
+                            <span class="badge bg-secondary fs-6 ms-2 align-middle">TASLAK</span>
+                        <% } %>
+                    </h1>
                     <p class="mb-0 opacity-75">
                         <i class="bi bi-calendar3"></i> <%= new Date(sinav.tarih).toLocaleDateString('tr-TR') %>
                         <% if (sinav.sinif) { %>
@@ -206,7 +213,38 @@
 
     <!-- Sınav Bilgileri -->
     <div class="info-card">
-        <h5 class="mb-3"><i class="bi bi-info-circle-fill text-primary me-2"></i>Sınav Bilgileri</h5>
+        <h5 class="mb-4"><i class="bi bi-info-circle-fill text-primary me-2"></i>Sınav Bilgileri</h5>
+        
+        <!-- İstatistikler -->
+        <% if (sinav.sonuc_yuklendi) { %>
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 700;"><%= istatistikler.toplam %></div>
+                    <div style="opacity: 0.9;">Toplam Katılımcı</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 700;"><%= istatistikler.eslesmis %></div>
+                    <div style="opacity: 0.9;">✓ Eşleşti</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 700;"><%= istatistikler.eslesmemis %></div>
+                    <div style="opacity: 0.9;">⚠ Eşleşmedi</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 700;">%<%= istatistikler.oran %></div>
+                    <div style="opacity: 0.9;">Başarı Oranı</div>
+                </div>
+            </div>
+        </div>
+        <% } %>
+        
         <div class="info-grid">
             <div class="info-item">
                 <label>Katılımcı Sayısı</label>
@@ -226,19 +264,47 @@
                     <% } %>
                 </div>
             </div>
-            <div class="info-item">
-                <label>İşlemler</label>
-                <div class="value">
-                    <a href="/kurum/sinav-sonuc-yukle/<%= sinav.id %>" class="btn btn-sm btn-success me-2">
-                        <i class="bi bi-upload"></i> Sonuç Yükle
-                    </a>
+        </div>
+        
+        <!-- İşlem Butonları -->
+        <div class="mt-4 p-3" style="background: #f8f9fa; border-radius: 12px;">
+            <h6 class="mb-3"><i class="bi bi-gear-fill me-2"></i>İşlemler</h6>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="/kurum/sinav-sonuc-yukle-yeni/<%= sinav.id %>" class="btn btn-success">
+                    <i class="bi bi-upload"></i> Sonuç Yükle (Manuel)
+                </a>
+                <% if (sinav.sonuc_yuklendi) { %>
+                    <button class="btn btn-primary" onclick="goruntuleSonuclar(<%= sinav.id %>)">
+                        <i class="bi bi-eye"></i> Sonuçları Görüntüle
+                    </button>
+                    
                     <% if (sinav.sonuc_yuklendi) { %>
-                        <button class="btn btn-sm btn-info" onclick="whatsappGonder()">
+                        <a href="/kurum/sinav-manuel-eslestirme/<%= sinav.id %>?sadece_eslesmemis=1" class="btn btn-warning">
+                            <i class="bi bi-exclamation-triangle"></i> Eşleşmeyenleri Eşleştir
+                        </a>
+                        <a href="/kurum/sinav-eslesen-kontrol/<%= sinav.id %>" class="btn btn-info">
+                            <i class="bi bi-check-circle"></i> Eşleşenleri Kontrol Et
+                        </a>
+                    <% } %>
+                    
+                    <% if (sinav.sonuc_yayinlandi) { %>
+                        <span class="badge bg-success d-flex align-items-center" style="padding: 10px 16px; font-size: 0.95rem;">
+                            <i class="bi bi-check-circle me-2"></i> Yayınlandı
+                        </span>
+                        <button class="btn btn-info" onclick="whatsappGonder()">
                             <i class="bi bi-whatsapp"></i> WhatsApp Gönder
                         </button>
+                    <% } else { %>
+                        <button class="btn btn-danger" onclick="sonuclariYayinla(<%= sinav.id %>)">
+                            <i class="bi bi-broadcast"></i> Sonuçları Yayınla
+                        </button>
+                        <span class="badge bg-warning-subtle text-warning d-flex align-items-center" style="padding: 10px 16px;">
+                            <i class="bi bi-exclamation-triangle me-2"></i> Henüz velilere görünmüyor
+                        </span>
                     <% } %>
-                </div>
+                <% } %>
             </div>
+        </div>
         </div>
         <% if (sinav.aciklama) { %>
             <div class="mt-3 p-3 bg-light rounded">
@@ -484,7 +550,25 @@ $(document).ready(function() {
     if ($('#katilimciTable').length) {
         $('#katilimciTable').DataTable({
             language: {
-                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/tr.json'
+                emptyTable: "Tabloda veri yok",
+                info: "_TOTAL_ kayıttan _START_ - _END_ arası gösteriliyor",
+                infoEmpty: "Kayıt yok",
+                infoFiltered: "(_MAX_ kayıt içerisinden bulunan)",
+                lengthMenu: "_MENU_ kayıt göster",
+                loadingRecords: "Yükleniyor...",
+                processing: "İşleniyor...",
+                search: "Ara:",
+                zeroRecords: "Eşleşen kayıt bulunamadı",
+                paginate: {
+                    first: "İlk",
+                    last: "Son",
+                    next: "Sonraki",
+                    previous: "Önceki"
+                },
+                aria: {
+                    sortAscending: ": artan sütun sıralamasını aktifleştir",
+                    sortDescending: ": azalan sütun sıralamasını aktifleştir"
+                }
             },
             responsive: true,
             order: [[1, 'asc']],
@@ -642,6 +726,32 @@ async function katilimciSil(id, isim) {
     }
 }
 
+// 📢 Sonuçları Yayınla
+async function sonuclariYayinla(sinavId) {
+    if (!confirm('⚠️ Sonuçlar yayınlandıktan sonra TÜM VELİLER görebilecek!\n\nEmin misiniz?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/kurum/sinav-sonuclari-yayinla/${sinavId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ ' + data.message);
+            location.reload();
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (error) {
+        console.error('Yayınlama hatası:', error);
+        alert('❌ Bir hata oluştu!');
+    }
+}
+
 // WhatsApp Gönder
 async function whatsappGonder() {
     if (!confirm('Tüm velilere WhatsApp bildirimi gönderilecek. Onaylıyor musunuz?')) {
@@ -732,7 +842,656 @@ async function sinavDurumuGuncelle() {
         alert('❌ Bir hata oluştu!');
     }
 }
+
+// 👁️ Sonuçları Görüntüle (Yüklenmiş PDF sonuçlarını göster)
+async function goruntuleSonuclar(sinavId) {
+    console.log('👁️ Sonuçlar yükleniyor:', sinavId);
+    
+    try {
+        const response = await fetch(`/kurum/sinav-sonuclari-listele/${sinavId}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            alert('❌ ' + (data.error || 'Sonuçlar yüklenemedi!'));
+            return;
+        }
+        
+        // Modal oluştur
+        const modalHTML = `
+            <div class="modal fade" id="sonuclarModal" tabindex="-1">
+                <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title">
+                                <i class="bi bi-clipboard-check"></i> Yüklenmiş Sınav Sonuçları
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <div class="p-3 bg-success bg-opacity-10 rounded text-center">
+                                        <h3 class="text-success mb-0">${data.data.matchedCount}</h3>
+                                        <small class="text-muted">Eşleşen</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="p-3 bg-warning bg-opacity-10 rounded text-center">
+                                        <h3 class="text-warning mb-0">${data.data.unmatchedCount}</h3>
+                                        <small class="text-muted">Eşleşmeyen</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="p-3 bg-info bg-opacity-10 rounded text-center">
+                                        <h3 class="text-info mb-0">${data.data.totalCount}</h3>
+                                        <small class="text-muted">Toplam</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="sonucListesi">
+                                ${data.data.results.map(r => `
+                                    <div class="card mb-2 ${r.eslesti ? 'border-success' : 'border-warning'}">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <strong>Sayfa ${r.sayfaNo}:</strong> ${r.ogrenciAdi}
+                                                    ${r.eslesti ? '<span class="badge bg-success ms-2">Eşleşti</span>' : '<span class="badge bg-warning ms-2">Eşleşmedi</span>'}
+                                                    ${r.strategy ? '<span class="badge bg-info ms-1">' + r.strategy.replace('strategy', 'Str.').replace(/_/g, ' ') + '</span>' : ''}
+                                                </div>
+                                                <div>
+                                                    ${r.pdfYolu ? `<a href="/${r.pdfYolu.replace(/\\\\/g, '/')}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i> Görüntüle</a>` : ''}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Eski modalı temizle
+        const oldModal = document.getElementById('sonuclarModal');
+        if (oldModal) oldModal.remove();
+        
+        // Yeni modalı ekle
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Modalı göster
+        new bootstrap.Modal(document.getElementById('sonuclarModal')).show();
+        
+    } catch (error) {
+        console.error('Sonuç yükleme hatası:', error);
+        alert('❌ Sonuçlar yüklenirken bir hata oluştu!');
+    }
+}
+
+// 🔗 Yeniden Eşleştir (Manuel eşleştirme modalını aç)
+async function yenidenEslestir(sinavId) {
+    console.log('🔗 Yeniden eşleştirme başlatılıyor:', sinavId);
+    
+    try {
+        const response = await fetch(`/kurum/sinav-sonuclari-listele/${sinavId}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            alert('❌ ' + (data.error || 'Sonuçlar yüklenemedi!'));
+            return;
+        }
+        
+        const eslesmeyenler = data.data.results.filter(r => !r.eslesti);
+        
+        if (eslesmeyenler.length === 0) {
+            alert('✅ Tüm sayfalar zaten eşleştirilmiş!');
+            return;
+        }
+        
+        // Manuel eşleştirme modalını oluştur
+        window.location.href = `/kurum/sinav-sonuc-yukle/${sinavId}?mode=reMatch`;
+        
+    } catch (error) {
+        console.error('Yeniden eşleştirme hatası:', error);
+        alert('❌ Bir hata oluştu!');
+    }
+}
+
+// 👥 Kalan Öğrencileri Eşleştir (Mevcut PDF'leri listele ve eşleştir)
+// Sadece eşleşmeyenleri göster (PDF önizlemeli)
+async function eslesmeyenleriGoster() {
+    let eslesmemisPdfler = [];
+    let tumOgrenciler = [];
+    
+    try {
+        const response = await fetch('/kurum/sinav-eslesmemis-pdfler/<%= sinav.id %>');
+        const data = await response.json();
+        
+        if (!data.success) {
+            alert('❌ ' + (data.error || 'Veriler yüklenemedi!'));
+            return;
+        }
+        
+        // TÜM PDF'leri al, sonra eşleşmemişleri filtrele
+        const tumPdfler = data.data.eslesmemisPdfler;
+        
+        // Eşleşmemiş = öğrenci adı BİLİNMEYEN olanlar (bunların PDF'i var!)
+        eslesmemisPdfler = tumPdfler.filter(pdf => 
+            pdf.ad_soyad === 'BİLİNMEYEN' || 
+            pdf.ad_soyad === 'BILINMEYEN' ||
+            !pdf.ad_soyad ||
+            pdf.ad_soyad.trim() === ''
+        );
+        tumOgrenciler = data.data.tumOgrenciler;
+        const orijinalPdfYolu = data.data.orijinalPdfYolu;
+        
+        console.log('🔍 DEBUG:');
+        console.log('Toplam eşleşmemiş:', eslesmemisPdfler.length);
+        console.log('İlk 3 PDF:', eslesmemisPdfler.slice(0, 3));
+        eslesmemisPdfler.slice(0, 3).forEach((p, i) => {
+            console.log(`PDF ${i+1} - ad_soyad: ${p.ad_soyad}, pdf_path: ${p.pdf_path}`);
+        });
+        console.log('Orijinal PDF yolu:', orijinalPdfYolu);
+        
+        if (eslesmemisPdfler.length === 0) {
+            alert('✅ Tüm PDF\'ler eşleştirilmiş!');
+            return;
+        }
+        
+        window.eslesmemisPdfler = eslesmemisPdfler;
+        window.tumOgrenciler = tumOgrenciler;
+        
+        // Orijinal PDF yolu yoksa, ilk eşleşmemiş PDF'in yolunu kullan
+        if (!orijinalPdfYolu && eslesmemisPdfler.length > 0) {
+            const pdfIlePdf = eslesmemisPdfler.find(p => p.pdf_path && p.pdf_path.trim() !== '');
+            if (pdfIlePdf) {
+                orijinalPdfYolu = pdfIlePdf.pdf_path;
+                console.log('✅ İlk PDF yolu kullanılıyor:', orijinalPdfYolu);
+            }
+        }
+        
+        window.orijinalPdfYolu = orijinalPdfYolu;
+        
+        // 2 Kolonlu Layout: Sol PDF Önizleme, Sağ Öğrenci Listesi
+        const modalHTML = `
+        <div class="modal fade" id="eslesmeyenModal" tabindex="-1">
+            <div class="modal-dialog modal-fullscreen">
+                <div class="modal-content">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
+                        <h5 class="modal-title">
+                            <i class="bi bi-exclamation-triangle-fill"></i> ${eslesmemisPdfler.length} Eşleşmemiş PDF - Hızlı Eşleştirme
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-0">
+                        <div class="row g-0" style="height: calc(100vh - 120px);">
+                            <!-- Sol: PDF Önizleme -->
+                            <div class="col-md-7 border-end" style="height: 100%; overflow: hidden;">
+                                <div class="p-3 bg-light border-bottom">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-0">PDF Önizleme</h6>
+                                            <small class="text-muted">Sayfa <span id="currentPdfIndex">1</span> / ${eslesmemisPdfler.length}</small>
+                                        </div>
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-outline-primary" onclick="oncekiPdf()" id="prevBtn">
+                                                <i class="bi bi-chevron-left"></i> Önceki
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="sonrakiPdf()" id="nextBtn">
+                                                Sonraki <i class="bi bi-chevron-right"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="pdfBilgi" class="p-2"></div>
+                                <iframe id="pdfOnizleme" style="width: 100%; height: calc(100% - 120px); border: none;"></iframe>
+                            </div>
+                            
+                            <!-- Sağ: Öğrenci Listesi -->
+                            <div class="col-md-5" style="height: 100%; overflow-y: auto;">
+                                <div class="p-3 bg-light border-bottom sticky-top">
+                                    <h6 class="mb-2">Öğrenci Seç ve Eşleştir</h6>
+                                    <input type="text" class="form-control" id="ogrenciAra" placeholder="🔍 Öğrenci ara...">
+                                </div>
+                                <div class="p-3" id="ogrenciListesi">
+                                    ${tumOgrenciler.map((ogr, idx) => `
+                                        <div class="card mb-2 ogrenci-card" style="cursor: pointer; transition: all 0.2s;" 
+                                             onclick="ogrenciSec(${idx})"
+                                             onmouseover="this.style.background='#f0fdf4'; this.style.borderColor='#10b981'"
+                                             onmouseout="this.style.background='white'; this.style.borderColor='#e5e7eb'">
+                                            <div class="card-body p-3">
+                                                <h6 class="mb-1">${ogr.ad_soyad}</h6>
+                                                <small class="text-muted">${ogr.sinif || 'Sınıf yok'}</small>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // İlk PDF'i yükle
+        window.currentPdfIndex = 0;
+        yukleCurrentPdf();
+        
+        // Arama fonksiyonu
+        document.getElementById('ogrenciAra').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            document.querySelectorAll('.ogrenci-card').forEach(card => {
+                const text = card.textContent.toLowerCase();
+                card.style.display = text.includes(searchTerm) ? 'block' : 'none';
+            });
+        });
+        
+        new bootstrap.Modal(document.getElementById('eslesmeyenModal')).show();
+        
+    } catch (error) {
+        console.error('Hata:', error);
+        alert('❌ Bir hata oluştu!');
+    }
+}
+
+// Sadece eşleşenleri göster (Kontrol için)
+async function eslesmisleriGoster() {
+    let eslesmemisPdfler = [];
+    let tumOgrenciler = [];
+    
+    try {
+        // Backend'den TÜM PDF'leri çek
+        const response = await fetch('/kurum/sinav-eslesmemis-pdfler/<%= sinav.id %>');
+        const data = await response.json();
+        
+        if (!data.success) {
+            alert('❌ ' + (data.error || 'Veriler yüklenemedi!'));
+            return;
+        }
+        
+        // Sadece eşleşmişleri filtrele (pdf_path dolu olanlar)
+        eslesmemisPdfler = data.data.eslesmemisPdfler.filter(pdf => pdf.pdf_path && pdf.pdf_path.trim() !== '');
+        tumOgrenciler = data.data.tumOgrenciler;
+        
+        if (eslesmemisPdfler.length === 0) {
+            alert('⚠️ Henüz hiç eşleşmiş PDF yok!');
+            return;
+        }
+        
+        window.eslesmemisPdfler = eslesmemisPdfler;
+        window.tumOgrenciler = tumOgrenciler;
+        
+        console.log(`📄 ${eslesmemisPdfler.length} Eşleşmiş PDF bulundu`);
+        
+        // Modal oluştur
+        const modalHTML = `
+        <div class="modal fade" id="kalanOgrenciModal" tabindex="-1">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                        <h5 class="modal-title">
+                            <i class="bi bi-check-circle-fill"></i> ${eslesmemisPdfler.length} Eşleşmiş PDF - Kontrol ve Düzeltme
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-success">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            <strong>Eşleşmiş PDF'ler</strong><br>
+                            🟢 Tüm PDF'ler başarıyla eşleştirilmiş.<br>
+                            💡 Yanlış eşleşme varsa dropdown'dan doğru öğrenciyi seçip "Yeniden Eşleştir" butonuna tıklayın.
+                        </div>
+                        
+                        <!-- Eşleşmemiş PDF Listesi -->
+                        <div id="eslesmemisPdfListesi" class="row g-3">
+                            ${eslesmemisPdfler.map((pdf, index) => {
+                                const eslesmis = pdf.pdf_path && pdf.pdf_path.trim() !== '';
+                                const borderColor = eslesmis ? '#48bb78' : '#f6ad55';
+                                const bgGradient = eslesmis 
+                                    ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' 
+                                    : 'linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%)';
+                                
+                                return `
+                                <div class="col-md-4" id="pdf-card-${index}">
+                                    <div class="card h-100" style="cursor: pointer; transition: all 0.2s; border: 2px solid ${borderColor}; background: ${bgGradient};" 
+                                         onmouseover="this.style.transform='scale(1.02)'" 
+                                         onmouseout="this.style.transform='scale(1)'">
+                                        <div class="card-body">
+                                            <div class="text-center mb-3" onclick="pdfOnizleVeEslestir(${index})">
+                                                <i class="bi bi-file-earmark-pdf-fill ${eslesmis ? 'text-success' : 'text-warning'}" style="font-size: 3rem;"></i>
+                                                <h6 class="mt-2 mb-1">${pdf.ad_soyad}</h6>
+                                                <small class="text-muted">${pdf.sinif || 'Sınıf yok'}</small>
+                                                <div class="mt-2">
+                                                    <span class="badge ${eslesmis ? 'bg-success' : 'bg-warning'}">
+                                                        ${eslesmis ? '✅ Eşleşmiş' : '⚠️ Eşleşmemiş'}
+                                                    </span>
+                                                    <span class="badge bg-secondary ms-1">PDF ${index + 1}</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mt-3">
+                                                <label class="form-label small"><i class="bi bi-person"></i> ${eslesmis ? 'Yeniden Eşleştir' : 'Öğrenci Seç'}</label>
+                                                <select class="form-select form-select-sm" id="ogrenci-select-${index}">
+                                                    <option value="">-- Öğrenci Seç --</option>
+                                                    ${tumOgrenciler.map(ogr => `
+                                                        <option value="${ogr.ogrenci_id}|${ogr.kaynak}" ${pdf.ogrenci_id == ogr.ogrenci_id && pdf.kaynak == ogr.kaynak ? 'selected' : ''}>
+                                                            ${ogr.ad_soyad} ${ogr.sinif ? '(' + ogr.sinif + ')' : ''}
+                                                        </option>
+                                                    `).join('')}
+                                                </select>
+                                            </div>
+                                            
+                                            <button class="btn btn-sm ${eslesmis ? 'btn-primary' : 'btn-success'} w-100 mt-2" onclick="pdfEslestir(${index})">
+                                                <i class="bi bi-${eslesmis ? 'arrow-repeat' : 'check-circle'}"></i> ${eslesmis ? 'Yeniden Eşleştir' : 'Eşleştir'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- PDF Önizleme Modalı -->
+        <div class="modal fade" id="pdfOnizlemeModal" tabindex="-1">
+            <div class="modal-dialog modal-fullscreen">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">
+                            <i class="bi bi-eye-fill"></i> PDF Önizleme
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-0">
+                        <iframe id="pdfOnizlemeIframe" style="width: 100%; height: 100%; border: none;"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+        
+        // Eski modalı temizle
+        const oldModal = document.getElementById('kalanOgrenciModal');
+        if (oldModal) oldModal.remove();
+        const oldPreview = document.getElementById('pdfOnizlemeModal');
+        if (oldPreview) oldPreview.remove();
+        
+        // Yeni modalı ekle
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Modalı göster
+        new bootstrap.Modal(document.getElementById('kalanOgrenciModal')).show();
+        
+    } catch (error) {
+        console.error('PDF listeleme hatası:', error);
+        alert('❌ Bir hata oluştu!');
+    }
+}
+
+// PDF önizle (mevcut PDF dosyasını aç)
+function pdfOnizleVeEslestir(pdfIndex) {
+    const pdf = window.eslesmemisPdfler[pdfIndex];
+    
+    if (!pdf.pdf_path) {
+        alert('❌ PDF dosyası bulunamadı!');
+        return;
+    }
+    
+    // PDF önizlemesini aç
+    const pdfUrl = `/${pdf.pdf_path.replace(/\\/g, '/')}`;
+    document.getElementById('pdfOnizlemeIframe').src = pdfUrl;
+    
+    // Önizleme modalını aç
+    new bootstrap.Modal(document.getElementById('pdfOnizlemeModal')).show();
+}
+
+// PDF'i seçilen öğrenciye ata
+// Yeni eşleşmeyen modal için fonksiyonlar
+function yukleCurrentPdf() {
+    const pdf = window.eslesmemisPdfler[window.currentPdfIndex];
+    const infoDiv = document.getElementById('pdfBilgi');
+    
+    // PDF yolu varsa göster (BİLİNMEYEN olanların da PDF'i var!)
+    if (pdf && pdf.pdf_path && pdf.pdf_path.trim() !== '') {
+        const pdfUrl = `/${pdf.pdf_path.replace(/\\/g, '/')}`;
+        document.getElementById('pdfOnizleme').src = pdfUrl;
+        
+        // Bilgilendirme
+        if (infoDiv) {
+            infoDiv.innerHTML = `
+                <div class="alert alert-warning mb-0" style="font-size: 0.9rem; padding: 8px 12px;">
+                    <i class="bi bi-exclamation-triangle"></i> 
+                    <strong>Eşleşmemiş PDF</strong> - 
+                    Bu sayfa "${pdf.ad_soyad}" olarak işaretlenmiş. 
+                    Sağ taraftan doğru öğrenciyi seçin.
+                </div>
+            `;
+        }
+    } 
+    // PDF yolu yoksa orijinal PDF'i göster
+    else if (window.orijinalPdfYolu) {
+        const orijinalUrl = `/${window.orijinalPdfYolu.replace(/\\/g, '/')}`;
+        document.getElementById('pdfOnizleme').src = orijinalUrl;
+        
+        if (infoDiv) {
+            infoDiv.innerHTML = `
+                <div class="alert alert-info mb-0" style="font-size: 0.9rem; padding: 8px 12px;">
+                    <i class="bi bi-info-circle"></i> 
+                    <strong>Orijinal PDF</strong> - 
+                    "${pdf.ad_soyad}" için henüz sayfa ataması yok. 
+                    Sağ taraftan öğrenci seçin.
+                </div>
+            `;
+        }
+    } 
+    // Hiç PDF yoksa
+    else {
+        document.getElementById('pdfOnizleme').srcdoc = `
+            <html>
+                <body style="display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: Arial; background: #f8f9fa;">
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 4rem; color: #f59e0b; margin-bottom: 20px;">⚠️</div>
+                        <h3 style="color: #333; margin-bottom: 10px;">PDF Bulunamadı</h3>
+                        <p style="color: #666;">Bu sınav için henüz PDF yüklenmemiş.</p>
+                    </div>
+                </body>
+            </html>
+        `;
+        if (infoDiv) infoDiv.innerHTML = '';
+    }
+    
+    document.getElementById('currentPdfIndex').textContent = window.currentPdfIndex + 1;
+    
+    // Buton durumları
+    document.getElementById('prevBtn').disabled = window.currentPdfIndex === 0;
+    document.getElementById('nextBtn').disabled = window.currentPdfIndex === window.eslesmemisPdfler.length - 1;
+}
+
+function oncekiPdf() {
+    if (window.currentPdfIndex > 0) {
+        window.currentPdfIndex--;
+        yukleCurrentPdf();
+    }
+}
+
+function sonrakiPdf() {
+    if (window.currentPdfIndex < window.eslesmemisPdfler.length - 1) {
+        window.currentPdfIndex++;
+        yukleCurrentPdf();
+    }
+}
+
+async function ogrenciSec(ogrenciIndex) {
+    const ogr = window.tumOgrenciler[ogrenciIndex];
+    const pdf = window.eslesmemisPdfler[window.currentPdfIndex];
+    
+    if (!confirm(`Bu PDF'i "${ogr.ad_soyad}" ile eşleştirmek istediğinize emin misiniz?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/kurum/sinav-pdf-yeniden-eslestir', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                katilimci_id: pdf.katilimci_id,
+                yeni_ogrenci_id: ogr.ogrenci_id,
+                yeni_kaynak: ogr.kaynak,
+                sinav_id: <%= sinav.id %>
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ ' + data.message);
+            
+            // Bu PDF'i listeden çıkar
+            window.eslesmemisPdfler.splice(window.currentPdfIndex, 1);
+            
+            if (window.eslesmemisPdfler.length === 0) {
+                alert('🎉 Tüm PDF\'ler eşleştirildi!');
+                location.reload();
+                return;
+            }
+            
+            // Sonraki PDF'e geç (veya öncekine)
+            if (window.currentPdfIndex >= window.eslesmemisPdfler.length) {
+                window.currentPdfIndex = window.eslesmemisPdfler.length - 1;
+            }
+            
+            yukleCurrentPdf();
+        } else {
+            alert('❌ ' + (data.message || 'Eşleştirme başarısız!'));
+        }
+    } catch (error) {
+        console.error('Hata:', error);
+        alert('❌ Bir hata oluştu!');
+    }
+}
+
+async function pdfEslestir(pdfIndex) {
+    const pdf = window.eslesmemisPdfler[pdfIndex];
+    const dropdown = document.getElementById(`ogrenci-select-${pdfIndex}`);
+    const seciliDeger = dropdown.value;
+    
+    if (!seciliDeger) {
+        alert('❌ Lütfen bir öğrenci seçin!');
+        return;
+    }
+    
+    const [yeniOgrenciId, yeniKaynak] = seciliDeger.split('|');
+    const ogrenciAd = dropdown.options[dropdown.selectedIndex].text;
+    
+    if (!confirm(`Bu PDF'i "${ogrenciAd}" ile eşleştirmek istediğinize emin misiniz?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/kurum/sinav-pdf-yeniden-eslestir', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                katilimci_id: pdf.katilimci_id,
+                yeni_ogrenci_id: yeniOgrenciId,
+                yeni_kaynak: yeniKaynak,
+                sinav_id: <%= sinav.id %>
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Kartı yeşil yap
+            const card = document.getElementById(`pdf-card-${pdfIndex}`);
+            card.innerHTML = `
+                <div class="card h-100" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border: 2px solid #48bb78;">
+                    <div class="card-body text-center">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                        <h6 class="mt-3 mb-1">${ogrenciAd}</h6>
+                        <span class="badge bg-success">✅ Eşleştirildi</span>
+                    </div>
+                </div>
+            `;
+            
+            alert('✅ ' + data.message);
+            
+            // 1.5 saniye sonra sayfayı yenile
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            alert('❌ ' + (data.message || 'Eşleştirme başarısız!'));
+        }
+    } catch (error) {
+        console.error('Eşleştirme hatası:', error);
+        alert('❌ Bir hata oluştu!');
+    }
+}
+
+// Tek öğrenci eşleştir
+async function tekOgrenciEslestir(index, ogrenciId, kaynak, ogrenciAd) {
+    const fileInput = document.getElementById(`pdf-${index}`);
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('❌ Lütfen PDF dosyası seçin!');
+        return;
+    }
+    
+    if (!confirm(`"${ogrenciAd}" için PDF eşleştiriliyor. Onaylıyor musunuz?`)) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('sinav_id', <%= sinav.id %>);
+    formData.append('ogrenci_id', ogrenciId);
+    formData.append('kaynak', kaynak);
+    formData.append('pdf', file);
+    
+    try {
+        const response = await fetch('/kurum/sinav-tek-ogrenci-eslestir', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Kartı yeşil yap ve başarılı işaretle
+            const card = document.getElementById(`ogr-card-${index}`);
+            card.style.background = 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)';
+            card.innerHTML = `
+                <div class="card-body text-center">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 2rem;"></i>
+                    <h6 class="mt-2 mb-0">${ogrenciAd}</h6>
+                    <small class="text-success">✅ Başarıyla eşleştirildi!</small>
+                </div>
+            `;
+            
+            // 1.5 saniye sonra sayfayı yenile
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            alert('❌ ' + (data.message || 'Eşleştirme başarısız!'));
+        }
+    } catch (error) {
+        console.error('Eşleştirme hatası:', error);
+        alert('❌ Bir hata oluştu!');
+    }
+}
 </script>
 
 <%- include('../partials/footer') %>
+
+
 

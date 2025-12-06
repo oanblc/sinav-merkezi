@@ -1,0 +1,221 @@
+<%- include('../partials/header-dashboard', { title: 'Sonuç Yükle - Manuel Eşleştirme', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+    }
+    
+    .upload-card {
+        background: white;
+        border-radius: 16px;
+        padding: 40px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    
+    .dropzone {
+        border: 3px dashed #cbd5e1;
+        border-radius: 16px;
+        padding: 80px 40px;
+        text-align: center;
+        background: #f8fafc;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .dropzone:hover {
+        border-color: #3b82f6;
+        background: #eff6ff;
+    }
+    
+    .dropzone i {
+        font-size: 5rem;
+        color: #3b82f6;
+        margin-bottom: 20px;
+    }
+</style>
+
+<div class="container mt-4">
+    <!-- Header -->
+    <div class="page-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-2"><i class="bi bi-file-pdf"></i> Sınav Sonucu Yükle</h1>
+                    <p class="mb-0 opacity-75">
+                        <%= sinav.ad %> - <%= katilimciSayisi %> Katılımcı
+                    </p>
+                </div>
+                <a href="/kurum/sinav-detay/<%= sinav.id %>" class="btn btn-light">
+                    <i class="bi bi-arrow-left"></i> Geri
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Card -->
+    <div class="upload-card">
+        <div class="text-center mb-4">
+            <h4>📄 Toplu PDF Yükle</h4>
+            <p class="text-muted">Tüm öğrencilerin sonuçlarını içeren tek bir PDF dosyası yükleyin</p>
+        </div>
+
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Nasıl Çalışır?</strong><br>
+            1️⃣ PDF'i yükleyin<br>
+            2️⃣ Sistem sayfalara ayıracak<br>
+            3️⃣ Her sayfayı manuel olarak öğrenciyle eşleştireceksiniz<br>
+            4️⃣ Tümü eşleşince sonuçları yayınlayabilirsiniz
+        </div>
+
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="dropzone" id="dropzone">
+                <i class="bi bi-cloud-upload"></i>
+                <h5>PDF Dosyasını Buraya Sürükleyin</h5>
+                <p class="text-muted mb-3">veya tıklayarak seçin</p>
+                <input type="file" id="pdfFile" name="pdfFile" accept=".pdf" hidden>
+            </div>
+            
+            <div id="fileInfo" class="mt-3 p-3 bg-light rounded" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-file-pdf text-danger me-2"></i>
+                        <strong id="fileName"></strong>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="clearFile()">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg w-100 mt-4" id="uploadBtn" disabled>
+                <i class="bi bi-upload"></i> PDF'i Yükle ve Sayfalara Ayır
+            </button>
+        </form>
+
+        <div id="progressDiv" class="mt-4" style="display: none;">
+            <div class="progress" style="height: 30px;">
+                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                     style="width: 0%">0%</div>
+            </div>
+            <p id="progressText" class="text-center mt-2 text-muted"></p>
+        </div>
+    </div>
+</div>
+
+<script>
+const SINAV_ID = <%= sinav.id %>;
+
+// Dropzone
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('pdfFile');
+const uploadBtn = document.getElementById('uploadBtn');
+
+dropzone.addEventListener('click', () => fileInput.click());
+
+dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.style.borderColor = '#3b82f6';
+    dropzone.style.background = '#eff6ff';
+});
+
+dropzone.addEventListener('dragleave', () => {
+    dropzone.style.borderColor = '#cbd5e1';
+    dropzone.style.background = '#f8fafc';
+});
+
+dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.style.borderColor = '#cbd5e1';
+    dropzone.style.background = '#f8fafc';
+    
+    if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        showFileInfo(e.dataTransfer.files[0]);
+    }
+});
+
+fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length) {
+        showFileInfo(e.target.files[0]);
+    }
+});
+
+function showFileInfo(file) {
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileInfo').style.display = 'block';
+    uploadBtn.disabled = false;
+}
+
+function clearFile() {
+    fileInput.value = '';
+    document.getElementById('fileInfo').style.display = 'none';
+    uploadBtn.disabled = true;
+}
+
+// Form Submit
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    if (!fileInput.files.length) {
+        alert('❌ Lütfen bir PDF dosyası seçin!');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('pdfFile', fileInput.files[0]);
+    formData.append('sinav_id', SINAV_ID);
+    
+    // UI Güncelle
+    document.getElementById('uploadForm').style.display = 'none';
+    document.getElementById('progressDiv').style.display = 'block';
+    updateProgress(10, 'PDF yükleniyor...');
+    
+    try {
+        const response = await fetch('/kurum/sinav-sonuc-yukle-sayfalara-ayir', {
+            method: 'POST',
+            body: formData
+        });
+        
+        updateProgress(50, 'PDF sayfalara ayrılıyor...');
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            alert('❌ ' + (data.error || 'Bir hata oluştu!'));
+            location.reload();
+            return;
+        }
+        
+        updateProgress(100, 'Tamamlandı!');
+        
+        alert(`✅ PDF başarıyla yüklendi!\n\n📄 ${data.data.sayfaSayisi} sayfa bulundu.\n\nŞimdi manuel eşleştirme ekranına yönlendiriliyorsunuz...`);
+        
+        // Manuel eşleştirme ekranına yönlendir
+        setTimeout(() => {
+            window.location.href = `/kurum/sinav-manuel-eslestirme/${SINAV_ID}`;
+        }, 1500);
+        
+    } catch (error) {
+        console.error('Hata:', error);
+        alert('❌ Bir hata oluştu!');
+        location.reload();
+    }
+});
+
+function updateProgress(percent, text) {
+    const bar = document.getElementById('progressBar');
+    bar.style.width = percent + '%';
+    bar.textContent = percent + '%';
+    document.getElementById('progressText').textContent = text;
+}
+</script>
+
+<%- include('../partials/footer-dashboard') %>
+

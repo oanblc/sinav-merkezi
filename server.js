@@ -1,5 +1,6 @@
 const express = require('express');
 const session = require('express-session');
+const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcrypt');
 const path = require('path');
 const multer = require('multer');
@@ -13,6 +14,65 @@ const { PDFDocument } = require('pdf-lib');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// ============================================
+// RATE LIMITING - DDoS KORUMASI
+// ============================================
+
+// Genel rate limit (tüm istekler için)
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 dakika
+  max: 1000, // IP başına maksimum 1000 istek
+  message: 'Çok fazla istek gönderdiniz. Lütfen 15 dakika sonra tekrar deneyin.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Login rate limit (brute force koruması)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 dakika
+  max: 5, // IP başına maksimum 5 deneme
+  message: 'Çok fazla giriş denemesi. Lütfen 15 dakika sonra tekrar deneyin.',
+  skipSuccessfulRequests: true,
+});
+
+// File upload rate limit
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 saat
+  max: 50, // IP başına maksimum 50 upload
+  message: 'Çok fazla dosya yükleme isteği. Lütfen 1 saat sonra tekrar deneyin.',
+});
+
+app.use(generalLimiter);
+
+// ============================================
+// INPUT VALIDATION & SANITIZATION
+// ============================================
+
+function sanitizeInput(input) {
+  if (typeof input !== 'string') return input;
+  return input.trim().replace(/<script[^>]*>.*?<\/script>/gi, '').replace(/<[^>]+>/g, '');
+}
+
+function validateEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(String(email).toLowerCase());
+}
+
+function validatePhone(phone) {
+  const re = /^[0-9]{10,11}$/;
+  return re.test(String(phone).replace(/\D/g, ''));
+}
+
+function validateRequired(fields, data) {
+  const missing = [];
+  for (const field of fields) {
+    if (!data[field] || String(data[field]).trim() === '') {
+      missing.push(field);
+    }
+  }
+  return missing.length > 0 ? missing : null;
+}
 
 // ============================================
 // WHATSAPP BİLDİRİM SİSTEMİ
@@ -237,6 +297,145 @@ async function extractTextHybrid(pdfPath) {
 }
 
 // ============================================
+// AKILLI EŞLEŞTİRME SİSTEMİ - YARDIMCI FONKSİYONLAR
+// ============================================
+
+/**
+ * İsim gibi görünüyor mu kontrol et
+ */
+function looksLikeName(line) {
+  // Önce ismi rakamlardan ayır (örn: "ALİ OSMAN ÇÖZELİ08-A" → "ALİ OSMAN ÇÖZELİ")
+  const cleanedLine = line.replace(/\d+[-]?[A-Z]?$/g, '').trim();
+  
+  const words = cleanedLine.split(/\s+/);
+  const wordCount = words.length;
+  
+  // Kelime sayısı kontrolü (daha esnek)
+  if (wordCount < 2 || wordCount > 6) return false;
+  
+  // Uzunluk kontrolü (daha esnek)
+  if (cleanedLine.length < 5 || cleanedLine.length > 60) return false;
+  
+  // Türkçe harfler kontrolü
+  if (!cleanedLine.match(/^[A-ZÇĞİÖŞÜa-zçğıöşü\s]+$/)) return false;
+  
+  // Blacklist: Başlık kelimeleri (daha kapsamlı)
+  if (cleanedLine.match(/BELGESİ|SINAV|SONUÇ|PUAN|OKUL|DERS|NET|DOĞRU|YANLIŞ|BOŞ|SIRA|ORTALAMA|İLÇE|KURUM|LİSE|ORTAOKUL|DENEME|NUMARA|GENEL|DERECE|KATILIM|BAŞARI|ANALİZ|CEVAP|SORU/i)) return false;
+  
+  // En az bir boşluk olmalı (ad-soyad)
+  if (!cleanedLine.includes(' ')) return false;
+  
+  return true;
+}
+
+/**
+ * İsmi temizle (rakamları ve özel karakterleri kaldır)
+ */
+function cleanExtractedName(name) {
+  if (!name) return '';
+  
+  // 1. Önce sondaki rakam-harf kombinasyonlarını temizle (08-A, 123, vs)
+  let clean = name.replace(/\d+[-]?[A-Z]?$/g, '').trim();
+  
+  // 2. Tüm rakamları temizle
+  clean = clean.replace(/\d+/g, '');
+  
+  // 3. Özel karakterleri temizle (Türkçe harfler hariç)
+  clean = clean.replace(/[^\wÇĞİÖŞÜçğıöşü\s]/g, '');
+  
+  // 4. Başındaki/sonundaki gereksiz kelimeleri temizle
+  clean = clean.replace(/^(Öğrenci|ÖĞRENCİ|Ogrenci|OGRENCI|Ad|AD|Adı|ADI|Soyad|SOYAD|Soyadı|SOYADI)\s*/gi, '');
+  clean = clean.replace(/\s*(Numara|NUMARA|Sınıf|SINIF|Sınıfı|SINIFI)$/gi, '');
+  
+  // 5. Fazla boşlukları temizle
+  clean = clean.replace(/\s+/g, ' ').trim();
+  
+  // 6. Büyük harfe çevir
+  clean = clean.toUpperCase();
+  
+  // 7. Çok kısa veya çok uzunsa geçersiz
+  if (clean.length < 5 || clean.length > 50) return '';
+  
+  return clean;
+}
+
+/**
+ * Levenshtein Distance hesapla
+ */
+function levenshteinDistance(str1, str2) {
+  const matrix = [];
+  
+  for (let i = 0; i <= str2.length; i++) {
+    matrix[i] = [i];
+  }
+  
+  for (let j = 0; j <= str1.length; j++) {
+    matrix[0][j] = j;
+  }
+  
+  for (let i = 1; i <= str2.length; i++) {
+    for (let j = 1; j <= str1.length; j++) {
+      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
+      }
+    }
+  }
+  
+  return matrix[str2.length][str1.length];
+}
+
+/**
+ * String benzerliği hesapla (0-1 arası, 1 = tam eşleşme)
+ */
+function stringSimilarity(str1, str2) {
+  if (!str1 || !str2) return 0;
+  
+  const s1 = str1.toUpperCase().trim();
+  const s2 = str2.toUpperCase().trim();
+  
+  if (s1 === s2) return 1.0;
+  
+  const longer = s1.length > s2.length ? s1 : s2;
+  const shorter = s1.length > s2.length ? s2 : s1;
+  
+  if (longer.length === 0) return 1.0;
+  
+  const editDistance = levenshteinDistance(longer, shorter);
+  return (longer.length - editDistance) / longer.length;
+}
+
+/**
+ * En iyi eşleşmeyi bul
+ */
+function findBestMatch(extractedName, katilimcilar) {
+  if (!extractedName || !katilimcilar || katilimcilar.length === 0) {
+    return null;
+  }
+  
+  let bestMatch = null;
+  let bestSimilarity = 0;
+  
+  for (const katilimci of katilimcilar) {
+    if (!katilimci.ad_soyad) continue;
+    
+    const similarity = stringSimilarity(extractedName, katilimci.ad_soyad);
+    
+    if (similarity > bestSimilarity) {
+      bestSimilarity = similarity;
+      bestMatch = katilimci;
+    }
+  }
+  
+  return bestMatch && bestSimilarity >= 0.65 ? { ogrenci: bestMatch, similarity: bestSimilarity } : null;
+}
+
+// ============================================
 // MULTER CONFIGURATION (PDF & Excel Upload)
 // ============================================
 
@@ -256,6 +455,9 @@ const pdfStorage = multer.diskStorage({
 
 const pdfUpload = multer({ 
   storage: pdfStorage,
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB limit
+  },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'application/pdf') {
       cb(null, true);
@@ -302,6 +504,13 @@ db.serialize(() => {
   });
   
   db.run(`ALTER TABLE users ADD COLUMN kurum TEXT`, (err) => {
+    if (err && !err.message.includes('duplicate column')) {
+      // Sütun zaten var, sorun yok
+    }
+  });
+  
+  // Veli ilk giriş kontrolü için password_changed kolonu
+  db.run(`ALTER TABLE users ADD COLUMN password_changed INTEGER DEFAULT 0`, (err) => {
     if (err && !err.message.includes('duplicate column')) {
       // Sütun zaten var, sorun yok
     }
@@ -411,6 +620,7 @@ db.serialize(() => {
       durum TEXT DEFAULT 'taslak',
       katilimci_sayisi INTEGER DEFAULT 0,
       sonuc_yuklendi INTEGER DEFAULT 0,
+      sonuclar_aciklandi INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -418,6 +628,10 @@ db.serialize(() => {
   // Mevcut sinavlar tablosuna yeni kolonları ekle (eğer yoksa)
   db.run(`ALTER TABLE sinavlar ADD COLUMN durum TEXT DEFAULT 'taslak'`, (err) => {
     if (err && !err.message.includes('duplicate column')) console.log('⚠️ durum kolonu zaten var veya hata:', err.message);
+  });
+  
+  db.run(`ALTER TABLE sinavlar ADD COLUMN sonuclar_aciklandi INTEGER DEFAULT 0`, (err) => {
+    if (err && !err.message.includes('duplicate column')) console.log('⚠️ sonuclar_aciklandi kolonu zaten var veya hata:', err.message);
   });
   db.run(`ALTER TABLE sinavlar ADD COLUMN katilimci_sayisi INTEGER DEFAULT 0`, (err) => {
     if (err && !err.message.includes('duplicate column')) console.log('⚠️ katilimci_sayisi kolonu zaten var veya hata:', err.message);
@@ -539,6 +753,62 @@ db.serialize(() => {
   
   console.log('✅ Sınav Paketleri tabloları oluşturuldu');
   
+  // Kurumsal İçerik Yönetimi Tablosu
+  db.run(`
+    CREATE TABLE IF NOT EXISTS kurumsal_icerik (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sayfa_adi TEXT NOT NULL UNIQUE,
+      baslik TEXT NOT NULL,
+      alt_baslik TEXT,
+      icerik TEXT,
+      meta_description TEXT,
+      meta_keywords TEXT,
+      aktif INTEGER DEFAULT 1,
+      sira INTEGER DEFAULT 0,
+      guncelleme_tarihi DATETIME DEFAULT CURRENT_TIMESTAMP,
+      olusturulma_tarihi DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  
+  // Varsayılan kurumsal içerikleri ekle (eğer yoksa)
+  db.get(`SELECT COUNT(*) as count FROM kurumsal_icerik`, (err, row) => {
+    if (!err && row.count === 0) {
+      const defaultPages = [
+        {
+          sayfa_adi: 'hakkimizda',
+          baslik: 'Türkiye\'nin Simülasyon Sınav Merkezi',
+          alt_baslik: '30 yıllık eğitim tecrübesiyle, gerçek sınav ortamında öğrencilerimizi geleceğe hazırlıyoruz.',
+          icerik: 'Sınav Merkezi, Türkiye\'nin önde gelen simülasyon sınav organizasyonlarından biridir. 1995 yılından bu yana öğrencilerimize gerçek sınav deneyimi yaşatarak, onları en iyi şekilde geleceğe hazırlamaktayız.',
+          meta_description: 'Türkiye\'nin önde gelen simülasyon sınav merkezi. 30 yıllık tecrübe ile LGS, YKS ve tüm sınavlar için profesyonel deneme sınavları.',
+          meta_keywords: 'sınav merkezi, deneme sınavı, LGS, YKS, simülasyon sınavı',
+          aktif: 1,
+          sira: 1
+        },
+        {
+          sayfa_adi: 'iletisim',
+          baslik: 'İletişim',
+          alt_baslik: 'Bizimle iletişime geçin',
+          icerik: 'Sorularınız ve talepleriniz için bizimle iletişime geçebilirsiniz.',
+          meta_description: 'Sınav Merkezi iletişim bilgileri',
+          meta_keywords: 'iletişim, telefon, e-posta, adres',
+          aktif: 1,
+          sira: 2
+        }
+      ];
+      
+      defaultPages.forEach(page => {
+        db.run(`
+          INSERT INTO kurumsal_icerik (sayfa_adi, baslik, alt_baslik, icerik, meta_description, meta_keywords, aktif, sira)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, [page.sayfa_adi, page.baslik, page.alt_baslik, page.icerik, page.meta_description, page.meta_keywords, page.aktif, page.sira]);
+      });
+      
+      console.log('✅ Varsayılan kurumsal içerikler oluşturuldu');
+    }
+  });
+  
+  console.log('✅ Kurumsal İçerik Yönetimi tablosu oluşturuldu');
+  
   // Öğrenci Kayıtları Tablosu (Kurum için)
   db.run(`
     CREATE TABLE IF NOT EXISTS ogrenci_kayitlari (
@@ -584,6 +854,55 @@ db.serialize(() => {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  
+  // ============================================
+  // AKILLI ÖĞRENME SİSTEMİ TABLOLARI
+  // ============================================
+  
+  // PDF Pattern Öğrenme Tablosu
+  db.run(`
+    CREATE TABLE IF NOT EXISTS pdf_learning_patterns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      kurum_id INTEGER,
+      sinav_tipi TEXT,
+      name_line_number INTEGER,
+      name_position_type TEXT,
+      avg_font_size REAL,
+      x_coordinate REAL,
+      y_coordinate REAL,
+      success_rate REAL DEFAULT 1.0,
+      use_count INTEGER DEFAULT 1,
+      last_used DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  
+  // Başarısız Eşleştirmeler Tablosu (Öğrenme için)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS matching_failures (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sinav_id INTEGER,
+      attempted_name TEXT,
+      correct_name TEXT,
+      failure_reason TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  
+  // PDF Yapısı Hafızası
+  db.run(`
+    CREATE TABLE IF NOT EXISTS pdf_structure_memory (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      kurum_id INTEGER,
+      file_hash TEXT,
+      name_extraction_method TEXT,
+      name_pattern TEXT,
+      success_count INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  
+  console.log('✅ Akıllı Öğrenme Sistemi tabloları hazır');
   
   // Slider tablosu
   db.run(`
@@ -642,6 +961,14 @@ db.serialize(() => {
     )
   `);
   
+  // Varsayılan site ayarlarını ekle
+  db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_adi', 'Sınav Merkezi')`);
+  db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_adres', 'Ankara, Türkiye')`);
+  db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_telefon', '+90 (312) 123 45 67')`);
+  db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_email', 'info@sinavmerkezi.com')`);
+  db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_aciklama', '30 yıllık eğitim tecrübesiyle öğrencilerimizi geleceğe hazırlıyoruz.')`);
+
+  
   // Kurumsal Sayfalar Tablosu
   db.run(`
     CREATE TABLE IF NOT EXISTS kurumsal_sayfalar (
@@ -663,7 +990,66 @@ db.serialize(() => {
   db.run(`
     INSERT OR IGNORE INTO kurumsal_sayfalar (sayfa_slug, sayfa_adi, baslik, icerik, sira)
     VALUES 
-    ('hakkimizda', 'Hakkımızda', 'Hakkımızda', '<p>Sınav Merkezi olarak 30 yıllık eğitim tecrübesiyle öğrencilerimizi geleceğe hazırlıyoruz.</p>', 1),
+    ('hakkimizda', 'Hakkımızda', 'Sınav Merkezi Hakkında', 
+    '<div class="row mb-5">
+      <div class="col-lg-6">
+        <h3 class="mb-4">Misyonumuz</h3>
+        <p class="lead">Sınav Merkezi olarak, öğrencilerin akademik başarılarını en üst düzeye çıkarmak ve onları geleceğe hazırlamak için kapsamlı sınav hizmetleri sunuyoruz.</p>
+        <p>30 yıllık eğitim tecrübemizle, öğrencilerimize en kaliteli sınav deneyimini yaşatmayı hedefliyoruz.</p>
+      </div>
+      <div class="col-lg-6">
+        <h3 class="mb-4">Vizyonumuz</h3>
+        <p class="lead">Türkiye''nin en güvenilir ve yenilikçi sınav merkezi olmak.</p>
+        <p>Modern teknoloji ve deneyimli kadromuzla, eğitim sektöründe fark yaratan hizmetler sunmaya devam ediyoruz.</p>
+      </div>
+    </div>
+    <div class="row mb-5">
+      <div class="col-12">
+        <h3 class="mb-4">Neden Biz?</h3>
+        <div class="row">
+          <div class="col-md-3 mb-3">
+            <div class="text-center">
+              <i class="bi bi-award-fill text-primary" style="font-size: 3rem;"></i>
+              <h5 class="mt-3">30+ Yıl Tecrübe</h5>
+              <p>Eğitim sektöründe köklü geçmiş</p>
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="text-center">
+              <i class="bi bi-people-fill text-success" style="font-size: 3rem;"></i>
+              <h5 class="mt-3">10,000+ Öğrenci</h5>
+              <p>Binlerce öğrenciye hizmet</p>
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="text-center">
+              <i class="bi bi-mortarboard-fill text-info" style="font-size: 3rem;"></i>
+              <h5 class="mt-3">Uzman Kadro</h5>
+              <p>Deneyimli eğitim ekibi</p>
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="text-center">
+              <i class="bi bi-graph-up-arrow text-warning" style="font-size: 3rem;"></i>
+              <h5 class="mt-3">Yüksek Başarı</h5>
+              <p>Kanıtlanmış sonuçlar</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-12">
+        <h3 class="mb-4">Hizmetlerimiz</h3>
+        <ul class="list-unstyled">
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Deneme Sınavları (TYT, AYT, LGS)</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Dijital Sonuç Takibi</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Kişiselleştirilmiş Performans Raporları</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Veli Bilgilendirme Sistemi</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Online Sınav Platformu</li>
+        </ul>
+      </div>
+    </div>', 1),
     ('iletisim', 'İletişim', 'İletişim', '<p><strong>Adres:</strong> İstanbul, Türkiye</p><p><strong>Email:</strong> info@sinavmerkezi.com</p><p><strong>Telefon:</strong> 0 (505) 354 12 30</p>', 2),
     ('sinav-merkezleri', 'Sınav Merkezleri', 'Sınav Merkezlerimiz', '<p>Tüm Türkiye genelinde sınav merkezlerimiz bulunmaktadır.</p>', 3)
   `);
@@ -860,6 +1246,494 @@ function dbRun(query, params = []) {
   });
 }
 
+/**
+ * TC bazlı öğrenci tekrarlarını temizler
+ * Aynı TC'ye sahip öğrenciler varsa, kurum kaydını öncelikli tutar
+ * @param {Array} veliOgrencileri - Veli tarafından eklenen öğrenciler
+ * @param {Array} kurumOgrencileri - Kurum tarafından eklenen öğrenciler
+ * @returns {Array} Temizlenmiş öğrenci listesi
+ */
+function temizleOgrenciTekrarlari(veliOgrencileri = [], kurumOgrencileri = []) {
+  const tcMap = new Map();
+  const tcSizOgrenciler = [];
+  let tekrarSayisi = 0;
+  
+  // Önce kurum öğrencilerini ekle (öncelikli)
+  kurumOgrencileri.forEach(ogr => {
+    const tc = ogr.tc_no ? String(ogr.tc_no).replace('.0', '').trim() : null;
+    if (tc && tc !== '' && tc !== 'null' && tc !== 'undefined') {
+      if (!tcMap.has(tc)) {
+        tcMap.set(tc, ogr);
+      }
+    } else {
+      // TC yok, direkt ekle
+      tcSizOgrenciler.push(ogr);
+    }
+  });
+  
+  // Sonra veli öğrencilerini ekle (sadece TC tekrar etmeyenler)
+  veliOgrencileri.forEach(ogr => {
+    const tc = ogr.tc_no ? String(ogr.tc_no).replace('.0', '').trim() : null;
+    if (tc && tc !== '' && tc !== 'null' && tc !== 'undefined') {
+      if (!tcMap.has(tc)) {
+        tcMap.set(tc, ogr);
+      } else {
+        tekrarSayisi++;
+        console.log(`   ⚠️  Tekrar: ${ogr.ad_soyad || ogr.ogrenci_adi} (TC: ${tc}) - Kurum kaydı kullanılıyor`);
+      }
+    } else {
+      // TC yok, direkt ekle
+      tcSizOgrenciler.push(ogr);
+    }
+  });
+  
+  // Tüm öğrencileri birleştir ve isme göre sırala
+  const temizlenmis = [...Array.from(tcMap.values()), ...tcSizOgrenciler];
+  temizlenmis.sort((a, b) => {
+    const adA = (a.ad_soyad || a.ogrenci_adi || '').toLowerCase();
+    const adB = (b.ad_soyad || b.ogrenci_adi || '').toLowerCase();
+    return adA.localeCompare(adB, 'tr');
+  });
+  
+  if (tekrarSayisi > 0) {
+    console.log(`   🧹 ${tekrarSayisi} tekrar temizlendi`);
+  }
+  
+  return temizlenmis;
+}
+
+// ============================================
+// SITE AYARLARI MIDDLEWARE
+// ============================================
+app.use(async (req, res, next) => {
+  try {
+    const ayarlar = await dbAll('SELECT * FROM site_ayarlari');
+    res.locals.siteAyarlari = {};
+    ayarlar.forEach(a => {
+      res.locals.siteAyarlari[a.anahtar] = a.deger;
+    });
+  } catch (error) {
+    res.locals.siteAyarlari = {
+      site_adi: 'Sınav Merkezi',
+      site_adres: 'Ankara, Türkiye',
+      site_telefon: '+90 (312) 123 45 67',
+      site_email: 'info@sinavmerkezi.com',
+      site_aciklama: '30 yıllık eğitim tecrübesiyle öğrencilerimizi geleceğe hazırlıyoruz.'
+    };
+  }
+  next();
+});
+
+// ============================================
+// AKILLI EŞLEŞTİRME SİSTEMİ - STRATEJİLER
+// ============================================
+
+/**
+ * STRATEJİ 1: Öğrenilmiş Pattern (En Hızlı)
+ * Daha önce başarılı olan pattern'leri kullanır
+ */
+async function strategy1_LearnedPattern(lines, katilimcilar, kurumId, sinavId, pdfPath) {
+  console.log('   📚 Geçmiş öğrenmelere bakılıyor...');
+  
+  try {
+    // Bu kurumun geçmiş başarılı pattern'lerini al
+    const learnedPattern = await dbGet(`
+      SELECT name_line_number, name_position_type, success_rate, use_count
+      FROM pdf_learning_patterns
+      WHERE kurum_id = ? 
+        AND success_rate >= 0.85
+      ORDER BY use_count DESC, success_rate DESC
+      LIMIT 1
+    `, [kurumId]);
+    
+    if (!learnedPattern) {
+      console.log('   ℹ️ Öğrenilmiş pattern yok');
+      return null;
+    }
+    
+    console.log(`   📖 Öğrenilmiş pattern: Satır ${learnedPattern.name_line_number} (Başarı: ${(learnedPattern.success_rate * 100).toFixed(0)}%, Kullanım: ${learnedPattern.use_count}x)`);
+    
+    // Öğrenilmiş satırdan ismi çıkar
+    const extractedName = lines[learnedPattern.name_line_number];
+    
+    if (!extractedName) {
+      console.log('   ⚠️ Satır bulunamadı');
+      return null;
+    }
+    
+    // İsmi temizle
+    const cleanName = cleanExtractedName(extractedName);
+    
+    // Katılımcılarla eşleştir
+    const match = findBestMatch(cleanName, katilimcilar);
+    
+    if (match && match.similarity >= 0.80) {
+      return {
+        ogrenciId: match.ogrenci.ogrenci_id,
+        ogrenciAd: match.ogrenci.ad_soyad,
+        kaynak: match.ogrenci.kaynak,
+        extractedName: cleanName,
+        confidence: match.similarity,
+        lineNumber: learnedPattern.name_line_number
+      };
+    }
+    
+    console.log('   ❌ Öğrenilmiş pattern eşleşmedi');
+    return null;
+  } catch (error) {
+    console.error('   ❌ Strateji 1 hatası:', error.message);
+    return null;
+  }
+}
+
+/**
+ * STRATEJİ 2: Veritabanı Benzerlik Taraması (Ana Yöntem)
+ * Tüm satırları tarayıp veritabanındaki öğrencilerle karşılaştırır
+ */
+async function strategy2_DatabaseSimilarity(lines, katilimcilar, kurumId, sinavId) {
+  console.log('   🔎 Tüm satırlarda veritabanı benzerliği aranıyor...');
+  
+  let bestMatch = null;
+  let bestSimilarity = 0;
+  let bestLineNumber = -1;
+  let bestExtractedName = '';
+  
+  // İlk 50 satırı tara
+  for (let i = 0; i < Math.min(lines.length, 50); i++) {
+    const line = lines[i];
+    
+    // Boş satırları atla
+    if (!line || line.length < 5) continue;
+    
+    // 🆕 GELİŞMİŞ PARSE: Satırı farklı şekillerde parse et
+    const parsedNames = [];
+    
+    // 1. Direkt satır
+    parsedNames.push({ text: line, source: 'direct' });
+    
+    // 2. Rakamlardan önceki kısım (örn: "ALİ OSMAN ÇÖZELİ08-A" → "ALİ OSMAN ÇÖZELİ")
+    const beforeNumber = line.match(/^([A-ZÇĞİÖŞÜa-zçğıöşü\s]+?)(?=\d|$)/);
+    if (beforeNumber && beforeNumber[1].trim().length >= 5) {
+      parsedNames.push({ text: beforeNumber[1].trim(), source: 'before_number' });
+    }
+    
+    // 3. Kelime tabanlı parse (birleşik satırları böl)
+    // "ÖğrenciNumaraSınıfALİ OSMAN ÇÖZELİ08-A" gibi durumlar için
+    const words = line.split(/(?=[A-ZÇĞİÖŞÜ][a-zçğıöşü])/);
+    words.forEach(w => {
+      const clean = cleanExtractedName(w);
+      if (clean && clean.length >= 5 && clean.split(' ').length >= 2) {
+        parsedNames.push({ text: w, source: 'word_split' });
+      }
+    });
+    
+    // Her parse edilmiş ismi test et
+    for (const parsed of parsedNames) {
+      // İsim gibi mi kontrol et
+      if (!looksLikeName(parsed.text)) continue;
+      
+      const cleanLine = cleanExtractedName(parsed.text);
+      if (!cleanLine) continue;
+      
+      // Her katılımcı ile karşılaştır
+      for (const katilimci of katilimcilar) {
+        const similarity = stringSimilarity(cleanLine, katilimci.ad_soyad);
+        
+        if (similarity > bestSimilarity) {
+          bestSimilarity = similarity;
+          bestMatch = katilimci;
+          bestLineNumber = i;
+          bestExtractedName = cleanLine;
+          console.log(`   🔍 Yeni aday: "${cleanLine}" → "${katilimci.ad_soyad}" (${(similarity * 100).toFixed(0)}%, kaynak: ${parsed.source})`);
+        }
+      }
+    }
+  }
+  
+  if (bestMatch && bestSimilarity >= 0.70) { // Eşiği 0.70'e düşürdük
+    console.log(`   ✅ Eşleşme bulundu: "${bestMatch.ad_soyad}" (Benzerlik: ${(bestSimilarity * 100).toFixed(0)}%, Satır: ${bestLineNumber})`);
+    
+    return {
+      ogrenciId: bestMatch.ogrenci_id,
+      ogrenciAd: bestMatch.ad_soyad,
+      kaynak: bestMatch.kaynak,
+      extractedName: bestExtractedName,
+      confidence: bestSimilarity,
+      lineNumber: bestLineNumber
+    };
+  }
+  
+  console.log(`   ⚠️ Yeterli benzerlik bulunamadı (En iyi: ${(bestSimilarity * 100).toFixed(0)}%)`);
+  return null;
+}
+
+/**
+ * STRATEJİ 3: Pozisyon Tabanlı
+ * PDF'deki pozisyona göre isim tahmini yapar
+ */
+async function strategy3_PositionBased(lines, katilimcilar, kurumId, sinavId, pdfPath) {
+  console.log('   📍 PDF koordinatlarına bakılıyor...');
+  
+  // İlk 15 satırda, en çok kelime sayısına sahip satırı bul
+  const candidates = lines.slice(0, 15)
+    .map((line, index) => ({
+      line: line,
+      index: index,
+      wordCount: line.split(/\s+/).length,
+      isNameLike: looksLikeName(line)
+    }))
+    .filter(c => c.isNameLike && c.wordCount >= 2 && c.wordCount <= 4)
+    .sort((a, b) => b.wordCount - a.wordCount);
+  
+  for (const candidate of candidates) {
+    const cleanLine = cleanExtractedName(candidate.line);
+    const match = findBestMatch(cleanLine, katilimcilar);
+    
+    if (match && match.similarity >= 0.70) {
+      console.log(`   ✅ Pozisyon eşleşmesi: "${match.ogrenci.ad_soyad}"`);
+      return {
+        ogrenciId: match.ogrenci.ogrenci_id,
+        ogrenciAd: match.ogrenci.ad_soyad,
+        kaynak: match.ogrenci.kaynak,
+        extractedName: cleanLine,
+        confidence: match.similarity * 0.9, // Pozisyon tabanlı biraz daha düşük güven
+        lineNumber: candidate.index
+      };
+    }
+  }
+  
+  console.log('   ❌ Pozisyon tabanlı eşleşme başarısız');
+  return null;
+}
+
+/**
+ * STRATEJİ 4: Gelişmiş Regex Pattern'leri
+ */
+async function strategy4_AdvancedRegex(lines, katilimcilar, kurumId, sinavId) {
+  console.log('   🔤 Regex pattern\'leri deneniyor...');
+  
+  const patterns = [
+    /(?:Öğrenci|ADI|SOYADI|İSİM)[:\s]+([A-ZÇĞİÖŞÜ\s]{10,40})/i,
+    /(?:Ad Soyad)[:\s]+([A-ZÇĞİÖŞÜ\s]{10,40})/i,
+    /^([A-ZÇĞİÖŞÜ]+\s+[A-ZÇĞİÖŞÜ]+(?:\s+[A-ZÇĞİÖŞÜ]+)?)\s+\d/,
+    /\d+\s+([A-ZÇĞİÖŞÜ]+\s+[A-ZÇĞİÖŞÜ]+)/
+  ];
+  
+  for (const pattern of patterns) {
+    for (let i = 0; i < Math.min(lines.length, 30); i++) {
+      const match_result = lines[i].match(pattern);
+      
+      if (match_result && match_result[1]) {
+        const extractedName = cleanExtractedName(match_result[1]);
+        const match = findBestMatch(extractedName, katilimcilar);
+        
+        if (match && match.similarity >= 0.75) {
+          console.log(`   ✅ Regex eşleşmesi: "${match.ogrenci.ad_soyad}"`);
+          return {
+            ogrenciId: match.ogrenci.ogrenci_id,
+            ogrenciAd: match.ogrenci.ad_soyad,
+            kaynak: match.ogrenci.kaynak,
+            extractedName: extractedName,
+            confidence: match.similarity * 0.85,
+            lineNumber: i
+          };
+        }
+      }
+    }
+  }
+  
+  console.log('   ❌ Regex eşleşmesi başarısız');
+  return null;
+}
+
+/**
+ * STRATEJİ 5: Fuzzy Search (En agresif)
+ */
+async function strategy5_FuzzySearch(lines, katilimcilar, kurumId, sinavId) {
+  console.log('   🌫️ Fuzzy search yapılıyor (agresif)...');
+  
+  // Tüm PDF textini birleştir ve her katılımcıyı ara
+  const fullText = lines.join(' ').toUpperCase();
+  
+  for (const katilimci of katilimcilar) {
+    const nameWords = katilimci.ad_soyad.toUpperCase().split(/\s+/);
+    
+    // İsmin tüm kelimeleri PDF'de var mı?
+    const allWordsExist = nameWords.every(word => fullText.includes(word));
+    
+    if (allWordsExist && nameWords.length >= 2) {
+      console.log(`   ✅ Fuzzy eşleşme: "${katilimci.ad_soyad}" (tüm kelimeler bulundu)`);
+      
+      return {
+        ogrenciId: katilimci.ogrenci_id,
+        ogrenciAd: katilimci.ad_soyad,
+        kaynak: katilimci.kaynak,
+        extractedName: katilimci.ad_soyad,
+        confidence: 0.70, // Düşük güven
+        lineNumber: -1
+      };
+    }
+  }
+  
+  console.log('   ❌ Fuzzy search başarısız');
+  return null;
+}
+
+// ============================================
+// AKILLI ÖĞRENME SİSTEMİ FONKSİYONLARI
+// ============================================
+
+/**
+ * Başarılı pattern'i öğren
+ */
+async function learnSuccessfulPattern(kurumId, sinavId, result, strategyName) {
+  try {
+    console.log(`\n🎓 ÖĞRENME: Başarılı pattern kaydediliyor...`);
+    
+    // Sınav tipini al
+    const sinav = await dbGet('SELECT sinav_turu FROM sinavlar WHERE id = ?', [sinavId]);
+    
+    // Var olan pattern'i güncelle veya yeni ekle
+    const existing = await dbGet(`
+      SELECT id, success_rate, use_count 
+      FROM pdf_learning_patterns 
+      WHERE kurum_id = ? AND name_line_number = ?
+    `, [kurumId, result.lineNumber]);
+    
+    if (existing) {
+      // Başarı oranını güncelle (moving average)
+      const newSuccessRate = (existing.success_rate * existing.use_count + result.confidence) / (existing.use_count + 1);
+      
+      await dbRun(`
+        UPDATE pdf_learning_patterns 
+        SET success_rate = ?, 
+            use_count = use_count + 1,
+            last_used = datetime('now')
+        WHERE id = ?
+      `, [newSuccessRate, existing.id]);
+      
+      console.log(`   ✅ Pattern güncellendi (Yeni başarı: ${(newSuccessRate * 100).toFixed(0)}%)`);
+    } else {
+      // Yeni pattern ekle
+      await dbRun(`
+        INSERT INTO pdf_learning_patterns 
+        (kurum_id, sinav_tipi, name_line_number, name_position_type, success_rate)
+        VALUES (?, ?, ?, ?, ?)
+      `, [kurumId, sinav?.sinav_turu || 'unknown', result.lineNumber, strategyName, result.confidence]);
+      
+      console.log(`   ✅ Yeni pattern öğrenildi (Satır: ${result.lineNumber})`);
+    }
+  } catch (error) {
+    console.error('❌ Öğrenme hatası:', error);
+  }
+}
+
+/**
+ * Başarısızlığı kaydet (gelecekte analiz için)
+ */
+async function logMatchingFailure(sinavId, lines, reason) {
+  try {
+    const attemptedNames = lines.slice(0, 10).join(' | ');
+    
+    await dbRun(`
+      INSERT INTO matching_failures (sinav_id, attempted_name, failure_reason)
+      VALUES (?, ?, ?)
+    `, [sinavId, attemptedNames.substring(0, 200), reason]);
+    
+    console.log('   📝 Başarısızlık kaydedildi (gelecek analiz için)');
+  } catch (error) {
+    console.error('❌ Başarısızlık kayıt hatası:', error);
+  }
+}
+
+/**
+ * ANA CASCADE MATCHING SİSTEMİ
+ * Çok Katmanlı Akıllı Eşleştirme - Strateji 1 başarısız olursa Strateji 2'ye geçer
+ */
+async function intelligentCascadeMatching(pdfText, sinavId, kurumId, pdfPath) {
+  console.log('\n🧠 AKILLI EŞLEŞTİRME BAŞLADI');
+  
+  try {
+    // 1. Sınava katılan öğrencileri al
+    const katilimcilar = await dbAll(`
+      SELECT 
+        sk.ogrenci_id,
+        sk.ogrenci_kaynak as kaynak,
+        CASE 
+          WHEN sk.ogrenci_kaynak = 'kurum' THEN ok.ogrenci_adi_soyadi
+          WHEN sk.ogrenci_kaynak = 'veli' THEN o.ad_soyad
+        END as ad_soyad
+      FROM sinav_katilimcilari sk
+      LEFT JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id AND sk.ogrenci_kaynak = 'kurum'
+      LEFT JOIN ogrenciler o ON sk.ogrenci_id = o.id AND sk.ogrenci_kaynak = 'veli'
+      WHERE sk.sinav_id = ?
+    `, [sinavId]);
+    
+    console.log(`👥 Sınava katılan: ${katilimcilar.length} öğrenci`);
+    
+    if (katilimcilar.length === 0) {
+      console.log('⚠️ Sınava katılan öğrenci bulunamadı!');
+      return null;
+    }
+    
+    // PDF'den tüm satırları çıkar
+    const lines = pdfText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    
+    const strategies = [
+      strategy1_LearnedPattern,
+      strategy2_DatabaseSimilarity,
+      strategy3_PositionBased,
+      strategy4_AdvancedRegex,
+      strategy5_FuzzySearch
+    ];
+    
+    let result = null;
+    let usedStrategy = null;
+    
+    // Her stratejiyi sırayla dene
+    for (let i = 0; i < strategies.length; i++) {
+      const strategy = strategies[i];
+      console.log(`\n🔍 Strateji ${i+1}: ${strategy.name}`);
+      
+      try {
+        result = await strategy(lines, katilimcilar, kurumId, sinavId, pdfPath);
+        
+        // Strateji 1 ve 2 için daha düşük eşik, diğerleri için 0.75
+        const minConfidence = (i === 0 || i === 1) ? 0.70 : 0.75;
+        
+        if (result && result.confidence >= minConfidence) {
+          usedStrategy = strategy.name;
+          console.log(`✅ Strateji ${i+1} BAŞARILI! (Güven: ${(result.confidence * 100).toFixed(0)}%)`);
+          
+          // Başarılı stratejiyi öğren
+          await learnSuccessfulPattern(kurumId, sinavId, result, strategy.name);
+          break;
+        } else {
+          console.log(`⚠️ Strateji ${i+1} yeterli güvende değil (Mevcut: ${result?.confidence ? (result.confidence * 100).toFixed(0) + '%' : 'yok'}, Gereken: ${(minConfidence * 100).toFixed(0)}%)`);
+        }
+      } catch (error) {
+        console.error(`❌ Strateji ${i+1} hatası:`, error.message);
+      }
+    }
+    
+    // Hiçbir strateji işe yaramadıysa
+    if (!result || result.confidence < 0.70) {
+      console.log('❌ TÜM STRATEJİLER BAŞARISIZ - Manuel eşleştirme gerekli');
+      console.log(`   En iyi sonuç: ${result?.confidence ? (result.confidence * 100).toFixed(0) + '%' : 'Bulunamadı'}`);
+      await logMatchingFailure(sinavId, lines, 'all_strategies_failed');
+      return null;
+    }
+    
+    return {
+      ...result,
+      usedStrategy: usedStrategy
+    };
+  } catch (error) {
+    console.error('❌ Cascade matching hatası:', error);
+    return null;
+  }
+}
+
 // Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -871,10 +1745,15 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view cache', false);
 
 app.use(session({
-  secret: 'your-secret-key-change-this-in-production',
+  secret: process.env.SESSION_SECRET || 'sinav-merkezi-secret-key-2024-production',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24 saat
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production', // HTTPS'de true
+    httpOnly: true, // XSS koruması
+    maxAge: 24 * 60 * 60 * 1000, // 24 saat
+    sameSite: 'strict' // CSRF koruması
+  }
 }));
 
 // Upload klasörü
@@ -1459,7 +2338,7 @@ app.get('/login', (req, res) => {
   req.session.success = null;
 });
 
-app.post('/login', async (req, res) => {
+app.post('/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body;
   
   try {
@@ -1480,6 +2359,13 @@ app.post('/login', async (req, res) => {
       
       console.log('   ✅ GİRİŞ BAŞARILI!');
       console.log('   Session ID:', req.session.userId);
+      
+      // İlk giriş kontrolü (password_changed = 0 veya NULL)
+      if (user.user_type === 'veli' && (user.password_changed === 0 || user.password_changed === null)) {
+        console.log('   🔐 İLK GİRİŞ - Şifre değiştirme ekranına yönlendiriliyor\n');
+        return res.redirect('/sifre-degistir');
+      }
+      
       console.log('   Yönlendirme:', user.user_type + ' dashboard\n');
       
       if (user.user_type === 'veli') {
@@ -1498,6 +2384,67 @@ app.post('/login', async (req, res) => {
     console.error('Login hatası:', error);
     req.session.error = 'Giriş sırasında bir hata oluştu!';
     res.redirect('/login');
+  }
+});
+
+// Şifre Değiştirme Sayfası (İlk Giriş)
+app.get('/sifre-degistir', (req, res) => {
+  if (!req.session.userId) {
+    return res.redirect('/login');
+  }
+  
+  res.render('sifre-degistir', { error: req.session.error });
+  req.session.error = null;
+});
+
+app.post('/sifre-degistir', async (req, res) => {
+  if (!req.session.userId) {
+    return res.redirect('/login');
+  }
+  
+  const { yeni_sifre, yeni_sifre_tekrar } = req.body;
+  
+  try {
+    // Şifre kontrolü
+    if (yeni_sifre.length < 6) {
+      req.session.error = 'Şifre en az 6 karakter olmalıdır!';
+      return res.redirect('/sifre-degistir');
+    }
+    
+    if (yeni_sifre !== yeni_sifre_tekrar) {
+      req.session.error = 'Şifreler uyuşmuyor!';
+      return res.redirect('/sifre-degistir');
+    }
+    
+    // Yeni şifreyi hashle
+    const hashedPassword = await bcrypt.hash(yeni_sifre, 10);
+    
+    // Veritabanını güncelle
+    await dbRun(`
+      UPDATE users 
+      SET password_hash = ?, password_changed = 1 
+      WHERE id = ?
+    `, [hashedPassword, req.session.userId]);
+    
+    console.log(`\n🔐 ŞİFRE DEĞİŞTİRİLDİ`);
+    console.log(`   User ID: ${req.session.userId}`);
+    console.log(`   ✅ Şifre başarıyla değiştirildi\n`);
+    
+    req.session.success = 'Şifreniz başarıyla değiştirildi!';
+    
+    // Kullanıcı tipine göre yönlendir
+    const user = await dbGet('SELECT user_type FROM users WHERE id = ?', [req.session.userId]);
+    
+    if (user.user_type === 'veli') {
+      return res.redirect('/veli/dashboard');
+    } else {
+      return res.redirect('/');
+    }
+    
+  } catch (error) {
+    console.error('Şifre değiştirme hatası:', error);
+    req.session.error = 'Şifre değiştirme sırasında bir hata oluştu!';
+    res.redirect('/sifre-degistir');
   }
 });
 
@@ -2095,8 +3042,9 @@ app.get('/kurum/tum-ogrenciler-api', requireAuth, async (req, res) => {
       console.error('❌ Kurum öğrencileri yükleme hatası:', error);
     }
     
-    // Birleştir
-    const tumOgrenciler = [...veliOgrencileri, ...kurumOgrencileri];
+    // TC bazlı tekrarları temizle
+    const tumOgrenciler = temizleOgrenciTekrarlari(veliOgrencileri, kurumOgrencileri);
+    
     console.log(`✅ Toplam ${tumOgrenciler.length} öğrenci döndürülüyor`);
     
     res.json(tumOgrenciler);
@@ -2421,123 +3369,9 @@ app.post('/kurum/ogrenci-kayit-ekle', requireAuth, async (req, res) => {
 });
 
 // Kurum - Hesapsız Velileri Kontrol Et
-app.get('/kurum/kontrol-hesapsiz-veliler', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).json({ success: false, message: 'Yetkisiz erişim!' });
-  }
-  
-  try {
-    // ogrenci_kayitlari'daki veli telefonlarını al
-    const veriTabani = await dbAll(`
-      SELECT veli_adi, veli_telefon, COUNT(*) as ogrenci_sayisi
-      FROM ogrenci_kayitlari
-      WHERE veli_telefon IS NOT NULL AND veli_telefon != ''
-      GROUP BY veli_telefon
-    `);
-    
-    console.log(`\n👥 HESAPSIZ VELİ KONTROLÜ`);
-    console.log(`   Toplam farklı veli: ${veriTabani.length}`);
-    
-    // Sistemde hesabı olmayanları filtrele
-    const hesapsizVeliler = [];
-    for (const veli of veriTabani) {
-      // Telefon formatını temizle
-      let telefonTemiz = veli.veli_telefon.toString().trim();
-      if (telefonTemiz.endsWith('.0')) {
-        telefonTemiz = telefonTemiz.replace('.0', '');
-      }
-      const telefonNokta = telefonTemiz + '.0';
-      
-      // Hem temiz hem de .0 formatında ara
-      const mevcutHesap = await dbGet(
-        'SELECT id FROM users WHERE (telefon = ? OR telefon = ? OR username = ? OR username = ?)',
-        [telefonTemiz, telefonNokta, telefonTemiz, telefonNokta]
-      );
-      
-      if (!mevcutHesap) {
-        hesapsizVeliler.push(veli);
-        console.log(`   ❌ Hesapsız: ${veli.veli_telefon} (${veli.veli_adi || 'İsimsiz'})`);
-      }
-    }
-    
-    console.log(`   📊 Hesapsız veli: ${hesapsizVeliler.length}`);
-    
-    res.json({
-      success: true,
-      veliler: hesapsizVeliler
-    });
-  } catch (error) {
-    console.error('Kontrol hatası:', error);
-    res.json({ success: false, message: 'Bir hata oluştu!' });
-  }
-});
+// ESKİ TELEFON BAZLI SİSTEM KALDIRILDI - SADECE TC BAZLI SİSTEM KULLANILIYOR
 
-// Kurum - Toplu Veli Hesabı Oluştur
-app.post('/kurum/toplu-veli-hesap-olustur', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).json({ success: false, message: 'Yetkisiz erişim!' });
-  }
-  
-  try {
-    // Hesapsız velileri bul
-    const veriTabani = await dbAll(`
-      SELECT DISTINCT veli_adi, veli_telefon
-      FROM ogrenci_kayitlari
-      WHERE veli_telefon IS NOT NULL AND veli_telefon != ''
-    `);
-    
-    console.log(`\n✨ TOPLU VELİ HESAP OLUŞTURMA`);
-    console.log(`   Kontrol edilecek veli: ${veriTabani.length}`);
-    
-    let olusturulan = 0;
-    const defaultPassword = await bcrypt.hash('Veli2024!', 10);
-    
-    for (const veli of veriTabani) {
-      // Telefon formatını temizle
-      let telefonTemiz = veli.veli_telefon.toString().trim();
-      if (telefonTemiz.endsWith('.0')) {
-        telefonTemiz = telefonTemiz.replace('.0', '');
-      }
-      const telefonNokta = telefonTemiz + '.0';
-      
-      // Hesap var mı kontrol et - hem temiz hem de .0 formatında ara
-      const mevcutHesap = await dbGet(
-        'SELECT id FROM users WHERE (telefon = ? OR telefon = ? OR username = ? OR username = ?)',
-        [telefonTemiz, telefonNokta, telefonTemiz, telefonNokta]
-      );
-      
-      if (!mevcutHesap) {
-        // Yeni hesap oluştur - temiz telefon formatıyla
-        await dbRun(`
-          INSERT INTO users (username, password_hash, user_type, telefon, ad_soyad, email, created_at)
-          VALUES (?, ?, 'veli', ?, ?, ?, datetime('now'))
-        `, [
-          telefonTemiz,
-          defaultPassword,
-          telefonTemiz,
-          veli.veli_adi || 'Veli',
-          telefonTemiz + '@temp.com'
-        ]);
-        olusturulan++;
-        
-        console.log(`   ✅ Veli hesabı oluşturuldu: ${telefonTemiz} (${veli.veli_adi})`);
-      }
-    }
-    
-    console.log(`   📊 Toplam oluşturulan: ${olusturulan}`);
-    
-    res.json({
-      success: true,
-      olusturulan: olusturulan,
-      message: `${olusturulan} veli hesabı başarıyla oluşturuldu!`
-    });
-  } catch (error) {
-    console.error('Toplu hesap oluşturma hatası:', error);
-    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
-  }
-});
-
-// Kurum - Veli Giriş Bilgisi Getir
+// Kurum - Veli Giriş Bilgisi Getir (ESKİ - KALDIRILDI)
 app.get('/kurum/veli-giris-bilgisi', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, message: 'Yetkisiz erişim!' });
@@ -2933,7 +3767,7 @@ app.get('/kurum/sinav-paketleri', requireAuth, async (req, res) => {
   }
   
   try {
-    // Paketleri ve ilgili istatistikleri çek
+    // Paketleri ve ilgili istatistikleri çek (sadece aktif olanlar)
     const paketler = await dbAll(`
       SELECT 
         sp.*,
@@ -2942,6 +3776,7 @@ app.get('/kurum/sinav-paketleri', requireAuth, async (req, res) => {
       FROM sinav_paketleri sp
       LEFT JOIN paket_sinavlari ps ON sp.id = ps.paket_id
       LEFT JOIN paket_atamalari pa ON sp.id = pa.paket_id AND pa.durum = 'aktif'
+      WHERE sp.aktif = 1
       GROUP BY sp.id
       ORDER BY sp.olusturulma_tarihi DESC
     `);
@@ -3337,6 +4172,11 @@ app.get('/kurum/sinav-detay/:id', requireAuth, async (req, res) => {
     return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
   }
   
+  // ✅ Cache'i devre dışı bırak - her zaman güncel veri çek
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  
   try {
     const sinavId = req.params.id;
     
@@ -3414,8 +4254,8 @@ app.get('/kurum/sinav-detay/:id', requireAuth, async (req, res) => {
       ORDER BY o.sinif, o.ad_soyad
     `);
     
-    // İki listeyi birleştir
-    const tumOgrenciler = [...kurumOgrencileri, ...veliOgrencileri];
+    // TC bazlı tekrarları temizle (Kurum kaydı öncelikli)
+    const tumOgrenciler = temizleOgrenciTekrarlari(veliOgrencileri, kurumOgrencileri);
     
     console.log(`\n📊 Öğrenci Listesi (${tumOgrenciler.length} öğrenci):`);
     console.log(`  - Kurum kayıtları: ${kurumOgrencileri.length}`);
@@ -3432,6 +4272,24 @@ app.get('/kurum/sinav-detay/:id', requireAuth, async (req, res) => {
     // Benzersiz sınıf listesi
     const siniflar = [...new Set(tumOgrenciler.map(o => o.sinif).filter(s => s))].sort();
     
+    // Eşleşme istatistiklerini hesapla
+    // pdf_path varsa eşleşmiştir (sonuc_durumu 'yuklendi', 'tamamlandi', 'bildirildi' olabilir)
+    const eslesmisKatilimcilar = katilimcilar.filter(k => k.pdf_path && k.pdf_path.trim() !== '');
+    const eslesmemisKatilimcilar = katilimcilar.filter(k => !k.pdf_path || k.pdf_path.trim() === '');
+    
+    const istatistikler = {
+      toplam: katilimcilar.length,
+      eslesmis: eslesmisKatilimcilar.length,
+      eslesmemis: eslesmemisKatilimcilar.length,
+      oran: katilimcilar.length > 0 ? Math.round((eslesmisKatilimcilar.length / katilimcilar.length) * 100) : 0
+    };
+    
+    console.log(`\n📊 İSTATİSTİKLER (Sınav ID: ${sinavId})`);
+    console.log(`   Toplam Katılımcı: ${istatistikler.toplam}`);
+    console.log(`   ✅ Eşleşen: ${istatistikler.eslesmis}`);
+    console.log(`   ⚠️ Eşleşmeyen: ${istatistikler.eslesmemis}`);
+    console.log(`   📊 Başarı Oranı: %${istatistikler.oran}`);
+    
     // Session mesajlarını al ve hemen temizle
     const errorMsg = req.session.error;
     const successMsg = req.session.success;
@@ -3441,6 +4299,9 @@ app.get('/kurum/sinav-detay/:id', requireAuth, async (req, res) => {
     res.render('kurum/sinav-detay', {
       sinav: sinav,
       katilimcilar: katilimcilar,
+      eslesmisKatilimcilar: eslesmisKatilimcilar,
+      eslesmemisKatilimcilar: eslesmemisKatilimcilar,
+      istatistikler: istatistikler,
       tumOgrenciler: tumOgrenciler,
       siniflar: siniflar,
       user: { username: req.session.username, type: req.session.userType },
@@ -3450,6 +4311,111 @@ app.get('/kurum/sinav-detay/:id', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Sınav detay hatası:', error);
     res.status(500).send('Bir hata oluştu!');
+  }
+});
+
+// 🆕 Kurum - Sınav Sonuçlarını Listele (Yüklenmiş PDF sonuçlarını göster)
+app.get('/kurum/sinav-sonuclari-listele/:id', requireAuth, async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).json({ success: false, error: 'Yetkiniz yok!' });
+  }
+  
+  try {
+    const sinavId = req.params.id;
+    
+    console.log('\n📊 SINAV SONUÇLARI LİSTELENİYOR:', sinavId);
+    
+    // Sınav katılımcılarını ve sonuçlarını al
+    const sonuclar = await dbAll(`
+      SELECT 
+        sk.ogrenci_id,
+        sk.ogrenci_kaynak as kaynak,
+        sk.pdf_path,
+        sk.sonuc_durumu,
+        CASE 
+          WHEN sk.ogrenci_kaynak = 'kurum' THEN ok.ogrenci_adi_soyadi
+          WHEN sk.ogrenci_kaynak = 'veli' THEN o.ad_soyad
+        END as ad_soyad
+      FROM sinav_katilimcilari sk
+      LEFT JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id AND sk.ogrenci_kaynak = 'kurum'
+      LEFT JOIN ogrenciler o ON sk.ogrenci_id = o.id AND sk.ogrenci_kaynak = 'veli'
+      WHERE sk.sinav_id = ?
+      ORDER BY sk.id
+    `, [sinavId]);
+    
+    console.log(`   Toplam katılımcı: ${sonuclar.length}`);
+    
+    // Sonuçları grupla
+    let matchedCount = 0;
+    let unmatchedCount = 0;
+    
+    const results = sonuclar.map((s, index) => {
+      const eslesti = !!(s.pdf_path && s.sonuc_durumu === 'yuklendi');
+      
+      if (eslesti) matchedCount++;
+      else unmatchedCount++;
+      
+      return {
+        sayfaNo: index + 1,
+        ogrenciId: s.ogrenci_id,
+        ogrenciAdi: s.ad_soyad || 'BİLİNMEYEN',
+        pdfYolu: s.pdf_path,
+        eslesti: eslesti,
+        kaynak: s.kaynak,
+        sonucDurumu: s.sonuc_durumu
+      };
+    });
+    
+    console.log(`   ✅ Eşleşen: ${matchedCount}`);
+    console.log(`   ⚠️  Eşleşmeyen: ${unmatchedCount}`);
+    
+    res.json({
+      success: true,
+      data: {
+        totalCount: sonuclar.length,
+        matchedCount: matchedCount,
+        unmatchedCount: unmatchedCount,
+        results: results
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Sonuç listeleme hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Sonuçlar listelenemedi: ' + error.message
+    });
+  }
+});
+
+// 🆕 Kurum - Sınav Sonuçlarını Yayınla/Kaldır
+app.post('/kurum/sinav-yayinla/:id', requireAuth, async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
+  }
+
+  try {
+    const sinavId = req.params.id;
+    const { yayinla } = req.body; // true = yayınla, false = yayından kaldır
+    
+    const yeniDurum = yayinla ? 1 : 0;
+    
+    await dbRun('UPDATE sinavlar SET sonuclar_aciklandi = ? WHERE id = ?', [yeniDurum, sinavId]);
+    
+    // Ayrıca sınav durumunu da güncelle (görsel uyumluluk için)
+    const sinavDurumu = yayinla ? 'Sonuç açıklandı' : 'Sonuç yükleniyor';
+    await dbRun('UPDATE sinavlar SET sinav_durumu = ? WHERE id = ?', [sinavDurumu, sinavId]);
+    
+    console.log(`\n📢 Sınav ${sinavId} durumu güncellendi: ${yayinla ? 'YAYINLANDI' : 'TASLAK'}`);
+    
+    res.json({ 
+      success: true, 
+      message: yayinla ? 'Sınav sonuçları başarıyla yayınlandı! Veliler artık görebilir.' : 'Sınav sonuçları yayından kaldırıldı (Taslak).' 
+    });
+    
+  } catch (error) {
+    console.error('Sınav yayınlama hatası:', error);
+    res.status(500).json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
@@ -3652,7 +4618,39 @@ app.get('/api/ogrenci-ara', requireAuth, async (req, res) => {
   }
 });
 
-// Kurum - Sonuç Yükleme Sayfası
+// 🆕 YENİ SİSTEM: Basit Sonuç Yükleme Sayfası
+app.get('/kurum/sinav-sonuc-yukle-yeni/:id', requireAuth, async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).send('Yetkiniz yok!');
+  }
+  
+  try {
+    const sinavId = req.params.id;
+    
+    const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinavId]);
+    if (!sinav) {
+      return res.status(404).send('Sınav bulunamadı!');
+    }
+    
+    const katilimciSayisi = await dbGet(
+      'SELECT COUNT(*) as count FROM sinav_katilimcilari WHERE sinav_id = ?',
+      [sinavId]
+    );
+    
+    res.render('kurum/sinav-sonuc-yukle-yeni', {
+      user: req.session,
+      sinav: sinav,
+      katilimciSayisi: katilimciSayisi.count,
+      error: req.query.error || null
+    });
+    
+  } catch (error) {
+    console.error('Sonuç yükleme sayfası hatası:', error);
+    res.status(500).send('Bir hata oluştu!');
+  }
+});
+
+// ESKİ SİSTEM: Sonuç Yükleme Sayfası (Akıllı Eşleştirme ile)
 app.get('/kurum/sinav-sonuc-yukle/:id', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
@@ -3726,7 +4724,91 @@ app.get('/kurum/sinav-sonuc-yukle/:id', requireAuth, async (req, res) => {
 });
 
 // Kurum - Sonuç PDF Analiz (İlk sayfayı analiz et, isim pattern'i bul)
-app.post('/kurum/sinav-sonuc-yukle-analiz', requireAuth, pdfUpload.single('pdfFile'), async (req, res) => {
+// 🆕 YENİ SİSTEM: PDF'i Sayfalara Ayır (Otomatik Eşleştirme YOK)
+app.post('/kurum/sinav-sonuc-yukle-sayfalara-ayir', requireAuth, uploadLimiter, pdfUpload.single('pdfFile'), async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).json({ success: false, error: 'Yetkiniz yok!' });
+  }
+  
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'PDF dosyası seçilmedi!' });
+    }
+    
+    const { sinav_id } = req.body;
+    
+    if (!sinav_id) {
+      return res.status(400).json({ success: false, error: 'Sınav ID eksik!' });
+    }
+    
+    console.log('\n📄 PDF SAYFALARA AYRILIYOR:', req.file.originalname);
+    console.log('📚 Sınav ID:', sinav_id);
+    
+    // PDF'i yükle
+    const pdfBytes = fs.readFileSync(req.file.path);
+    const pdfDoc = await PDFDocument.load(pdfBytes);
+    const totalPages = pdfDoc.getPageCount();
+    
+    console.log(`📊 Toplam sayfa: ${totalPages}`);
+    
+    // Her sayfayı ayrı PDF olarak kaydet
+    const sayfaYollari = [];
+    
+    for (let i = 0; i < totalPages; i++) {
+      const singlePagePdf = await PDFDocument.create();
+      const [copiedPage] = await singlePagePdf.copyPages(pdfDoc, [i]);
+      singlePagePdf.addPage(copiedPage);
+      const singlePageBytes = await singlePagePdf.save();
+      
+      // Dosya adı: sinav_ID_sayfa_NUMARA_timestamp.pdf
+      const sayfaFileName = `sinav_${sinav_id}_sayfa_${i + 1}_${Date.now()}.pdf`;
+      const sayfaYolu = path.join('uploads', 'sinav-sonuclari', sayfaFileName);
+      
+      // Klasör yoksa oluştur
+      const dir = path.dirname(sayfaYolu);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      
+      fs.writeFileSync(sayfaYolu, singlePageBytes);
+      sayfaYollari.push(sayfaYolu);
+      
+      console.log(`   ✓ Sayfa ${i + 1}/${totalPages} kaydedildi`);
+    }
+    
+    // Orijinal PDF'i de kaydet
+    const orijinalFileName = `sinav_${sinav_id}_orijinal_${Date.now()}.pdf`;
+    const orijinalYol = path.join('uploads', 'sinav-sonuclari', orijinalFileName);
+    fs.copyFileSync(req.file.path, orijinalYol);
+    
+    // Veritabanına kaydet - sinavlar tablosuna orijinal PDF yolunu ekle
+    await dbRun(
+      'UPDATE sinavlar SET dosya_yolu = ?, sonuc_yuklendi = 1 WHERE id = ?',
+      [orijinalYol, sinav_id]
+    );
+    
+    // Geçici dosyayı sil
+    fs.unlinkSync(req.file.path);
+    
+    console.log(`✅ PDF başarıyla ${totalPages} sayfaya ayrıldı!`);
+    
+    res.json({
+      success: true,
+      data: {
+        sayfaSayisi: totalPages,
+        sayfaYollari: sayfaYollari,
+        orijinalYol: orijinalYol
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ PDF ayırma hatası:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ESKİ SİSTEM (Yedek olarak kalıyor)
+app.post('/kurum/sinav-sonuc-yukle-analiz', requireAuth, uploadLimiter, pdfUpload.single('pdfFile'), async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, error: 'Yetkiniz yok!' });
   }
@@ -3774,68 +4856,95 @@ app.post('/kurum/sinav-sonuc-yukle-analiz', requireAuth, pdfUpload.single('pdfFi
       console.log('💡 Manuel giriş önerilir.');
     }
     
-    // Potansiyel isim adaylarını bul (aynı mantık)
+    // Potansiyel isim adaylarını bul - YENİ GELİŞMİŞ SİSTEM
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     const potansiyelIsimler = [];
     
-    // 1. AKILLI FİLTRELEME: Sadece isim gibi görünenleri göster
-    for (let i = 0; i < Math.min(lines.length, 50); i++) {
+    console.log(`📋 Analiz: ${lines.length} satır bulundu`);
+    
+    // 1. GELİŞMİŞ FİLTRELEME: Yeni looksLikeName fonksiyonunu kullan
+    for (let i = 0; i < Math.min(lines.length, 80); i++) { // 80 satıra çıkardık
       const line = lines[i];
       
-      // Temel kontroller
-      const words = line.split(/\s+/);
+      // İsim gibi mi kontrol et (yeni fonksiyon)
+      if (!looksLikeName(line)) continue;
+      
+      // İsmi temizle (yeni fonksiyon)
+      const cleanLine = cleanExtractedName(line);
+      if (!cleanLine || cleanLine.length < 5) continue;
+      
+      // Kelime sayısı kontrolü
+      const words = cleanLine.split(/\s+/);
       const wordCount = words.length;
-      
-      // 1. Kelime sayısı: 2-5 kelime (isim formatı)
-      if (wordCount < 2 || wordCount > 5) continue;
-      
-      // 2. Uzunluk: 5-40 karakter (isim uzunluğu)
-      if (line.length < 5 || line.length > 40) continue;
-      
-      // 3. Büyük harf kontrolü (rakam ve boşluk da olabilir)
-      const isAllCaps = line.match(/^[A-ZÇĞİÖŞÜ\s\d]+$/);
-      if (!isAllCaps) continue;
-      
-      // 4. BLACKLIST: Açık başlık kelimeleri
-      const hasObviousTitle = line.match(/BELGESİ|SINAV|SONUÇ|SÜREÇ|FENOMEN|İZLEME|PUAN|OKUL|İLÇE|KARNES|YÜZDE|ORTALAMA|SIRA|DİLİM|DOĞRU|YANLIŞ|BOŞ|NET|DERS/);
-      if (hasObviousTitle) continue;
-      
-      // 5. BLACKLIST: Tam okul/kurum isimleri
-      const hasInstitution = line.match(/ORTAOKUL|LİSE|İLKOKUL|ANAOKUL|KOLEJİ|ANADOLU|İMAM|HATİP/);
-      if (hasInstitution) continue;
-      
-      // GEÇERLI İSİM ADAYI!
-      
-      // Temizleme: Rakamla başlayan kısmı kes
-      // "ENES AL34912B" → "ENES AL"
-      let cleanLine = line;
-      const cleanMatch = line.match(/^([A-ZÇĞİÖŞÜ\s]+?)(?=\d|$)/);
-      if (cleanMatch && cleanMatch[1].trim().length >= 5) {
-        cleanLine = cleanMatch[1].trim();
-      }
-      
-      // Temizlenmiş isimdeki kelime sayısını kontrol et
-      const cleanWords = cleanLine.split(/\s+/);
-      const cleanWordCount = cleanWords.length;
       
       // Güven seviyesi hesapla
       let confidence = 'medium';
       
       // Sadece harf ve boşluk + 2-3 kelime = yüksek güven
-      const onlyLetters = cleanLine.match(/^[A-ZÇĞİÖŞÜ\s]+$/);
-      if (onlyLetters && (cleanWordCount === 2 || cleanWordCount === 3)) {
+      if (wordCount === 2 || wordCount === 3) {
         confidence = 'high';
       }
-      // 4-5 kelime = düşük güven
-      else if (cleanWordCount > 3) {
+      // 4-6 kelime = düşük güven
+      else if (wordCount > 3) {
         confidence = 'low';
       }
       
       potansiyelIsimler.push({
         text: cleanLine,
         lineNumber: i,
-        confidence: confidence
+        confidence: confidence,
+        originalLine: line // Orijinal satırı da sakla
       });
+      
+      console.log(`   ✓ Aday ${potansiyelIsimler.length}: "${cleanLine}" (Satır: ${i}, Güven: ${confidence})`);
+    }
+    
+    // 2. Hiç isim bulunamadıysa, en uzun satırları göster (fallback)
+    if (potansiyelIsimler.length === 0) {
+      console.log('⚠️ Hiç isim adayı bulunamadı, en uzun satırlar gösteriliyor...');
+      
+      const longLines = lines
+        .map((line, i) => ({ line, index: i, length: line.length }))
+        .filter(l => l.length >= 10 && l.length <= 100)
+        .sort((a, b) => b.length - a.length)
+        .slice(0, 10);
+      
+      longLines.forEach(l => {
+        potansiyelIsimler.push({
+          text: l.line,
+          lineNumber: l.index,
+          confidence: 'low',
+          originalLine: l.line
+        });
+      });
+      
+      console.log(`   → ${potansiyelIsimler.length} uzun satır eklendi (fallback)`);
+    }
+    
+    // 🧠 Akıllı sistem ile ilk sayfayı test et
+    console.log('\n🧠 Akıllı sistem ile ilk sayfa test ediliyor...');
+    const testMatch = await intelligentCascadeMatching(
+      text, 
+      sinav_id, 
+      req.session.userId, 
+      tempFilePath
+    );
+    
+    let autoSelectedPattern = null;
+    let autoConfidence = 0;
+    
+    if (testMatch && testMatch.confidence >= 0.80) {
+      autoSelectedPattern = {
+        text: testMatch.extractedName,
+        lineNumber: testMatch.lineNumber,
+        confidence: testMatch.confidence,
+        strategy: testMatch.usedStrategy,
+        matchedStudent: testMatch.ogrenciAd
+      };
+      autoConfidence = testMatch.confidence;
+      console.log(`✅ Otomatik pattern bulundu: "${testMatch.extractedName}" (Güven: ${(autoConfidence * 100).toFixed(0)}%)`);
+    } else {
+      console.log('⚠️ Otomatik pattern bulunamadı, manuel seçim gerekli');
     }
     
     // Geçici dosyaları temizle
@@ -3853,7 +4962,9 @@ app.post('/kurum/sinav-sonuc-yukle-analiz', requireAuth, pdfUpload.single('pdfFi
         sinavId: sinav_id,
         potansiyelIsimler: potansiyelIsimler.slice(0, 15), // İlk 15 aday
         ornekText: text.substring(0, 500), // Kullanıcıya göster
-        allLines: lines // Tüm satırları da gönder (frontend için)
+        allLines: lines, // Tüm satırları da gönder (frontend için)
+        autoSelectedPattern: autoSelectedPattern, // 🎯 Otomatik seçilen pattern
+        useAutoMode: autoConfidence >= 0.85 // %85+ güven varsa direkt kullan
       }
     });
     
@@ -3885,20 +4996,16 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Sınav ID veya PDF dosya yolu eksik!' });
     }
     
-    if (!selectedPattern) {
-      return res.status(400).json({ success: false, error: 'İsim pattern seçilmedi!' });
-    }
-    
-    console.log('\n📚 SINAV SONUÇLARI KAYDEDILIYOR');
+    console.log('\n🧠 AKILLI SINAV SONUÇLARI YÜKLENİYOR');
     console.log('✅ Sınav ID:', sinav_id);
-    console.log('✅ Seçilen pattern:', selectedPattern);
-    console.log('✅ Seçilen satır no:', selectedLineNumber);
     console.log('✅ PDF Path:', pdfPath);
+    console.log('🎯 Mod: Akıllı Cascade Matching (5 strateji)');
     
     const results = [];
     let matchedCount = 0;
     let unmatchedCount = 0;
     let savedCount = 0;
+    let strategyStats = {};
     
     // Sınav bilgilerini al
     const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinav_id]);
@@ -3958,29 +5065,14 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
         const text = extractionResult.text;
         const isGarbled = extractionResult.garbled || false;
         
-        // Text'ten isim çıkar (kullanıcının seçtiği satır numarasından)
-        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-        let extractedName = '';
-        
-        if (selectedLineNumber !== null && selectedLineNumber !== undefined) {
-          extractedName = lines[selectedLineNumber] || '';
-        } else {
-          extractedName = selectedPattern;
-        }
-        
-        // İsmi temizle (rakamları kes)
-        const cleanMatch = extractedName.match(/^([A-ZÇĞİÖŞÜ\s]+?)(?=\d|$)/);
-        if (cleanMatch && cleanMatch[1].trim().length >= 5) {
-          extractedName = cleanMatch[1].trim();
-        }
-        
-        console.log(`📝 Text'ten çıkarılan isim: "${extractedName}"`);
-        
-        // Manuel eşleşme var mı kontrol et
-        let eslesmeSonuc = null;
         let ogrenciId = null;
         let ogrenciAdi = 'BİLİNMEYEN';
+        let kaynak = 'kurum';
+        let usedStrategy = null;
+        let confidence = 0;
+        let extractedName = '';
         
+        // Manuel eşleşme var mı kontrol et
         if (manuelMap[sayfaNo]) {
           // Manuel eşleşme var
           ogrenciId = manuelMap[sayfaNo];
@@ -3988,35 +5080,48 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
           if (ogrenci) {
             ogrenciAdi = ogrenci.ogrenci_adi_soyadi;
             console.log(`✅ Manuel eşleşme: ${ogrenciAdi} (ID: ${ogrenciId})`);
-            eslesmeSonuc = ogrenci;
             matchedCount++;
+            usedStrategy = 'Manuel';
+            confidence = 1.0;
           } else {
             console.log(`⚠️ Manuel eşleşme geçersiz! Öğrenci ID ${ogrenciId} bulunamadı.`);
             unmatchedCount++;
           }
-        } else if (extractedName) {
-          // Otomatik eşleştirme yap (sadece sınava katılanlarla)
-          eslesmeSonuc = await sinavKatilimciEslestir(extractedName, sinav_id);
+        } else {
+          // 🧠 AKILLI CASCADE MATCHING KULLAN
+          const matchResult = await intelligentCascadeMatching(
+            text, 
+            sinav_id, 
+            req.session.userId,
+            tempFilePath
+          );
           
-          if (eslesmeSonuc) {
-            ogrenciId = eslesmeSonuc.id;
-            ogrenciAdi = eslesmeSonuc.ogrenci_adi_soyadi;
-            console.log(`✅ Otomatik eşleşme: ${ogrenciAdi} (ID: ${ogrenciId})`);
+          if (matchResult && matchResult.confidence >= 0.75) {
+            // Başarılı eşleşme
+            ogrenciId = matchResult.ogrenciId;
+            ogrenciAdi = matchResult.ogrenciAd;
+            kaynak = matchResult.kaynak;
+            extractedName = matchResult.extractedName;
+            confidence = matchResult.confidence;
+            usedStrategy = matchResult.usedStrategy;
+            
+            // Strateji istatistiklerini güncelle
+            strategyStats[usedStrategy] = (strategyStats[usedStrategy] || 0) + 1;
+            
+            console.log(`✅ Akıllı eşleşme: ${ogrenciAdi} (Strateji: ${usedStrategy}, Güven: ${(confidence * 100).toFixed(0)}%)`);
             matchedCount++;
           } else {
-            console.log(`❌ Eşleşme bulunamadı`);
+            // Eşleşme başarısız
+            console.log(`❌ Tüm stratejiler başarısız - Manuel gerekli`);
             unmatchedCount++;
           }
-        } else {
-          console.log(`⚠️ İsim çıkarılamadı (encoding sorunu olabilir)`);
-          unmatchedCount++;
         }
         
         // PDF'i kaydet
         const sanitizedName = ogrenciAdi.replace(/[^a-zA-ZçÇğĞıİöÖşŞüÜ\s]/g, '').replace(/\s+/g, '_');
         const finalFileName = ogrenciId 
           ? `${sayfaNo}_${sanitizedName}_${ogrenciId}.pdf`
-          : `${sayfaNo}_BILINMEYEN_${sanitizedName}.pdf`;
+          : `${sayfaNo}_BILINMEYEN_${Date.now()}.pdf`;
         
         const finalFilePath = path.join(sonucKlasoru, finalFileName);
         fs.writeFileSync(finalFilePath, singlePageBytes);
@@ -4030,8 +5135,8 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
             await dbRun(`
               UPDATE sinav_katilimcilari 
               SET pdf_path = ?, sonuc_durumu = 'yuklendi' 
-              WHERE sinav_id = ? AND ogrenci_id = ?
-            `, [finalFilePath, sinav_id, ogrenciId]);
+              WHERE sinav_id = ? AND ogrenci_id = ? AND ogrenci_kaynak = ?
+            `, [finalFilePath, sinav_id, ogrenciId, kaynak]);
             
             savedCount++;
             console.log(`✅ Veritabanına kaydedildi`);
@@ -4048,7 +5153,9 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
           pdfYolu: finalFilePath,
           eslesti: !!ogrenciId,
           extractedName: extractedName,
-          isGarbled: isGarbled
+          isGarbled: isGarbled,
+          strategy: usedStrategy,
+          confidence: confidence
         });
         
         // Geçici dosyayı temizle
@@ -4083,15 +5190,20 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
     console.log(`   Eşleşen: ${matchedCount}`);
     console.log(`   Eşleşmeyen: ${unmatchedCount}`);
     console.log(`   Kaydedilen: ${savedCount}`);
+    console.log(`\n📊 Strateji İstatistikleri:`);
+    Object.entries(strategyStats).forEach(([strategy, count]) => {
+      console.log(`   ${strategy}: ${count} sayfa`);
+    });
     
     res.json({
       success: true,
-      message: `${totalPages} sayfa işlendi. ${matchedCount} eşleşme, ${unmatchedCount} eşleşmedi.`,
+      message: `${matchedCount}/${totalPages} sayfa otomatik eşleştirildi (Akıllı Sistem)`,
       data: {
         totalPages: totalPages,
         matchedCount: matchedCount,
         unmatchedCount: unmatchedCount,
         savedCount: savedCount,
+        strategyStats: strategyStats,
         results: results
       }
     });
@@ -4184,20 +5296,349 @@ app.post('/kurum/sinav-manuel-eslestir/:id', requireAuth, async (req, res) => {
       }
     }
     
-    // Sınavın sonuc_yuklendi durumunu güncelle
-    await dbRun('UPDATE sinavlar SET sonuc_yuklendi = 1 WHERE id = ?', [sinavId]);
+    // Sınavın sonuc_yuklendi durumunu güncelle (ama henüz yayınlanmamış)
+    await dbRun('UPDATE sinavlar SET sonuc_yuklendi = 1, sonuc_yayinlandi = 0 WHERE id = ?', [sinavId]);
+    
+    // ✅ GÜNCEL İSTATİSTİKLERİ HESAPLA
+    const istatistikler = await dbGet(`
+      SELECT 
+        COUNT(*) as toplam,
+        SUM(CASE WHEN pdf_path IS NOT NULL AND pdf_path != '' THEN 1 ELSE 0 END) as eslesmis,
+        SUM(CASE WHEN pdf_path IS NULL OR pdf_path = '' THEN 1 ELSE 0 END) as eslesmemis
+      FROM sinav_katilimcilari
+      WHERE sinav_id = ?
+    `, [sinavId]);
     
     console.log(`\n📊 MANUEL EŞLEŞTIRME TAMAMLANDI:`);
     console.log(`   ✅ Başarılı: ${basarili}`);
     console.log(`   ❌ Hatalı: ${hatali}`);
+    console.log(`\n📊 GÜNCEL DURUM:`);
+    console.log(`   Toplam Katılımcı: ${istatistikler.toplam}`);
+    console.log(`   Eşleşen: ${istatistikler.eslesmis}`);
+    console.log(`   Eşleşmeyen: ${istatistikler.eslesmemis}`);
     
     res.json({ 
       success: true, 
-      message: `${basarili} öğrenci eşleştirildi! ${hatali > 0 ? `(${hatali} hata)` : ''}`
+      message: `${basarili} öğrenci eşleştirildi! ${hatali > 0 ? `(${hatali} hata)` : ''}`,
+      matchedCount: istatistikler.eslesmis || 0,
+      unmatchedCount: istatistikler.eslesmemis || 0,
+      totalCount: istatistikler.toplam || 0
     });
   } catch (error) {
     console.error('❌ Manuel eşleştirme hatası:', error);
     res.json({ success: false, message: 'Bir hata oluştu!' });
+  }
+});
+
+// 📄 Kurum - Eşleşmemiş PDF Sayfalarını Listele
+app.get('/kurum/sinav-eslesmemis-pdfler/:id', requireAuth, async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).json({ success: false, error: 'Yetkiniz yok!' });
+  }
+  
+  try {
+    const sinavId = req.params.id;
+    
+    console.log('\n📄 TÜM PDF SAYFALARI LİSTELENİYOR (Eşleşen + Eşleşmeyen):', sinavId);
+    
+    // TÜM yüklenmiş PDF'leri al - HEM EŞLEŞEN HEM EŞLEŞMEYEN
+    // pdf_path NULL olanlar = henüz eşleşmemiş (BİLİNMEYEN)
+    // pdf_path dolu olanlar = eşleşmiş
+    // BİLİNMEYEN olanlar = PDF var ama öğrenci eşleşmemiş
+    const eslesmemisOgrenciler = await dbAll(`
+      SELECT 
+        sk.id as katilimci_id,
+        sk.ogrenci_id,
+        sk.ogrenci_kaynak as kaynak,
+        sk.pdf_path,
+        sk.sonuc_durumu,
+        CASE 
+          WHEN sk.ogrenci_kaynak = 'kurum' THEN ok.ogrenci_adi_soyadi
+          WHEN sk.ogrenci_kaynak = 'veli' THEN o.ad_soyad
+          ELSE 'BİLİNMEYEN'
+        END as ad_soyad,
+        CASE 
+          WHEN sk.ogrenci_kaynak = 'kurum' THEN ok.sinif
+          WHEN sk.ogrenci_kaynak = 'veli' THEN o.sinif
+        END as sinif
+      FROM sinav_katilimcilari sk
+      LEFT JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id AND sk.ogrenci_kaynak = 'kurum'
+      LEFT JOIN ogrenciler o ON sk.ogrenci_id = o.id AND sk.ogrenci_kaynak = 'veli'
+      WHERE sk.sinav_id = ?
+      ORDER BY 
+        CASE 
+          WHEN sk.pdf_path IS NOT NULL AND (ok.ogrenci_adi_soyadi = 'BİLİNMEYEN' OR o.ad_soyad = 'BİLİNMEYEN' OR (ok.ogrenci_adi_soyadi IS NULL AND o.ad_soyad IS NULL)) THEN 0
+          WHEN sk.pdf_path IS NULL THEN 1
+          ELSE 2
+        END,
+        sk.id
+    `, [sinavId]);
+    
+    // Eşleştirilebilir öğrencileri al (tüm katılımcılar)
+    const tumOgrenciler = await dbAll(`
+      SELECT 
+        sk.ogrenci_id,
+        sk.ogrenci_kaynak as kaynak,
+        CASE 
+          WHEN sk.ogrenci_kaynak = 'kurum' THEN ok.ogrenci_adi_soyadi
+          WHEN sk.ogrenci_kaynak = 'veli' THEN o.ad_soyad
+        END as ad_soyad,
+        CASE 
+          WHEN sk.ogrenci_kaynak = 'kurum' THEN ok.sinif
+          WHEN sk.ogrenci_kaynak = 'veli' THEN o.sinif
+        END as sinif
+      FROM sinav_katilimcilari sk
+      LEFT JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id AND sk.ogrenci_kaynak = 'kurum'
+      LEFT JOIN ogrenciler o ON sk.ogrenci_id = o.id AND sk.ogrenci_kaynak = 'veli'
+      WHERE sk.sinav_id = ?
+      ORDER BY ad_soyad
+    `, [sinavId]);
+    
+    // Orijinal PDF yolunu bul - eşleşmiş herhangi bir öğrencinin PDF'inden al
+    let orijinalPdfYolu = null;
+    
+    // Önce sinavlar tablosuna bak
+    const sinav = await dbGet('SELECT dosya_yolu FROM sinavlar WHERE id = ?', [sinavId]);
+    if (sinav && sinav.dosya_yolu) {
+        orijinalPdfYolu = sinav.dosya_yolu;
+    } else {
+        // Yoksa eşleşmiş herhangi bir öğrencinin PDF'ini al
+        const eslesmisOgrenci = await dbGet(
+            'SELECT pdf_path FROM sinav_katilimcilari WHERE sinav_id = ? AND pdf_path IS NOT NULL LIMIT 1',
+            [sinavId]
+        );
+        if (eslesmisOgrenci && eslesmisOgrenci.pdf_path) {
+            orijinalPdfYolu = eslesmisOgrenci.pdf_path;
+        }
+    }
+    
+    console.log(`   📄 Eşleşmemiş: ${eslesmemisOgrenciler.length}`);
+    console.log(`   👥 Toplam Öğrenci: ${tumOgrenciler.length}`);
+    console.log(`   📁 PDF Yolu: ${orijinalPdfYolu}`);
+    
+    res.json({
+      success: true,
+      data: {
+        eslesmemisPdfler: eslesmemisOgrenciler,
+        tumOgrenciler: tumOgrenciler,
+        orijinalPdfYolu: orijinalPdfYolu
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Eşleşmemiş PDF listeleme hatası:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// 🔄 Kurum - Mevcut PDF'i Başka Öğrenciye Ata
+app.post('/kurum/sinav-pdf-yeniden-eslestir', requireAuth, async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
+  }
+  
+  try {
+    const { katilimci_id, yeni_ogrenci_id, yeni_kaynak, sinav_id } = req.body;
+    
+    console.log(`\n🔄 PDF YENİDEN EŞLEŞTİRİLİYOR`);
+    console.log(`   Katılımcı ID: ${katilimci_id}`);
+    console.log(`   Yeni Öğrenci ID: ${yeni_ogrenci_id}`);
+    console.log(`   Yeni Kaynak: ${yeni_kaynak}`);
+    
+    // Eski katılımcının PDF yolunu al
+    const eskiKatilimci = await dbGet('SELECT pdf_path FROM sinav_katilimcilari WHERE id = ?', [katilimci_id]);
+    
+    if (!eskiKatilimci || !eskiKatilimci.pdf_path) {
+      return res.json({ success: false, message: 'PDF bulunamadı!' });
+    }
+    
+    // Yeni öğrenci bilgilerini al
+    let yeniOgrenci;
+    if (yeni_kaynak === 'kurum') {
+      yeniOgrenci = await dbGet('SELECT ogrenci_adi_soyadi as ad_soyad FROM ogrenci_kayitlari WHERE id = ?', [yeni_ogrenci_id]);
+    } else {
+      yeniOgrenci = await dbGet('SELECT ad_soyad FROM ogrenciler WHERE id = ?', [yeni_ogrenci_id]);
+    }
+    
+    if (!yeniOgrenci) {
+      return res.json({ success: false, message: 'Öğrenci bulunamadı!' });
+    }
+    
+    // Eski PDF yolunu al
+    const eskiPdfPath = eskiKatilimci.pdf_path;
+    
+    // Yeni dosya adı oluştur
+    const sinavKlasoru = path.join(__dirname, 'uploads', 'sinav-sonuclari', `sinav_${sinav_id}`);
+    const guvenliIsim = yeniOgrenci.ad_soyad.replace(/[^a-zA-Z0-9ğüşöçİĞÜŞÖÇ\s]/g, '').replace(/\s+/g, '_');
+    const timestamp = Date.now();
+    const yeniDosyaAdi = `${guvenliIsim}_${timestamp}.pdf`;
+    const yeniDosyaYolu = path.join(sinavKlasoru, yeniDosyaAdi);
+    
+    // Dosyayı kopyala/taşı
+    const eskiTamYol = path.join(__dirname, eskiPdfPath);
+    if (fs.existsSync(eskiTamYol)) {
+      fs.copyFileSync(eskiTamYol, yeniDosyaYolu);
+    }
+    
+    // Veritabanını güncelle
+    const relativePath = path.join('uploads', 'sinav-sonuclari', `sinav_${sinav_id}`, yeniDosyaAdi);
+    
+    // Yeni öğrenci için kayıt oluştur/güncelle
+    await dbRun(`
+      UPDATE sinav_katilimcilari 
+      SET pdf_path = ?, sonuc_durumu = 'yuklendi'
+      WHERE sinav_id = ? AND ogrenci_id = ? AND ogrenci_kaynak = ?
+    `, [relativePath, sinav_id, yeni_ogrenci_id, yeni_kaynak]);
+    
+    // Eski kaydı temizle (PDF'i kaldır)
+    await dbRun(`
+      UPDATE sinav_katilimcilari 
+      SET pdf_path = NULL, sonuc_durumu = 'bekleniyor'
+      WHERE id = ?
+    `, [katilimci_id]);
+    
+    // Eski dosyayı sil
+    if (fs.existsSync(eskiTamYol)) {
+      fs.unlinkSync(eskiTamYol);
+    }
+    
+    console.log(`   ✅ PDF başarıyla "${yeniOgrenci.ad_soyad}" için atandı`);
+    
+    res.json({ 
+      success: true, 
+      message: `✅ PDF başarıyla "${yeniOgrenci.ad_soyad}" ile eşleştirildi!`
+    });
+    
+  } catch (error) {
+    console.error('❌ PDF yeniden eşleştirme hatası:', error);
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
+  }
+});
+
+// 👤 Kurum - Tek Öğrenci İçin PDF Eşleştir
+app.post('/kurum/sinav-tek-ogrenci-eslestir', requireAuth, upload.single('pdf'), async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
+  }
+  
+  try {
+    const { sinav_id, ogrenci_id, kaynak } = req.body;
+    const pdfFile = req.file;
+    
+    if (!pdfFile) {
+      return res.json({ success: false, message: 'PDF dosyası yüklenmedi!' });
+    }
+    
+    console.log(`\n👤 TEK ÖĞRENCİ EŞLEŞTİRME`);
+    console.log(`   Sınav ID: ${sinav_id}`);
+    console.log(`   Öğrenci ID: ${ogrenci_id}`);
+    console.log(`   Kaynak: ${kaynak}`);
+    console.log(`   PDF: ${pdfFile.filename}`);
+    
+    // Öğrenci bilgilerini al
+    let ogrenci;
+    if (kaynak === 'kurum') {
+      ogrenci = await dbGet('SELECT ogrenci_adi_soyadi as ad_soyad FROM ogrenci_kayitlari WHERE id = ?', [ogrenci_id]);
+    } else {
+      ogrenci = await dbGet('SELECT ad_soyad FROM ogrenciler WHERE id = ?', [ogrenci_id]);
+    }
+    
+    if (!ogrenci) {
+      return res.json({ success: false, message: 'Öğrenci bulunamadı!' });
+    }
+    
+    // Sınav klasörünü oluştur
+    const sinavKlasoru = path.join(__dirname, 'uploads', 'sinav-sonuclari', `sinav_${sinav_id}`);
+    if (!fs.existsSync(sinavKlasoru)) {
+      fs.mkdirSync(sinavKlasoru, { recursive: true });
+    }
+    
+    // Dosya adını oluştur
+    const guvenliIsim = ogrenci.ad_soyad.replace(/[^a-zA-Z0-9ğüşöçİĞÜŞÖÇ\s]/g, '').replace(/\s+/g, '_');
+    const timestamp = Date.now();
+    const yeniDosyaAdi = `${guvenliIsim}_${timestamp}.pdf`;
+    const yeniDosyaYolu = path.join(sinavKlasoru, yeniDosyaAdi);
+    
+    // Dosyayı taşı
+    fs.copyFileSync(pdfFile.path, yeniDosyaYolu);
+    fs.unlinkSync(pdfFile.path); // Geçici dosyayı sil
+    
+    // Veritabanını güncelle
+    const relativePath = path.join('uploads', 'sinav-sonuclari', `sinav_${sinav_id}`, yeniDosyaAdi);
+    await dbRun(`
+      UPDATE sinav_katilimcilari 
+      SET pdf_path = ?, sonuc_durumu = 'yuklendi'
+      WHERE sinav_id = ? AND ogrenci_id = ? AND ogrenci_kaynak = ?
+    `, [relativePath, sinav_id, ogrenci_id, kaynak]);
+    
+    // Sınavın sonuc_yuklendi durumunu güncelle
+    await dbRun('UPDATE sinavlar SET sonuc_yuklendi = 1 WHERE id = ?', [sinav_id]);
+    
+    console.log(`   ✅ Başarılı: ${ogrenci.ad_soyad} için PDF eşleştirildi`);
+    
+    res.json({ 
+      success: true, 
+      message: `✅ ${ogrenci.ad_soyad} için sonuç başarıyla eşleştirildi!`
+    });
+    
+  } catch (error) {
+    console.error('❌ Tek öğrenci eşleştirme hatası:', error);
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
+  }
+});
+
+// 📢 Kurum - Sınav Sonuçlarını Yayınla (Velilere görünür hale getir)
+app.post('/kurum/sinav-sonuclari-yayinla/:id', requireAuth, async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
+  }
+  
+  try {
+    const sinavId = req.params.id;
+    
+    console.log('\n📢 SINAV SONUÇLARI YAYINLANIYOR:', sinavId);
+    
+    // Sınav bilgilerini al
+    const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinavId]);
+    
+    if (!sinav) {
+      return res.json({ success: false, message: 'Sınav bulunamadı!' });
+    }
+    
+    if (!sinav.sonuc_yuklendi) {
+      return res.json({ success: false, message: 'Henüz sonuç yüklenmemiş!' });
+    }
+    
+    if (sinav.sonuc_yayinlandi) {
+      return res.json({ success: false, message: 'Sonuçlar zaten yayınlanmış!' });
+    }
+    
+    // Eşleşmiş sonuç sayısını kontrol et
+    const eslesmisler = await dbAll(`
+      SELECT COUNT(*) as sayi 
+      FROM sinav_katilimcilari 
+      WHERE sinav_id = ? AND pdf_path IS NOT NULL
+    `, [sinavId]);
+    
+    const eslesmeSayisi = eslesmisler[0]?.sayi || 0;
+    
+    if (eslesmeSayisi === 0) {
+      return res.json({ success: false, message: 'Hiç eşleşmiş sonuç yok! Lütfen önce eşleştirme yapın.' });
+    }
+    
+    // Sınavı yayınla
+    await dbRun('UPDATE sinavlar SET sonuc_yayinlandi = 1 WHERE id = ?', [sinavId]);
+    
+    console.log(`   ✅ Yayınlandı: ${eslesmeSayisi} sonuç velilere görünür hale geldi`);
+    
+    res.json({ 
+      success: true, 
+      message: `✅ Sonuçlar yayınlandı! ${eslesmeSayisi} öğrencinin velisi artık sonuçları görebilir.`
+    });
+    
+  } catch (error) {
+    console.error('❌ Yayınlama hatası:', error);
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
@@ -4332,10 +5773,31 @@ ${katilimci.ogrenci_adi} öğrencinizin sınav sonucu açıklanmıştır.
 // Veli - Sınav Sonuçları
 app.get('/veli/sinav-sonuclari', requireAuth, requireRole('veli'), async (req, res) => {
   try {
-    // Velinin öğrencilerini al
-    const ogrenciler = await dbAll('SELECT * FROM ogrenciler WHERE veli_id = ?', [req.session.userId]);
+    console.log(`\n📋 SINAV SONUÇLARI (Veli ID: ${req.session.userId}, Username: ${req.session.username})`);
     
-    if (!ogrenciler || ogrenciler.length === 0) {
+    // 1. Veli'nin kendi eklediği öğrenciler (ogrenciler tablosu)
+    const veliOgrencileri = await dbAll('SELECT * FROM ogrenciler WHERE veli_id = ?', [req.session.userId]);
+    console.log(`   Veli ekledi: ${veliOgrencileri.length} öğrenci`);
+    
+    // 2. Kurum tarafından eklenen öğrenciler (TC eşleşmesi ile)
+    const kurumOgrencileri = await dbAll(`
+      SELECT 
+        id,
+        ogrenci_adi_soyadi as ad_soyad,
+        sinif,
+        tc_kimlik_no as tc_no,
+        telefon,
+        'kurum' as kaynak
+      FROM ogrenci_kayitlari
+      WHERE REPLACE(CAST(tc_kimlik_no AS TEXT), '.0', '') = ?
+    `, [req.session.username]);
+    console.log(`   Kurum ekledi: ${kurumOgrencileri.length} öğrenci (TC eşleştirme)`);
+    
+    // 3. İki listeyi birleştir
+    const ogrenciler = [...veliOgrencileri, ...kurumOgrencileri];
+    console.log(`   📊 TOPLAM: ${ogrenciler.length} öğrenci`);
+    
+    if (ogrenciler.length === 0) {
       return res.render('veli/sinav-sonuclari', {
         user: { username: req.session.username, type: req.session.userType },
         sonuclar: [],
@@ -4344,9 +5806,6 @@ app.get('/veli/sinav-sonuclari', requireAuth, requireRole('veli'), async (req, r
         success: req.session.success
       });
     }
-    
-    console.log(`\n📋 SINAV SONUÇLARI (Veli ID: ${req.session.userId})`);
-    console.log(`   ${ogrenciler.length} öğrenci bulundu`);
     
     // Veli'nin kendi eklediği öğrencilerin sonuçları (ogrenciler tablosu)
     const veliSonuclari = await dbAll(`
@@ -4372,7 +5831,7 @@ app.get('/veli/sinav-sonuclari', requireAuth, requireRole('veli'), async (req, r
       INNER JOIN ogrenciler o ON sk.ogrenci_id = o.id
       WHERE sk.ogrenci_kaynak = 'veli'
         AND o.veli_id = ?
-        AND s.sinav_durumu = 'Sonuç açıklandı'
+        AND s.sonuc_yayinlandi = 1
         AND sk.pdf_path IS NOT NULL
     `, [req.session.userId]);
     
@@ -4401,8 +5860,8 @@ app.get('/veli/sinav-sonuclari', requireAuth, requireRole('veli'), async (req, r
       INNER JOIN sinavlar s ON sk.sinav_id = s.id
       INNER JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id
       WHERE sk.ogrenci_kaynak = 'kurum'
-        AND ok.veli_telefon = (SELECT telefon FROM users WHERE id = ?)
-        AND s.sinav_durumu = 'Sonuç açıklandı'
+        AND REPLACE(CAST(ok.tc_kimlik_no AS TEXT), '.0', '') = (SELECT username FROM users WHERE id = ?)
+        AND s.sonuc_yayinlandi = 1
         AND sk.pdf_path IS NOT NULL
     `, [req.session.userId]);
     
@@ -4937,13 +6396,21 @@ app.post('/veli/ogrenci-sil/:id', requireAuth, requireRole('veli'), async (req, 
 // Veli - Tüm Sınav Takvimi (Tüm Öğrenciler)
 app.get('/veli/tum-sinav-takvimi', requireAuth, requireRole('veli'), async (req, res) => {
   try {
-    // Velinin tüm öğrencilerini getir
-    const ogrenciler = await dbAll('SELECT * FROM ogrenciler WHERE veli_id = ?', [req.session.userId]);
+    // Velinin tüm öğrencilerini getir (her iki tablodan)
+    const veliOgrencileri = await dbAll('SELECT * FROM ogrenciler WHERE veli_id = ?', [req.session.userId]);
+    const kurumOgrencileri = await dbAll(`
+      SELECT id, ogrenci_adi_soyadi as ad_soyad, sinif, tc_kimlik_no as tc_no
+      FROM ogrenci_kayitlari
+      WHERE REPLACE(CAST(tc_kimlik_no AS TEXT), '.0', '') = (SELECT username FROM users WHERE id = ?)
+    `, [req.session.userId]);
     
-    // Her öğrenci için sınav takvimini getir (yeni sistem)
+    const ogrenciler = [...veliOgrencileri, ...kurumOgrencileri];
+    
+    // Her öğrenci için sınav takvimini getir (her iki kaynaktan)
     let tumTakvim = [];
     try {
-      tumTakvim = await dbAll(`
+      // Veli eklediği öğrencilerin sınavları
+      const veliTakvim = await dbAll(`
         SELECT 
           s.id as sinav_id,
           s.ad as sinav_adi,
@@ -4955,7 +6422,8 @@ app.get('/veli/tum-sinav-takvimi', requireAuth, requireRole('veli'), async (req,
           o.ogrenci_no,
           o.id as ogrenci_id,
           sk.sonuc_durumu,
-          sk.pdf_path
+          sk.pdf_path,
+          'veli' as kaynak
         FROM sinav_katilimcilari sk
         INNER JOIN sinavlar s ON sk.sinav_id = s.id
         INNER JOIN ogrenciler o ON sk.ogrenci_id = o.id AND sk.ogrenci_kaynak = 'veli'
@@ -4963,11 +6431,36 @@ app.get('/veli/tum-sinav-takvimi', requireAuth, requireRole('veli'), async (req,
         ORDER BY s.tarih ASC
       `, [req.session.userId]);
       
+      // Kurum eklediği öğrencilerin sınavları
+      const kurumTakvim = await dbAll(`
+        SELECT 
+          s.id as sinav_id,
+          s.ad as sinav_adi,
+          s.tarih,
+          s.sinif,
+          s.aciklama,
+          s.sinav_durumu,
+          ok.ogrenci_adi_soyadi as ogrenci_ad_soyad,
+          ok.id as ogrenci_id,
+          sk.sonuc_durumu,
+          sk.pdf_path,
+          'kurum' as kaynak
+        FROM sinav_katilimcilari sk
+        INNER JOIN sinavlar s ON sk.sinav_id = s.id
+        INNER JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id AND sk.ogrenci_kaynak = 'kurum'
+        WHERE REPLACE(CAST(ok.tc_kimlik_no AS TEXT), '.0', '') = (SELECT username FROM users WHERE id = ?)
+        ORDER BY s.tarih ASC
+      `, [req.session.userId]);
+      
+      tumTakvim = [...veliTakvim, ...kurumTakvim].sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+      
       console.log(`\n📅 Veli Sınav Takvimi (User ID: ${req.session.userId}):`);
-      console.log(`   Toplam ${tumTakvim.length} sınav bulundu`);
+      console.log(`   Veli ekledi: ${veliTakvim.length} sınav`);
+      console.log(`   Kurum ekledi: ${kurumTakvim.length} sınav`);
+      console.log(`   Toplam: ${tumTakvim.length} sınav`);
       if (tumTakvim.length > 0) {
         tumTakvim.forEach(t => {
-          console.log(`   - ${t.sinav_adi} | ${t.ogrenci_ad_soyad} | ${t.tarih}`);
+          console.log(`   - ${t.sinav_adi} | ${t.ogrenci_ad_soyad} | ${t.tarih} (${t.kaynak})`);
         });
       }
     } catch (error) {
@@ -5130,27 +6623,55 @@ app.get('/veli/dashboard', requireAuth, requireRole('veli'), async (req, res) =>
     console.log('Session UserType:', req.session.userType);
     console.log('===========================================');
     
-    const ogrenciler = await dbAll('SELECT * FROM ogrenciler WHERE veli_id = ?', [req.session.userId]);
+    // 1. Veli'nin kendi eklediği öğrenciler (ogrenciler tablosu)
+    const veliOgrenciler = await dbAll('SELECT * FROM ogrenciler WHERE veli_id = ?', [req.session.userId]);
+    console.log(`✅ Veli tablosundan ${veliOgrenciler.length} öğrenci bulundu`);
     
-    console.log(`✅ ${ogrenciler.length} öğrenci bulundu:`, ogrenciler);
+    // 2. Kurum tarafından eklenen öğrenciler (TC eşleşmesi ile)
+    const kurumOgrenciler = await dbAll(`
+      SELECT 
+        id,
+        ogrenci_adi_soyadi as ad_soyad,
+        tc_kimlik_no as tc_no,
+        sinif,
+        'kurum' as kaynak
+      FROM ogrenci_kayitlari 
+      WHERE REPLACE(CAST(tc_kimlik_no AS TEXT), '.0', '') = REPLACE(?, '.0', '')
+    `, [req.session.username]);
+    console.log(`✅ Kurum tablosundan ${kurumOgrenciler.length} öğrenci bulundu (TC: ${req.session.username})`);
     
-    // Tüm öğrencileri de kontrol et
-    const tumOgrenciler = await dbAll('SELECT id, ad_soyad, veli_id FROM ogrenciler');
-    console.log('📋 Veritabanındaki TÜM öğrenciler:', tumOgrenciler);
+    // 3. Birleştir
+    const ogrenciler = [...veliOgrenciler, ...kurumOgrenciler];
+    console.log(`📊 TOPLAM ${ogrenciler.length} öğrenci`);
     
-    // Her öğrenci için istatistikleri al
+    // 4. İstatistikler
     for (let ogrenci of ogrenciler) {
-      const pdfCount = await dbGet(
-        'SELECT COUNT(*) as sayi FROM sinav_sonuclari_pdf WHERE ogrenci_id = ?',
-        [ogrenci.id]
-      );
-      ogrenci.pdf_sonuc_sayisi = pdfCount ? pdfCount.sayi : 0;
-      
-      const excelCount = await dbGet(
-        'SELECT COUNT(DISTINCT sinav_id) as sayi FROM sinav_sonuclari WHERE ogrenci_id = ?',
-        [ogrenci.id]
-      );
-      ogrenci.excel_sonuc_sayisi = excelCount ? excelCount.sayi : 0;
+      if (ogrenci.kaynak === 'kurum') {
+        // Kurum öğrencisi - sinav_katilimcilari'ndan sınavları al
+        const katilimlar = await dbAll(`
+          SELECT s.ad AS sinav_adi, s.tarih AS sinav_tarihi, sk.pdf_path
+          FROM sinav_katilimcilari sk
+          JOIN sinavlar s ON sk.sinav_id = s.id
+          WHERE sk.ogrenci_id = ? AND sk.ogrenci_kaynak = 'kurum'
+        `, [ogrenci.id]);
+        
+        ogrenci.pdf_sonuc_sayisi = katilimlar.filter(k => k.pdf_path).length;
+        ogrenci.excel_sonuc_sayisi = 0;
+        ogrenci.sinavlar = katilimlar;
+      } else {
+        // Veli öğrencisi - eski sistem
+        const pdfCount = await dbGet(
+          'SELECT COUNT(*) as sayi FROM sinav_sonuclari_pdf WHERE ogrenci_id = ?',
+          [ogrenci.id]
+        );
+        ogrenci.pdf_sonuc_sayisi = pdfCount ? pdfCount.sayi : 0;
+        
+        const excelCount = await dbGet(
+          'SELECT COUNT(DISTINCT sinav_id) as sayi FROM sinav_sonuclari WHERE ogrenci_id = ?',
+          [ogrenci.id]
+        );
+        ogrenci.excel_sonuc_sayisi = excelCount ? excelCount.sayi : 0;
+      }
     }
     
     // Bekleyen talep sayısını al
@@ -6105,6 +7626,14 @@ app.post('/kurum/kurumsal-sayfa-guncelle/:id', requireAuth, async (req, res) => 
       return res.json({ success: false, message: 'Sayfa adı ve başlık zorunludur!' });
     }
     
+    console.log('\n📝 KURUMSAL SAYFA GÜNCELLEME:');
+    console.log(`   ID: ${sayfaId}`);
+    console.log(`   Sayfa Adı: ${sayfa_adi}`);
+    console.log(`   Başlık: ${baslik}`);
+    console.log(`   İçerik: ${icerik ? icerik.substring(0, 100) + '...' : 'BOŞ'}`);
+    console.log(`   İçerik Uzunluğu: ${icerik ? icerik.length : 0} karakter`);
+    console.log(`   Aktif: ${aktif}`);
+    
     await dbRun(
       `UPDATE kurumsal_sayfalar 
        SET sayfa_adi = ?, baslik = ?, icerik = ?, seo_baslik = ?, seo_aciklama = ?, 
@@ -6113,9 +7642,7 @@ app.post('/kurum/kurumsal-sayfa-guncelle/:id', requireAuth, async (req, res) => 
       [sayfa_adi, baslik, icerik || '', seo_baslik || '', seo_aciklama || '', sira || 0, aktif ? 1 : 0, sayfaId]
     );
     
-    console.log(`\n✅ KURUMSAL SAYFA GÜNCELLENDİ`);
-    console.log(`   ID: ${sayfaId}`);
-    console.log(`   Sayfa: ${sayfa_adi}`);
+    console.log('   ✅ VERİTABANINA KAYDEDİLDİ!');
     
     res.json({ success: true, message: 'Sayfa başarıyla güncellendi!' });
   } catch (error) {
@@ -6430,6 +7957,461 @@ async function enIyiOgrenciEslestir(pdfOgrenciAdi) {
 // Rehber - Toplu Sınav Analiz KALDIRILDI (Sadece kurum yapabilir)
 
 // Rehber - Toplu Sınav Yükleme KALDIRILDI (Sadece kurum yapabilir)
+
+// ============================================
+// KURUMSAL İÇERİK YÖNETİMİ (ADMIN PANEL)
+// ============================================
+
+// Kurumsal içerik listesi (Admin)
+// DEPRECATED: Admin paneli yönlendirmeleri - Artık /kurum/ panelini kullanın
+app.get('/admin/kurumsal-icerik', requireAuth, (req, res) => {
+  console.log('⚠️ ESKİ ROUTE: /admin/kurumsal-icerik → /kurum/kurumsal-sayfalar yönlendiriliyor');
+  res.redirect('/kurum/kurumsal-sayfalar');
+});
+
+app.get('/admin/kurumsal-icerik/duzenle/:id', requireAuth, (req, res) => {
+  console.log(`⚠️ ESKİ ROUTE: /admin/kurumsal-icerik/duzenle/${req.params.id} → /kurum/kurumsal-sayfa-duzenle/${req.params.id} yönlendiriliyor`);
+  res.redirect(`/kurum/kurumsal-sayfa-duzenle/${req.params.id}`);
+});
+
+// DEPRECATED: Admin paneli POST/DELETE route'ları kaldırıldı
+// Artık /kurum/kurumsal-sayfa-guncelle/:id kullanılıyor
+
+// 🆕 YENİ SİSTEM: Manuel Eşleştirme Ekranı
+app.get('/kurum/sinav-manuel-eslestirme/:id', requireAuth, async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).send('Yetkiniz yok!');
+  }
+  
+  try {
+    const sinavId = req.params.id;
+    const sadeceEslesmemis = req.query.sadece_eslesmemis === '1';
+    
+    // Sınavı al
+    const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinavId]);
+    if (!sinav) {
+      return res.status(404).send('Sınav bulunamadı!');
+    }
+    
+    // Sayfa dosyalarını bul
+    const sayfalarDir = path.join('uploads', 'sinav-sonuclari');
+    let sayfalar = [];
+    
+    if (fs.existsSync(sayfalarDir)) {
+      const allFiles = fs.readdirSync(sayfalarDir);
+      sayfalar = allFiles
+        .filter(f => f.startsWith(`sinav_${sinavId}_sayfa_`) && f.endsWith('.pdf'))
+        .sort()
+        .map(f => path.join(sayfalarDir, f));
+    }
+    
+    // Eğer "sadece eşleşmemiş" modundaysa, sadece eşleşmemiş sayfaları filtrele
+    if (sadeceEslesmemis) {
+      // Hangi sayfaların eşleştiğini kontrol et
+      const eslesmisSayfalar = await dbAll(`
+        SELECT pdf_path FROM sinav_katilimcilari 
+        WHERE sinav_id = ? AND pdf_path IS NOT NULL
+      `, [sinavId]);
+      
+      const eslesmisSayfaSet = new Set(eslesmisSayfalar.map(s => s.pdf_path));
+      
+      // Sadece eşleşmemiş sayfaları al
+      sayfalar = sayfalar.filter(sayfa => !eslesmisSayfaSet.has(sayfa));
+      
+      console.log(`📄 Sadece eşleşmemiş sayfalar: ${sayfalar.length}`);
+    }
+    
+    // Katılımcıları al (pdf_path ile birlikte - eşleşme durumunu kontrol için)
+    const katilimcilar = await dbAll(`
+      SELECT 
+        sk.ogrenci_id,
+        sk.ogrenci_kaynak as kaynak,
+        sk.pdf_path,
+        sk.sonuc_durumu,
+        CASE 
+          WHEN sk.ogrenci_kaynak = 'kurum' THEN ok.ogrenci_adi_soyadi
+          WHEN sk.ogrenci_kaynak = 'veli' THEN o.ad_soyad
+        END as ad_soyad,
+        CASE 
+          WHEN sk.ogrenci_kaynak = 'kurum' THEN ok.sinif
+          WHEN sk.ogrenci_kaynak = 'veli' THEN o.sinif
+        END as sinif
+      FROM sinav_katilimcilari sk
+      LEFT JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id AND sk.ogrenci_kaynak = 'kurum'
+      LEFT JOIN ogrenciler o ON sk.ogrenci_id = o.id AND sk.ogrenci_kaynak = 'veli'
+      WHERE sk.sinav_id = ?
+      ORDER BY ad_soyad
+    `, [sinavId]);
+    
+    console.log(`\n📋 MANUEL EŞLEŞTİRME - KATILIMCI LİSTESİ (Sınav ID: ${sinavId})`);
+    console.log(`   Toplam Katılımcı: ${katilimcilar.length}`);
+    const eslesmisSayisi = katilimcilar.filter(k => k.pdf_path && k.pdf_path.trim() !== '').length;
+    console.log(`   Eşleşmiş Katılımcı: ${eslesmisSayisi}`);
+    if (eslesmisSayisi > 0) {
+      console.log(`   Eşleşmiş Öğrenciler:`);
+      katilimcilar.filter(k => k.pdf_path && k.pdf_path.trim() !== '').forEach(k => {
+        console.log(`     - ${k.ad_soyad} (ID: ${k.ogrenci_id}) -> ${k.pdf_path}`);
+      });
+    }
+    
+    res.render('kurum/sinav-manuel-eslestirme', {
+      user: req.session,
+      sinav: sinav,
+      sayfalar: sayfalar,
+      katilimcilar: katilimcilar
+    });
+    
+  } catch (error) {
+    console.error('Manuel eşleştirme ekranı hatası:', error);
+    res.status(500).send('Bir hata oluştu!');
+  }
+});
+
+// 🆕 Eşleşenleri Kontrol Et Sayfası
+app.get('/kurum/sinav-eslesen-kontrol/:id', requireAuth, async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).send('Yetkiniz yok!');
+  }
+  
+  try {
+    const sinavId = req.params.id;
+    
+    // Sınavı al
+    const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinavId]);
+    if (!sinav) {
+      return res.status(404).send('Sınav bulunamadı!');
+    }
+    
+    // Eşleşmiş katılımcıları al (pdf_path dolu olanlar)
+    const eslesmisler = await dbAll(`
+      SELECT 
+        sk.ogrenci_id,
+        sk.ogrenci_kaynak as kaynak,
+        sk.pdf_path,
+        sk.sonuc_durumu,
+        CASE 
+          WHEN sk.ogrenci_kaynak = 'kurum' THEN ok.ogrenci_adi_soyadi
+          WHEN sk.ogrenci_kaynak = 'veli' THEN o.ad_soyad
+        END as ad_soyad,
+        CASE 
+          WHEN sk.ogrenci_kaynak = 'kurum' THEN ok.sinif
+          WHEN sk.ogrenci_kaynak = 'veli' THEN o.sinif
+        END as sinif
+      FROM sinav_katilimcilari sk
+      LEFT JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id AND sk.ogrenci_kaynak = 'kurum'
+      LEFT JOIN ogrenciler o ON sk.ogrenci_id = o.id AND sk.ogrenci_kaynak = 'veli'
+      WHERE sk.sinav_id = ? AND sk.pdf_path IS NOT NULL AND sk.pdf_path != ''
+      ORDER BY ad_soyad
+    `, [sinavId]);
+    
+    console.log(`\n✅ EŞLEŞEN KONTROL SAYFASI`);
+    console.log(`   Sınav ID: ${sinavId}`);
+    console.log(`   Eşleşmiş Sayısı: ${eslesmisler.length}`);
+    
+    res.render('kurum/sinav-eslesen-kontrol', {
+      user: req.session,
+      sinav: sinav,
+      eslesmisler: eslesmisler
+    });
+    
+  } catch (error) {
+    console.error('Eşleşen kontrol sayfası hatası:', error);
+    res.status(500).send('Bir hata oluştu!');
+  }
+});
+
+// 🆕 Eşleşmeyi Kaldır
+app.post('/kurum/sinav-eslestirme-kaldir', requireAuth, async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).json({ success: false, error: 'Yetkiniz yok!' });
+  }
+  
+  try {
+    const { sinav_id, ogrenci_id, kaynak } = req.body;
+    
+    console.log(`\n❌ EŞLEŞMEYİ KALDIR`);
+    console.log(`   Sınav ID: ${sinav_id}`);
+    console.log(`   Öğrenci ID: ${ogrenci_id} (${kaynak})`);
+    
+    // pdf_path'i NULL yap ve sonuc_durumu'nu beklemede'ye çek
+    const result = await new Promise((resolve, reject) => {
+      db.run(`
+        UPDATE sinav_katilimcilari 
+        SET pdf_path = NULL, sonuc_durumu = 'beklemede'
+        WHERE sinav_id = ? AND ogrenci_id = ? AND ogrenci_kaynak = ?
+      `, [sinav_id, ogrenci_id, kaynak], function(err) {
+        if (err) reject(err);
+        else resolve({ changes: this.changes });
+      });
+    });
+    
+    console.log(`   ✅ Başarılı: ${result.changes} satır güncellendi`);
+    
+    if (result.changes === 0) {
+      console.log(`   ⚠️  UYARI: Hiçbir satır güncellenmedi!`);
+      return res.json({ success: false, error: 'Eşleşme bulunamadı!' });
+    }
+    
+    res.json({ success: true });
+    
+  } catch (error) {
+    console.error('❌ Eşleşme kaldırma hatası:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 🆕 TOPLU VELİ HESABI OLUŞTURMA
+app.post('/kurum/toplu-veli-hesap-olustur', requireAuth, async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).json({ success: false, error: 'Yetkiniz yok!' });
+  }
+  
+  try {
+    console.log('\n👥 TOPLU VELİ HESABI OLUŞTURMA BAŞLADI');
+    
+    // Tüm öğrencileri al (sadece kurum öğrencileri - tc_no olanlar)
+    const ogrenciler = await dbAll(`
+      SELECT id, ogrenci_adi_soyadi, tc_kimlik_no, sinif, telefon, veli_adi, veli_telefon
+      FROM ogrenci_kayitlari
+      WHERE tc_kimlik_no IS NOT NULL AND tc_kimlik_no != ''
+      ORDER BY sinif, ogrenci_adi_soyadi
+    `);
+    
+    console.log(`   📊 ${ogrenciler.length} öğrenci bulundu`);
+    
+    let olusturulan = 0;
+    let mevcutOlanlar = 0;
+    let hatalar = 0;
+    
+    for (const ogrenci of ogrenciler) {
+      try {
+        // Kontrol et: Bu TC ile kullanıcı var mı?
+        const mevcutUser = await dbGet('SELECT id FROM users WHERE username = ?', [ogrenci.tc_kimlik_no]);
+        
+        if (mevcutUser) {
+          mevcutOlanlar++;
+          continue;
+        }
+        
+        // Şifreyi hashle (ilk şifre = TC)
+        const hashedPassword = await bcrypt.hash(ogrenci.tc_kimlik_no, 10);
+        
+        // Veli hesabı oluştur
+        await dbRun(`
+          INSERT INTO users (username, email, password_hash, user_type, ad_soyad, telefon, password_changed)
+          VALUES (?, ?, ?, 'veli', ?, ?, 0)
+        `, [
+          ogrenci.tc_kimlik_no, // username = TC
+          `veli_${ogrenci.id}_${Date.now()}@temp.com`, // benzersiz email
+          hashedPassword,
+          ogrenci.veli_adi || `${ogrenci.ogrenci_adi_soyadi} Velisi`,
+          ogrenci.veli_telefon || ogrenci.telefon
+        ]);
+        
+        // Veli ID'sini al
+        const veliUser = await dbGet('SELECT id FROM users WHERE username = ?', [ogrenci.tc_kimlik_no]);
+        
+        // ogrenciler tablosuna ekle (veli-öğrenci ilişkisi)
+        await dbRun(`
+          INSERT OR IGNORE INTO ogrenciler (veli_id, ad_soyad, sinif, telefon, tc_no)
+          VALUES (?, ?, ?, ?, ?)
+        `, [
+          veliUser.id,
+          ogrenci.ogrenci_adi_soyadi,
+          ogrenci.sinif,
+          ogrenci.telefon,
+          ogrenci.tc_kimlik_no
+        ]);
+        
+        olusturulan++;
+        
+      } catch (error) {
+        console.error(`   ❌ Hata (${ogrenci.ogrenci_adi_soyadi}):`, error.message);
+        hatalar++;
+      }
+    }
+    
+    console.log(`\n✅ TOPLU VELİ HESABI OLUŞTURMA TAMAMLANDI`);
+    console.log(`   ✅ Oluşturulan: ${olusturulan}`);
+    console.log(`   ⚠️  Mevcut olanlar: ${mevcutOlanlar}`);
+    console.log(`   ❌ Hatalar: ${hatalar}`);
+    
+    res.json({ 
+      success: true, 
+      olusturulan, 
+      mevcutOlanlar, 
+      hatalar,
+      toplam: ogrenciler.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Toplu veli hesabı oluşturma hatası:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 🆕 YENİ SİSTEM: Sayfa Eşleştirme Kaydet
+app.post('/kurum/sinav-sayfa-eslestir', requireAuth, async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).json({ success: false, error: 'Yetkiniz yok!' });
+  }
+  
+  try {
+    const { sinav_id, sayfa_yolu, ogrenci_id, kaynak } = req.body;
+    
+    console.log(`\n🔗 TEK SAYFA EŞLEŞTİRME`);
+    console.log(`   Sınav ID: ${sinav_id}`);
+    console.log(`   Öğrenci ID: ${ogrenci_id} (${kaynak})`);
+    console.log(`   Sayfa Yolu: ${sayfa_yolu}`);
+    
+    // sinav_katilimcilari tablosunu güncelle
+    const result = await new Promise((resolve, reject) => {
+      db.run(`
+        UPDATE sinav_katilimcilari 
+        SET pdf_path = ?, sonuc_durumu = 'yuklendi'
+        WHERE sinav_id = ? AND ogrenci_id = ? AND ogrenci_kaynak = ?
+      `, [sayfa_yolu, sinav_id, ogrenci_id, kaynak], function(err) {
+        if (err) reject(err);
+        else resolve({ changes: this.changes });
+      });
+    });
+    
+    console.log(`   ✅ Başarılı: ${result.changes} satır güncellendi`);
+    
+    if (result.changes === 0) {
+      console.log(`   ⚠️  UYARI: Hiçbir satır güncellenmedi! WHERE koşulu tutmadı.`);
+    }
+    
+    res.json({ success: true, changes: result.changes });
+    
+  } catch (error) {
+    console.error('❌ Sayfa eşleştirme hatası:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 🆕 YENİ SİSTEM: Yeni Sonuç Yükleme Sayfası
+app.get('/kurum/sinav-sonuc-yukle-yeni/:id', requireAuth, async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).send('Yetkiniz yok!');
+  }
+  
+  try {
+    const sinavId = req.params.id;
+    
+    const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinavId]);
+    if (!sinav) {
+      return res.status(404).send('Sınav bulunamadı!');
+    }
+    
+    const katilimciSayisi = await dbGet(
+      'SELECT COUNT(*) as count FROM sinav_katilimcilari WHERE sinav_id = ?',
+      [sinavId]
+    );
+    
+    res.render('kurum/sinav-sonuc-yukle-yeni', {
+      user: req.session,
+      sinav: sinav,
+      katilimciSayisi: katilimciSayisi.count,
+      error: req.query.error || null
+    });
+    
+  } catch (error) {
+    console.error('Sonuç yükleme sayfası hatası:', error);
+    res.status(500).send('Bir hata oluştu!');
+  }
+});
+
+// ============================================
+// KURUM - SITE AYARLARI
+// ============================================
+
+// Kurumsal Sayfalar Listesi
+app.get('/kurum/kurumsal-sayfalar', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+  try {
+    const sayfalar = await dbAll('SELECT * FROM kurumsal_sayfalar ORDER BY sira ASC');
+    
+    res.render('kurum/kurumsal-sayfalar', {
+      user: { username: req.session.username, type: req.session.userType },
+      sayfalar: sayfalar,
+      success: req.session.success,
+      error: req.session.error
+    });
+    req.session.success = null;
+    req.session.error = null;
+  } catch (error) {
+    console.error('Kurumsal sayfalar listesi hatası:', error);
+    req.session.error = 'Sayfa yüklenirken bir hata oluştu!';
+    res.redirect('/kurum/dashboard');
+  }
+});
+
+// Kurumsal Sayfa Düzenle (GET)
+app.get('/kurum/kurumsal-sayfa-duzenle/:id', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+  try {
+    const sayfa = await dbGet('SELECT * FROM kurumsal_sayfalar WHERE id = ?', [req.params.id]);
+    
+    if (!sayfa) {
+      req.session.error = 'Sayfa bulunamadı!';
+      return res.redirect('/kurum/kurumsal-sayfalar');
+    }
+    
+    res.render('kurum/kurumsal-sayfa-duzenle', {
+      user: { username: req.session.username, type: req.session.userType },
+      sayfa: sayfa
+    });
+  } catch (error) {
+    console.error('Sayfa düzenle hatası:', error);
+    req.session.error = 'Sayfa yüklenirken bir hata oluştu!';
+    res.redirect('/kurum/kurumsal-sayfalar');
+  }
+});
+
+// Site Ayarları Sayfası (GET)
+app.get('/kurum/site-ayarlari', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+  try {
+    const ayarlar = await dbAll('SELECT * FROM site_ayarlari ORDER BY anahtar ASC');
+    
+    const ayarlarObj = {};
+    ayarlar.forEach(a => {
+      ayarlarObj[a.anahtar] = a.deger;
+    });
+    
+    res.render('kurum/site-ayarlari', {
+      user: { username: req.session.username, type: req.session.userType },
+      ayarlar: ayarlarObj,
+      success: req.session.success,
+      error: req.session.error
+    });
+    req.session.success = null;
+    req.session.error = null;
+  } catch (error) {
+    console.error('Site ayarları sayfa hatası:', error);
+    req.session.error = 'Sayfa yüklenirken bir hata oluştu!';
+    res.redirect('/kurum/dashboard');
+  }
+});
+
+// Site Ayarları Güncelle (POST)
+app.post('/kurum/site-ayarlari', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+  try {
+    const { site_adi, site_adres, site_telefon, site_email, site_aciklama } = req.body;
+    
+    await dbRun('INSERT OR REPLACE INTO site_ayarlari (anahtar, deger, updated_at) VALUES (?, ?, datetime("now"))', ['site_adi', site_adi]);
+    await dbRun('INSERT OR REPLACE INTO site_ayarlari (anahtar, deger, updated_at) VALUES (?, ?, datetime("now"))', ['site_adres', site_adres]);
+    await dbRun('INSERT OR REPLACE INTO site_ayarlari (anahtar, deger, updated_at) VALUES (?, ?, datetime("now"))', ['site_telefon', site_telefon]);
+    await dbRun('INSERT OR REPLACE INTO site_ayarlari (anahtar, deger, updated_at) VALUES (?, ?, datetime("now"))', ['site_email', site_email]);
+    await dbRun('INSERT OR REPLACE INTO site_ayarlari (anahtar, deger, updated_at) VALUES (?, ?, datetime("now"))', ['site_aciklama', site_aciklama]);
+    
+    console.log('✅ Site ayarları güncellendi');
+    req.session.success = 'Site ayarları başarıyla güncellendi!';
+    res.redirect('/kurum/site-ayarlari');
+  } catch (error) {
+    console.error('Site ayarları güncelleme hatası:', error);
+    req.session.error = 'Ayarlar güncellenirken bir hata oluştu!';
+    res.redirect('/kurum/site-ayarlari');
+  }
+});
 
 // Sunucuyu başlat
 app.listen(PORT, () => {

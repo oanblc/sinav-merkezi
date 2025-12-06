@@ -1,0 +1,15 @@
+{
+  "name": "Sınav Merkezi - Veli Paneli",
+  "short_name": "Sınav Merkezi",
+  "description": "Öğrencilerinizin sınav sonuçlarını takip edin",
+  "start_url": "/veli/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#667eea",
+  "orientation": "portrait",
+  "icons": [],
+  "categories": ["education"],
+  "lang": "tr",
+  "dir": "ltr"
+}
+

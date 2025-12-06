@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    <title>Eşleşenleri Kontrol Et</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: #f8f9fa;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 30px 0;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .match-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .match-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        .match-info {
+            flex: 1;
+        }
+        .match-info h5 {
+            margin: 0;
+            color: #1f2937;
+            font-size: 1.2rem;
+        }
+        .match-info small {
+            color: #6b7280;
+        }
+        .pdf-preview {
+            width: 60px;
+            height: 60px;
+            background: #e5e7eb;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+        }
+        .btn-remove {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-remove:hover {
+            background: #dc2626;
+        }
+        .btn-view-pdf {
+            background: #6b7280;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .btn-view-pdf:hover {
+            background: #4b5563;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .empty-state i {
+            font-size: 4rem;
+            color: #d1d5db;
+            margin-bottom: 20px;
+        }
+        .stats {
+            background: rgba(255,255,255,0.2);
+            padding: 15px 25px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h3 class="mb-0"><i class="bi bi-check-circle-fill"></i> Eşleşmiş PDF'leri Kontrol Et</h3>
+                <p class="mb-0 mt-2"><strong><%= sinav.sinav_adi %></strong></p>
+            </div>
+            <div class="stats">
+                <h4 class="mb-0"><%= eslesmisler.length %> Eşleşme</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row mb-3">
+        <div class="col">
+            <a href="/kurum/sinav-detay/<%= sinav.id %>" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Sınav Detayına Dön
+            </a>
+        </div>
+    </div>
+
+    <div id="matchList">
+        <% if (eslesmisler.length === 0) { %>
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <h4>Henüz Eşleşme Yok</h4>
+                <p class="text-muted">Bu sınav için henüz hiç PDF eşleştirilmemiş.</p>
+                <a href="/kurum/sinav-detay/<%= sinav.id %>" class="btn btn-primary mt-3">
+                    Sınav Detayına Dön
+                </a>
+            </div>
+        <% } else { %>
+            <% eslesmisler.forEach((item, index) => { %>
+                <div class="match-card" id="match-<%= index %>">
+                    <div class="d-flex align-items-center flex-1">
+                        <div class="pdf-preview">
+                            <i class="bi bi-file-pdf-fill text-danger" style="font-size: 2rem;"></i>
+                        </div>
+                        <div class="match-info">
+                            <h5><%= item.ad_soyad %></h5>
+                            <small>
+                                <i class="bi bi-mortarboard"></i> <%= item.sinif || 'Sınıf yok' %>
+                                <span class="mx-2">•</span>
+                                <i class="bi bi-tag"></i> <%= item.kaynak === 'kurum' ? 'Kurum' : 'Veli' %>
+                            </small>
+                            <br>
+                            <small class="text-muted">
+                                <i class="bi bi-file-earmark"></i> <%= item.pdf_path.split('\\').pop() %>
+                            </small>
+                        </div>
+                    </div>
+                    <div>
+                        <button class="btn-view-pdf" onclick="viewPDF('<%= item.pdf_path.replace(/\\/g, '/') %>')">
+                            <i class="bi bi-eye"></i> Görüntüle
+                        </button>
+                        <button class="btn-remove" onclick="removeMatch(<%= item.ogrenci_id %>, '<%= item.kaynak %>', <%= index %>)">
+                            <i class="bi bi-trash"></i> Eşleşmeyi Kaldır
+                        </button>
+                    </div>
+                </div>
+            <% }); %>
+        <% } %>
+    </div>
+</div>
+
+<script>
+const SINAV_ID = <%= sinav.id %>;
+
+// PDF görüntüle
+function viewPDF(path) {
+    window.open('/' + path, '_blank');
+}
+
+// Eşleşmeyi kaldır
+async function removeMatch(ogrenciId, kaynak, index) {
+    if (!confirm('⚠️ Bu eşleşmeyi kaldırmak istediğinize emin misiniz?\n\nÖğrenci tekrar eşleştirilebilir hale gelecek.')) {
+        return;
+    }
+    
+    const card = document.getElementById(`match-${index}`);
+    card.style.opacity = '0.5';
+    card.style.pointerEvents = 'none';
+    
+    try {
+        const response = await fetch('/kurum/sinav-eslestirme-kaldir', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sinav_id: SINAV_ID,
+                ogrenci_id: ogrenciId,
+                kaynak: kaynak
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Başarı animasyonu
+            card.style.background = '#fecaca';
+            card.style.transform = 'scale(0.95)';
+            
+            setTimeout(() => {
+                card.remove();
+                
+                // Eğer liste boşsa boş state göster
+                const remainingCards = document.querySelectorAll('.match-card').length;
+                if (remainingCards === 0) {
+                    location.reload();
+                }
+            }, 500);
+            
+            console.log(`✅ Eşleşme kaldırıldı: Öğrenci ${ogrenciId}`);
+        } else {
+            alert('❌ Hata: ' + (result.error || 'Eşleşme kaldırılamadı!'));
+            card.style.opacity = '1';
+            card.style.pointerEvents = 'auto';
+        }
+    } catch (error) {
+        console.error('Hata:', error);
+        alert('❌ İstek sırasında hata oluştu!');
+        card.style.opacity = '1';
+        card.style.pointerEvents = 'auto';
+    }
+}
+</script>
+
+</body>
+</html>
+

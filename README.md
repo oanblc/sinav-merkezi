@@ -1,92 +1,242 @@
-# Sınav Merkezi Web Sitesi
+# 🎓 Sınav Merkezi - Simülasyon Sınav Yönetim Sistemi
 
-Sınav sonuçlarını yönetmek ve görüntülemek için web uygulaması (Node.js/Express).
+Türkiye'nin önde gelen simülasyon sınav merkezi için geliştirilmiş, modern ve güvenli web platformu.
 
-## Özellikler
+## 🚀 Özellikler
 
-- 👨‍👩‍👧‍👦 **Veli Paneli**: Öğrenci sonuçlarını görüntüleme
-- 👨‍🏫 **Rehber Öğretmen Paneli**: Sınav yönetimi ve öğrenci ekleme
-- 📊 **Excel/CSV Yükleme**: DataFrame dosyasını sayfalara ayırma ve öğrenci isimleri ile eşleştirme
-- 📄 **Toplu PDF Yükleme**: Birden fazla öğrenciye ait PDF sınav sonuçlarını otomatik eşleştirme
-- 🤖 **Akıllı İsim Eşleştirme**: PDF'deki öğrenci isimlerini veritabanındaki isimlerle %60+ doğrulukla eşleştirme
-- 📈 **Detaylı Raporlama**: Eşleşme başarı oranları ve detaylı sonuç görüntüleme
+### 👨‍💼 Kurum Yöneticisi
+- ✅ Sınav oluşturma ve yönetimi
+- ✅ Akıllı PDF sonuç yükleme (5 katmanlı AI eşleştirme)
+- ✅ Öğrenci ve rehber öğretmen yönetimi
+- ✅ Sınav paketleri oluşturma
+- ✅ WhatsApp bildirim sistemi
+- ✅ Kurumsal içerik yönetimi (Admin Panel)
+- ✅ Detaylı raporlama ve istatistikler
 
-## Gereksinimler
+### 👨‍🏫 Rehber Öğretmen
+- ✅ Sınav sonuçlarını görüntüleme
+- ✅ Öğrenci performans takibi
+- ✅ Talep yönetimi
+- ✅ Raporlama
 
-- Node.js (v14 veya üzeri)
-- npm (Node Package Manager)
+### 👨‍👩‍👧‍👦 Veli
+- ✅ Öğrenci kayıt ve yönetimi
+- ✅ Sınav sonuçlarını görüntüleme
+- ✅ PDF sonuç indirme
+- ✅ Sınav takvimi
+- ✅ Online ödeme (PayTR entegrasyonu)
+- ✅ Talep gönderme
 
-## Kurulum
+## 🛠️ Teknolojiler
 
-1. Bağımlılıkları yükleyin:
+- **Backend**: Node.js + Express.js
+- **Veritabanı**: SQLite3
+- **Template Engine**: EJS
+- **PDF İşleme**: pdf-parse, pdf-lib
+- **Güvenlik**: bcrypt, express-session, express-rate-limit
+- **Ödeme**: PayTR API
+- **Bildirim**: WhatsApp (Whapi.cloud API)
+- **Frontend**: Bootstrap 5, Bootstrap Icons
+
+## 📦 Kurulum
+
+### Gereksinimler
+- Node.js 14+ 
+- npm 6+
+
+### Adımlar
+
+1. **Projeyi klonlayın**
+```bash
+git clone <repo-url>
+cd sinav-merkezi
+```
+
+2. **Bağımlılıkları yükleyin**
 ```bash
 npm install
 ```
 
-## Çalıştırma
+3. **Environment variables ayarlayın**
+```bash
+cp env.example.txt .env
+# .env dosyasını düzenleyin
+```
 
+4. **Sunucuyu başlatın**
 ```bash
 npm start
 ```
 
-veya geliştirme modu için (otomatik yeniden başlatma):
-
-```bash
-npm run dev
+5. **Tarayıcıda açın**
+```
+http://localhost:3000
 ```
 
-Tarayıcıda `http://localhost:3000` adresine gidin.
+## 🔐 Varsayılan Kullanıcılar
 
-## İlk Kullanım
+### Kurum Yöneticisi
+- **Kullanıcı Adı**: admin
+- **Şifre**: admin123
 
-### 1. Hesap Oluşturma
-- Tarayıcıda `http://localhost:3000` adresine gidin
-- "Kayıt Ol" sayfasından **Rehber Öğretmen** hesabı oluşturun
-- Veliler için de hesap oluşturun (user_type: **veli**)
+### Test Velisi
+- **Kullanıcı Adı**: veli1
+- **Şifre**: 123456
 
-### 2. Öğrenci Ekleme
-- Rehber öğretmen olarak giriş yapın
-- "Öğrenci Ekle" butonuna tıklayın
-- Öğrenci adı, TC no ve veli kullanıcı adını girin
-- **ÖNEMLİ**: Öğrenci adını PDF'deki isimle uyumlu şekilde girin
+## 🎯 Akıllı PDF Eşleştirme Sistemi
 
-### 3. Sınav Sonuçları Yükleme
+Sistem, yüklenen PDF sınav sonuçlarını öğrencilerle otomatik eşleştirir:
 
-#### Excel/CSV Yükleme:
-- Dashboard'dan "Sınav Dosyası Yükle (Excel/CSV)" seçin
-- Excel/CSV dosyanızı yükleyin
-- Öğrenci isimleri içeren kolon otomatik algılanır
+### 5 Katmanlı Strateji
+1. **Öğrenilmiş Paternler**: Geçmiş başarılı eşleştirmelerden öğrenir
+2. **Veritabanı Benzerliği**: Kayıtlı öğrenci isimleriyle karşılaştırır
+3. **Pozisyon Tabanlı**: PDF'deki isim pozisyonunu analiz eder
+4. **Gelişmiş Regex**: Karmaşık isim formatlarını tanır
+5. **Fuzzy Search**: Levenshtein distance ile benzer isimleri bulur
 
-#### Toplu PDF Yükleme:
-- Dashboard'dan "Toplu PDF Yükle" butonuna tıklayın
-- Sınav adı, türü ve tarihi girin
-- Birden fazla PDF dosyası seçin
-- "Yükle ve Eşleştir" butonuna tıklayın
-- Sistem her PDF'deki öğrenci adını otomatik olarak veritabanındaki öğrencilerle eşleştirir
+### Özellikler
+- 🧠 Makine öğrenmesi ile sürekli gelişir
+- 📊 %80+ güven skorunda otomatik eşleştirir
+- 🔍 Manuel eşleştirme desteği
+- 👁️ PDF önizleme
+- 🔄 Yeniden eşleştirme imkanı
 
-### 4. Sonuçları Görüntüleme
-- Veli olarak giriş yapın
-- Öğrencinizi seçin
-- "Excel/CSV Sonuçları" veya "PDF Sonuçları" sekmelerinden sonuçları görüntüleyin
+## 🔒 Güvenlik
 
-## PDF Eşleştirme Nasıl Çalışır?
+- ✅ **Session Güvenliği**: httpOnly, secure, sameSite
+- ✅ **Rate Limiting**: DDoS koruması
+- ✅ **Input Validation**: XSS ve SQL injection koruması
+- ✅ **Password Hashing**: bcrypt ile şifreleme
+- ✅ **Role-Based Access Control**: Rol bazlı yetkilendirme
+- ✅ **File Upload Security**: Dosya tipi ve boyut kontrolü
 
-Sistem gelişmiş bir isim eşleştirme algoritması kullanır:
+## 📊 Veritabanı Yapısı
 
-1. **Normalizasyon**: Türkçe karakterler normalize edilir (ı→i, ğ→g, vb.)
-2. **Kelime Karşılaştırma**: İsimdeki kelimeler tek tek karşılaştırılır
-3. **Skor Hesaplama**: %60 ve üzeri eşleşme skoru gereklidir
-4. **En İyi Eşleşme**: Her PDF için en yüksek skorlu öğrenci seçilir
+### Ana Tablolar
+- `users`: Kullanıcılar (kurum, veli, rehber)
+- `ogrenciler`: Öğrenci kayıtları
+- `sinavlar`: Sınav bilgileri
+- `sinav_katilimcilari`: Sınav-öğrenci ilişkisi
+- `sinav_sonuclari`: Sınav sonuçları
+- `sinav_paketleri`: Sınav paketleri
+- `kurumsal_icerik`: Kurumsal sayfa içerikleri
+- `pdf_learning_patterns`: AI öğrenme verileri
+- `whatsapp_ayarlari`: WhatsApp API ayarları
+- `bildirim_gecmisi`: Bildirim logları
 
-### Örnek Eşleşmeler:
-- "Ahmet Yılmaz" ↔ "AHMET YILMAZ" ✅ (100% eşleşme)
-- "Mehmet Ali Demir" ↔ "Mehmet Demir" ✅ (66% eşleşme)
-- "Ayşe KARA" ↔ "ayse kara" ✅ (100% eşleşme)
+## 🚀 Production Deployment
 
-## Teknolojiler
+### 1. PM2 ile Başlatma
+```bash
+npm install -g pm2
+pm2 start server.js --name sinav-merkezi
+pm2 save
+pm2 startup
+```
 
-- **Backend**: Node.js, Express.js
-- **Veritabanı**: SQLite (better-sqlite3)
-- **Template Engine**: EJS
-- **Dosya İşleme**: ExcelJS, csv-parser
-- **Güvenlik**: bcrypt (şifre hashleme), express-session
+### 2. Nginx Reverse Proxy
+```nginx
+server {
+    listen 80;
+    server_name sinavmerkezi.com;
+    
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+### 3. SSL Sertifikası (Let's Encrypt)
+```bash
+sudo certbot --nginx -d sinavmerkezi.com
+```
+
+### 4. Otomatik Yedekleme
+```bash
+# Crontab ekleyin
+0 2 * * * /usr/bin/sqlite3 /path/to/sinav_merkezi.db ".backup '/backup/sinav_$(date +\%Y\%m\%d).db'"
+```
+
+## 📱 WhatsApp Entegrasyonu
+
+Whapi.cloud API kullanılarak:
+- Sınav sonuç bildirimleri
+- Talep onay bildirimleri
+- Özel mesajlar
+
+### Kurulum
+1. [Whapi.cloud](https://whapi.cloud) hesabı oluşturun
+2. API token alın
+3. Admin panelden ayarları yapın
+
+## 💳 Ödeme Entegrasyonu
+
+PayTR API ile güvenli online ödeme:
+- Kredi kartı
+- Banka kartı
+- Sanal pos
+
+### Kurulum
+1. [PayTR](https://www.paytr.com) hesabı oluşturun
+2. Merchant bilgilerini alın
+3. `.env` dosyasına ekleyin
+
+## 📈 Performans İyileştirmeleri
+
+- ✅ Database indexing
+- ✅ Session caching
+- ✅ Gzip compression
+- ✅ Static file caching
+- ✅ Lazy loading
+- ✅ Connection pooling
+
+## 🐛 Hata Ayıklama
+
+### Loglar
+```bash
+# PM2 logları
+pm2 logs sinav-merkezi
+
+# Hata logları
+tail -f logs/error.log
+```
+
+### Veritabanı Kontrolü
+```bash
+sqlite3 sinav_merkezi.db
+.tables
+.schema users
+```
+
+## 🤝 Katkıda Bulunma
+
+1. Fork edin
+2. Feature branch oluşturun (`git checkout -b feature/amazing-feature`)
+3. Commit edin (`git commit -m 'Add amazing feature'`)
+4. Push edin (`git push origin feature/amazing-feature`)
+5. Pull Request açın
+
+## 📝 Lisans
+
+Bu proje özel lisans altındadır. Ticari kullanım için iletişime geçin.
+
+## 📞 İletişim
+
+- **Web**: https://sinavmerkezi.com
+- **E-posta**: info@sinavmerkezi.com
+- **Telefon**: +90 XXX XXX XX XX
+
+## 🎉 Teşekkürler
+
+30 yıllık eğitim tecrübesiyle Türkiye'nin her köşesindeki öğrencilere ulaşmak için geliştirilen bu platform, binlerce öğrencinin başarı yolculuğuna katkıda bulunmaktadır.
+
+---
+
+**Geliştirme Tarihi**: 2024
+**Versiyon**: 1.0.0
+**Durum**: ✅ Production Ready

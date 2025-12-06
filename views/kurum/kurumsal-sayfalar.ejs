@@ -1,0 +1,85 @@
+<%- include('../partials/header-dashboard', { title: 'Kurumsal İçerik Yönetimi', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 24px 0;
+        margin: -30px -15px 24px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+    }
+    
+    .sayfa-card {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+    }
+    
+    .sayfa-card:hover {
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        transform: translateY(-2px);
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="page-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-2"><i class="bi bi-file-earmark-text"></i> Kurumsal İçerik Yönetimi</h2>
+                    <p class="mb-0 opacity-75">Web sitenizdeki kurumsal sayfaları buradan yönetebilirsiniz</p>
+                </div>
+                <a href="/kurum/dashboard" class="btn btn-light">
+                    <i class="bi bi-arrow-left"></i> Geri
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <% if (success) { %>
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle-fill me-2"></i><%= success %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <% } %>
+    <% if (error) { %>
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i><%= error %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <% } %>
+
+    <div class="row">
+        <% sayfalar.forEach(sayfa => { %>
+        <div class="col-md-6 mb-3">
+            <div class="sayfa-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h5 class="mb-1"><%= sayfa.sayfa_adi %></h5>
+                        <small class="text-muted">/<%= sayfa.sayfa_slug %></small>
+                    </div>
+                    <span class="badge <%= sayfa.aktif ? 'bg-success' : 'bg-secondary' %>">
+                        <%= sayfa.aktif ? 'Aktif' : 'Pasif' %>
+                    </span>
+                </div>
+                <p class="text-muted mb-3"><%= sayfa.baslik %></p>
+                <div class="d-flex gap-2">
+                    <a href="/kurum/kurumsal-sayfa-duzenle/<%= sayfa.id %>" class="btn btn-primary btn-sm">
+                        <i class="bi bi-pencil"></i> Düzenle
+                    </a>
+                    <a href="/<%= sayfa.sayfa_slug %>" class="btn btn-outline-secondary btn-sm" target="_blank">
+                        <i class="bi bi-eye"></i> Görüntüle
+                    </a>
+                </div>
+            </div>
+        </div>
+        <% }) %>
+    </div>
+</div>
+
+<%- include('../partials/footer-dashboard') %>
+

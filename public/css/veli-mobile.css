@@ -1,0 +1,256 @@
+/* 📱 MOBİL OPTİMİZASYON - VELİ PANELI */
+
+/* Genel Mobil Ayarlar */
+@media (max-width: 768px) {
+  body {
+    padding-bottom: 80px !important; /* Alt menü için boşluk */
+  }
+  
+  /* Footer'ı mobilde gizle */
+  footer {
+    display: none !important;
+  }
+  
+  /* Büyük, dokunulabilir butonlar */
+  .btn {
+    min-height: 48px !important;
+    font-size: 1.1rem !important;
+    padding: 12px 20px !important;
+    border-radius: 12px !important;
+  }
+  
+  /* Kartlar */
+  .card {
+    border-radius: 16px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+    margin-bottom: 16px !important;
+  }
+  
+  .card-body {
+    padding: 20px !important;
+  }
+  
+  /* Input alanları */
+  input, select, textarea {
+    min-height: 48px !important;
+    font-size: 16px !important; /* iOS zoom'u engeller */
+    border-radius: 12px !important;
+  }
+  
+  /* Navbar */
+  .navbar {
+    padding: 12px 16px !important;
+  }
+  
+  /* Container padding */
+  .container {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
+
+/* 🎯 Alt Navigasyon Bar */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,1) 100%);
+  border-top: 1px solid #e5e7eb;
+  display: none;
+  align-items: center;
+  justify-content: space-around;
+  padding: 8px 0;
+  z-index: 1000;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+  }
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 12px;
+  transition: all 0.2s;
+  min-width: 70px;
+}
+
+.mobile-nav-item i {
+  font-size: 1.5rem;
+  margin-bottom: 4px;
+}
+
+.mobile-nav-item.active {
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.mobile-nav-item:hover {
+  color: #667eea;
+  transform: translateY(-2px);
+}
+
+/* 📊 Dashboard Mobil */
+@media (max-width: 768px) {
+  .hero-section {
+    padding: 20px 16px !important;
+    border-radius: 0 0 24px 24px !important;
+  }
+  
+  .hero-section h2 {
+    font-size: 1.5rem !important;
+  }
+  
+  .hero-section p {
+    font-size: 0.95rem !important;
+  }
+  
+  /* Öğrenci kartları */
+  .ogrenci-card {
+    margin-bottom: 16px;
+    border-radius: 16px !important;
+    overflow: hidden;
+  }
+  
+  .ogrenci-card .card-body {
+    padding: 20px !important;
+  }
+  
+  .ogrenci-card h5 {
+    font-size: 1.3rem !important;
+  }
+  
+  /* Büyük istatistik sayıları */
+  .stat-number {
+    font-size: 2.5rem !important;
+    font-weight: 800 !important;
+  }
+  
+  /* Hızlı erişim butonları */
+  .quick-action-btn {
+    height: 100px !important;
+    font-size: 1rem !important;
+    border-radius: 16px !important;
+  }
+  
+  .quick-action-btn i {
+    font-size: 2rem !important;
+  }
+}
+
+/* 📄 Sınav Sonuçları Mobil */
+@media (max-width: 768px) {
+  .sonuc-card {
+    border-radius: 16px !important;
+    margin-bottom: 16px;
+    border-left: 5px solid #667eea !important;
+  }
+  
+  .sonuc-card .card-body {
+    padding: 20px !important;
+  }
+  
+  .pdf-download-btn {
+    width: 100% !important;
+    height: 56px !important;
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    border-radius: 12px !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  }
+  
+  .pdf-download-btn i {
+    font-size: 1.5rem !important;
+  }
+}
+
+/* 🔐 Şifre Değiştirme Mobil */
+@media (max-width: 768px) {
+  .password-strength-bar {
+    height: 8px !important;
+    border-radius: 4px !important;
+  }
+  
+  .form-label {
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 8px !important;
+  }
+}
+
+/* 🎨 Genel Mobil İyileştirmeler */
+@media (max-width: 768px) {
+  /* Touch feedback */
+  .btn:active, .card:active, a:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+  
+  /* Scroll indicator */
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #667eea;
+    border-radius: 4px;
+  }
+  
+  /* Modal tam ekran */
+  .modal-dialog {
+    margin: 0 !important;
+    max-width: 100% !important;
+    height: 100vh !important;
+  }
+  
+  .modal-content {
+    height: 100% !important;
+    border-radius: 0 !important;
+  }
+  
+  /* Badge'ler daha büyük */
+  .badge {
+    font-size: 0.9rem !important;
+    padding: 6px 12px !important;
+    border-radius: 8px !important;
+  }
+  
+  /* Tablolar responsive */
+  table {
+    font-size: 0.9rem !important;
+  }
+  
+  td, th {
+    padding: 12px 8px !important;
+  }
+}
+
+/* 🌙 Dark Mode Desteği (Opsiyonel) */
+@media (prefers-color-scheme: dark) {
+  .mobile-bottom-nav {
+    background: rgba(17, 24, 39, 0.98);
+    border-top: 1px solid #374151;
+  }
+  
+  .mobile-nav-item {
+    color: #9ca3af;
+  }
+  
+  .mobile-nav-item.active {
+    color: #818cf8;
+    background: rgba(129, 140, 248, 0.1);
+  }
+}
+

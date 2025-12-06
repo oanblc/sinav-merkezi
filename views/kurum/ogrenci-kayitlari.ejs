@@ -1,4 +1,4 @@
-<%- include('../partials/header-dashboard', { title: 'Öğrenci Kayıtları - Kurum Paneli', user: user }) %>
+isimde <%- include('../partials/header-dashboard', { title: 'Öğrenci Kayıtları - Kurum Paneli', user: user }) %>
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
@@ -230,8 +230,8 @@
             <a href="/kurum/ogrenci-export-excel" class="btn btn-light">
                 <i class="bi bi-download"></i> Excel İndir
             </a>
-            <button class="btn" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white;" onclick="kontrolHesapsizVeliler()">
-                <i class="bi bi-person-plus-fill"></i> Kullanıcı Oluştur
+            <button class="btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;" onclick="topluVeliHesapOlustur()">
+                <i class="bi bi-people-fill"></i> Toplu Veli Hesabı Oluştur
             </button>
             <button class="btn btn-danger" onclick="showDeleteAllModal()">
                 <i class="bi bi-trash3"></i> Tümünü Sil
@@ -757,7 +757,25 @@ $(document).ready(function() {
             }
         },
         language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/tr.json'
+            emptyTable: "Tabloda veri yok",
+            info: "_TOTAL_ kayıttan _START_ - _END_ arası gösteriliyor",
+            infoEmpty: "Kayıt yok",
+            infoFiltered: "(_MAX_ kayıt içerisinden bulunan)",
+            lengthMenu: "_MENU_ kayıt göster",
+            loadingRecords: "Yükleniyor...",
+            processing: "İşleniyor...",
+            search: "Ara:",
+            zeroRecords: "Eşleşen kayıt bulunamadı",
+            paginate: {
+                first: "İlk",
+                last: "Son",
+                next: "Sonraki",
+                previous: "Önceki"
+            },
+            aria: {
+                sortAscending: ": artan sütun sıralamasını aktifleştir",
+                sortDescending: ": azalan sütun sıralamasını aktifleştir"
+            }
         },
         pageLength: 25,
         order: [[0, 'asc'], [1, 'asc']],
@@ -1116,6 +1134,54 @@ function copyToClipboard(text, label) {
 // ============ KULLANICI OLUŞTUR SİSTEMİ ============
 
 // Hesapsız velileri kontrol et
+// Toplu veli hesabı oluştur
+async function topluVeliHesapOlustur() {
+    if (!confirm('⚠️ TÜM ÖĞRENCİLER İÇİN VELİ HESABI OLUŞTURULACAK!\n\n' +
+                 'Her öğrencinin TC Kimlik No ile veli hesabı oluşturulacak.\n' +
+                 'İlk şifre = TC Kimlik No\n\n' +
+                 'Devam etmek istiyor musunuz?')) {
+        return;
+    }
+    
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Oluşturuluyor...';
+    
+    try {
+        const response = await fetch('/kurum/toplu-veli-hesap-olustur', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            let mesaj = `✅ TOPLU VELİ HESABI OLUŞTURMA TAMAMLANDI!\n\n`;
+            mesaj += `📊 Toplam Öğrenci: ${result.toplam}\n`;
+            mesaj += `✅ Oluşturulan Hesap: ${result.olusturulan}\n`;
+            mesaj += `⚠️ Zaten Mevcut: ${result.mevcutOlanlar}\n`;
+            mesaj += `❌ Hata: ${result.hatalar}\n\n`;
+            mesaj += `👤 Giriş Bilgileri:\n`;
+            mesaj += `Kullanıcı Adı: Öğrenci TC\n`;
+            mesaj += `İlk Şifre: Öğrenci TC\n`;
+            mesaj += `(İlk girişte yeni şifre istenir)`;
+            
+            alert(mesaj);
+            
+        } else {
+            alert('❌ Hata: ' + (result.error || 'İşlem başarısız!'));
+        }
+        
+    } catch (error) {
+        console.error('Hata:', error);
+        alert('❌ İstek sırasında hata oluştu!');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
 async function kontrolHesapsizVeliler() {
     const modal = new bootstrap.Modal(document.getElementById('kullaniciOlusturModal'));
     modal.show();

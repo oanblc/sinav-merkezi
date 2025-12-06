@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Manuel Eşleştirme</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .container-fluid { 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+        }
+        .stats {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .stat-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        .pdf-panel {
+            flex: 2;
+            background: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+        }
+        .pdf-toolbar {
+            background: white;
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .pdf-viewer {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .pdf-viewer iframe {
+            width: 100%;
+            height: 100%;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+        }
+        .student-panel {
+            flex: 1;
+            background: white;
+            border-left: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+        }
+        .search-box {
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        .student-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        .student-card {
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .student-card:hover {
+            background: #f0f0f0;
+            border-color: #667eea;
+        }
+        .student-card.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        .student-card.matched {
+            background: #f3f4f6 !important;
+            color: #9ca3af !important;
+            border-color: #e5e7eb !important;
+            cursor: not-allowed !important;
+            opacity: 0.6 !important;
+            pointer-events: none;
+        }
+        .student-card.matched:hover {
+            background: #f3f4f6 !important;
+            border-color: #e5e7eb !important;
+        }
+        .student-card.matched .fw-bold {
+            color: #9ca3af !important;
+        }
+        .student-card.matched .text-muted {
+            color: #d1d5db !important;
+        }
+        .matched-section {
+            border-top: 2px solid #10b981;
+            background: #d1fae5;
+            padding: 15px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .matched-item {
+            background: white;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border: 1px solid #10b981;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .actions {
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        .btn-match {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-match:hover { background: #059669; }
+        .btn-match:disabled { 
+            background: #ccc; 
+            cursor: not-allowed; 
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="header">
+        <h5 class="mb-0"><i class="bi bi-link-45deg"></i> Manuel PDF Eşleştirme</h5>
+        <div class="stats">
+            <div class="stat-badge">
+                <i class="bi bi-file-pdf"></i> Toplam: <span id="toplamSayfa"><%= sayfalar.length %></span>
+            </div>
+            <div class="stat-badge">
+                <i class="bi bi-check-circle"></i> Eşleşen: <span id="eslesenSayfa">0</span>
+            </div>
+            <div class="stat-badge">
+                <i class="bi bi-hourglass-split"></i> Kalan: <span id="kalanSayfa"><%= sayfalar.length %></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+        <!-- PDF Panel -->
+        <div class="pdf-panel">
+            <div class="pdf-toolbar">
+                <div>
+                    <strong>Sayfa <span id="currentPageNum">1</span> / <%= sayfalar.length %></strong>
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="prevPage()" id="btnPrev">
+                        <i class="bi bi-chevron-left"></i> Önceki
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="nextPage()" id="btnNext">
+                        Sonraki <i class="bi bi-chevron-right"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning" onclick="skipPage()">
+                        Atla <i class="bi bi-skip-forward"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="pdf-viewer">
+                <iframe id="pdfFrame" src=""></iframe>
+            </div>
+        </div>
+
+        <!-- Student Panel -->
+        <div class="student-panel">
+            <div class="search-box">
+                <input type="text" class="form-control" id="searchInput" placeholder="🔍 Öğrenci ara...">
+            </div>
+            <div class="student-list" id="studentList">
+                <% katilimcilar.forEach((student, index) => { %>
+                    <% 
+                    // Eğer öğrencinin pdf_path'i varsa zaten eşleştirilmiş demektir
+                    const isMatched = student.pdf_path && student.pdf_path.trim() !== '';
+                    const matchedClass = isMatched ? 'matched' : '';
+                    const matchedStyle = isMatched ? 'background: #e5e7eb !important; color: #6b7280 !important; opacity: 0.5; cursor: not-allowed;' : '';
+                    %>
+                    <div class="student-card <%= matchedClass %>" 
+                         data-index="<%= index %>" 
+                         data-matched="<%= isMatched %>" 
+                         style="<%= matchedStyle %>"
+                         onclick="selectStudent(<%= index %>)">
+                        <div class="fw-bold">
+                            <%= student.ad_soyad %>
+                            <% if (isMatched) { %>
+                                <i class="bi bi-check-circle-fill text-success"></i>
+                            <% } %>
+                        </div>
+                        <small class="text-muted"><%= student.sinif || 'Sınıf belirtilmemiş' %></small>
+                    </div>
+                <% }); %>
+            </div>
+            
+            <!-- Matched Section -->
+            <div id="matchedSection" style="display: none;" class="matched-section">
+                <h6 class="text-success mb-2">
+                    <i class="bi bi-check-circle-fill"></i> Eşleşenler (<span id="matchedCount">0</span>)
+                </h6>
+                <div id="matchedList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+        <button class="btn btn-secondary" onclick="cancel()">
+            <i class="bi bi-x-circle"></i> İptal
+        </button>
+        <button class="btn btn-match" onclick="matchPDF()" id="btnMatch" disabled>
+            <i class="bi bi-check-lg"></i> Eşleştir
+        </button>
+        <button class="btn btn-primary" onclick="saveAndClose()" id="btnSave">
+            <i class="bi bi-save"></i> Kaydet ve Kapat
+        </button>
+    </div>
+</div>
+
+<script>
+// Global Variables
+const SINAV_ID = <%= sinav.id %>;
+const PAGES = <%- JSON.stringify(sayfalar) %>;
+const STUDENTS = <%- JSON.stringify(katilimcilar) %>;
+
+let currentPageIndex = 0;
+let selectedStudentIndex = null;
+let matchedItems = [];
+let pendingRequests = [];
+let matchedStudentIndexes = new Set(); // Eşleştirilen öğrenciler
+
+// Initialize - Veritabanında zaten eşleştirilmiş öğrencileri işaretle
+console.log('🔍 ÖĞRENCİ LİSTESİ KONTROLÜ:');
+STUDENTS.forEach((student, index) => {
+    console.log(`  ${index}: ${student.ad_soyad} - pdf_path: "${student.pdf_path || 'BOŞ'}" - sonuc_durumu: "${student.sonuc_durumu || 'BOŞ'}"`);
+    
+    if (student.pdf_path && student.pdf_path.trim() !== '') {
+        matchedStudentIndexes.add(index);
+        console.log(`    🔒 PASİF YAPILDI`);
+    }
+});
+
+console.log(`\n📊 Toplam ${STUDENTS.length} öğrenciden ${matchedStudentIndexes.size} tanesi zaten eşleştirilmiş`);
+
+loadPage();
+
+// Load current page
+function loadPage() {
+    if (currentPageIndex >= PAGES.length) {
+        alert('✅ Tüm sayfalar tamamlandı!');
+        return;
+    }
+    
+    const page = PAGES[currentPageIndex];
+    const pdfUrl = `/${page.replace(/\\/g, '/')}`;
+    
+    document.getElementById('pdfFrame').src = pdfUrl;
+    document.getElementById('currentPageNum').textContent = currentPageIndex + 1;
+    document.getElementById('kalanSayfa').textContent = PAGES.length - matchedItems.length;
+    
+    document.getElementById('btnPrev').disabled = currentPageIndex === 0;
+    document.getElementById('btnNext').disabled = currentPageIndex === PAGES.length - 1;
+    
+    // Clear selection
+    selectedStudentIndex = null;
+    document.querySelectorAll('.student-card').forEach(card => card.classList.remove('selected'));
+    document.getElementById('btnMatch').disabled = true;
+}
+
+// Select student
+function selectStudent(index) {
+    // Eğer öğrenci daha önce eşleştirildiyse seçilemesin (hem bu oturumda hem veritabanında)
+    const card = document.querySelector(`[data-index="${index}"]`);
+    const isAlreadyMatched = card.getAttribute('data-matched') === 'true' || matchedStudentIndexes.has(index);
+    
+    if (isAlreadyMatched) {
+        alert('⚠️ Bu öğrenci zaten eşleştirildi!');
+        return;
+    }
+    
+    selectedStudentIndex = index;
+    
+    // Update UI
+    document.querySelectorAll('.student-card').forEach(card => card.classList.remove('selected'));
+    card.classList.add('selected');
+    
+    document.getElementById('btnMatch').disabled = false;
+}
+
+// Match PDF to student
+async function matchPDF() {
+    if (selectedStudentIndex === null) {
+        alert('⚠️ Lütfen bir öğrenci seçin!');
+        return;
+    }
+    
+    const page = PAGES[currentPageIndex];
+    const student = STUDENTS[selectedStudentIndex];
+    
+    // Save to backend
+    const savePromise = fetch('/kurum/sinav-sayfa-eslestir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            sinav_id: SINAV_ID,
+            sayfa_yolu: page,
+            ogrenci_id: student.ogrenci_id,
+            kaynak: student.kaynak
+        })
+    }).then(res => res.json()).then(data => {
+        if (!data.success) {
+            throw new Error(data.error || 'Kayıt başarısız');
+        }
+        console.log(`✅ Sayfa ${currentPageIndex + 1} → ${student.ad_soyad} kaydedildi`);
+    }).catch(error => {
+        console.error('❌ Kayıt hatası:', error);
+        alert('❌ Kayıt sırasında hata oluştu!');
+    });
+    
+    pendingRequests.push(savePromise);
+    
+    // Add to matched list
+    matchedItems.push({
+        page: currentPageIndex + 1,
+        student: student.ad_soyad,
+        pageFile: page
+    });
+    
+    // Öğrenciyi eşleştirilenler setine ekle
+    matchedStudentIndexes.add(selectedStudentIndex);
+    
+    // Öğrenci kartını pasif yap
+    const studentCard = document.querySelector(`[data-index="${selectedStudentIndex}"]`);
+    if (studentCard) {
+        studentCard.classList.add('matched');
+        studentCard.classList.remove('selected');
+        studentCard.setAttribute('data-matched', 'true');
+        
+        // Eğer içinde zaten ✓ işareti yoksa ekle
+        if (!studentCard.querySelector('.bi-check-circle-fill')) {
+            const nameDiv = studentCard.querySelector('.fw-bold');
+            if (nameDiv) {
+                nameDiv.innerHTML += ' <i class="bi bi-check-circle-fill text-success"></i>';
+            }
+        }
+    }
+    
+    // Update matched section
+    updateMatchedSection();
+    
+    // Update stats
+    document.getElementById('eslesenSayfa').textContent = matchedItems.length;
+    document.getElementById('kalanSayfa').textContent = PAGES.length - matchedItems.length;
+    
+    // Show success feedback
+    const btn = document.getElementById('btnMatch');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-check-lg"></i> Eşleştirildi!';
+    btn.style.background = '#10b981';
+    
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.style.background = '';
+    }, 800);
+    
+    // Go to next page
+    setTimeout(() => {
+        nextPage();
+    }, 500);
+}
+
+// Update matched section
+function updateMatchedSection() {
+    const section = document.getElementById('matchedSection');
+    const list = document.getElementById('matchedList');
+    const count = document.getElementById('matchedCount');
+    
+    if (matchedItems.length > 0) {
+        section.style.display = 'block';
+        count.textContent = matchedItems.length;
+        
+        list.innerHTML = matchedItems.map(item => `
+            <div class="matched-item">
+                <div>
+                    <strong>Sayfa ${item.page}</strong>
+                    <i class="bi bi-arrow-right mx-2 text-success"></i>
+                    ${item.student}
+                </div>
+                <i class="bi bi-check-circle-fill text-success"></i>
+            </div>
+        `).join('');
+        
+        // Scroll to bottom
+        list.scrollTop = list.scrollHeight;
+    } else {
+        section.style.display = 'none';
+    }
+}
+
+// Navigation
+function prevPage() {
+    if (currentPageIndex > 0) {
+        currentPageIndex--;
+        loadPage();
+    }
+}
+
+function nextPage() {
+    if (currentPageIndex < PAGES.length - 1) {
+        currentPageIndex++;
+        loadPage();
+    }
+}
+
+function skipPage() {
+    if (confirm('⚠️ Bu sayfayı atlamak istediğinize emin misiniz?')) {
+        nextPage();
+    }
+}
+
+// Search
+document.getElementById('searchInput').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase()
+        .replace(/ı/g, 'i').replace(/ğ/g, 'g').replace(/ü/g, 'u')
+        .replace(/ş/g, 's').replace(/ö/g, 'o').replace(/ç/g, 'c');
+    
+    document.querySelectorAll('.student-card').forEach(card => {
+        const text = card.textContent.toLowerCase()
+            .replace(/ı/g, 'i').replace(/ğ/g, 'g').replace(/ü/g, 'u')
+            .replace(/ş/g, 's').replace(/ö/g, 'o').replace(/ç/g, 'c');
+        
+        card.style.display = text.includes(searchTerm) ? 'block' : 'none';
+    });
+});
+
+// Save and close
+async function saveAndClose() {
+    if (matchedItems.length === 0) {
+        if (confirm('⚠️ Hiç eşleştirme yapmadınız. Çıkmak istediğinize emin misiniz?')) {
+            window.location.replace(`/kurum/sinav-detay/${SINAV_ID}?t=${Date.now()}`);
+        }
+        return;
+    }
+    
+    // Show saving indicator
+    const btn = document.getElementById('btnSave');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Kaydediliyor...';
+    
+    try {
+        // Wait for all pending requests
+        if (pendingRequests.length > 0) {
+            console.log(`⏳ ${pendingRequests.length} istek tamamlanıyor...`);
+            await Promise.all(pendingRequests);
+            console.log('✅ Tüm istekler tamamlandı!');
+        }
+        
+        // Success feedback
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Kaydedildi!';
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-success');
+        
+        // Redirect with cache buster
+        setTimeout(() => {
+            window.location.replace(`/kurum/sinav-detay/${SINAV_ID}?t=${Date.now()}`);
+        }, 500);
+        
+    } catch (error) {
+        console.error('❌ Kaydetme hatası:', error);
+        alert('❌ Kaydetme sırasında hata oluştu!');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+// Cancel
+function cancel() {
+    if (matchedItems.length > 0) {
+        if (confirm(`⚠️ ${matchedItems.length} eşleştirme kaydedildi. Çıkmak istediğinize emin misiniz?`)) {
+            window.location.replace(`/kurum/sinav-detay/${SINAV_ID}?t=${Date.now()}`);
+        }
+    } else {
+        window.location.replace(`/kurum/sinav-detay/${SINAV_ID}?t=${Date.now()}`);
+    }
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowLeft') prevPage();
+    if (e.key === 'ArrowRight') nextPage();
+    if (e.key === 'Enter' && selectedStudentIndex !== null) matchPDF();
+});
+</script>
+
+</body>
+</html>

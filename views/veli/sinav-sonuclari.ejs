@@ -1,4 +1,4 @@
-<%- include('../partials/header-dashboard', { title: 'Sınav Sonuçları - Veli Paneli', user: user }) %>
+<%- include('../partials/header-dashboard', { title: 'Sınav Sonuçları - Veli Paneli', user: user, activePage: 'sonuclar' }) %>
 
 <style>
     .page-header {
@@ -150,6 +150,52 @@
     .filter-section .form-select {
         border-radius: 10px;
         border: 2px solid #e2e8f0;
+    }
+    
+    /* Mobil Optimizasyonlar */
+    @media (max-width: 768px) {
+        .page-header {
+            margin: -30px -16px 24px !important;
+            padding: 24px 16px !important;
+        }
+        
+        .page-header h1 {
+            font-size: 1.5rem !important;
+        }
+        
+        .page-header p {
+            font-size: 0.9rem !important;
+        }
+        
+        .page-header .btn {
+            padding: 8px 16px !important;
+            font-size: 0.9rem !important;
+        }
+        
+        .filter-section {
+            padding: 16px !important;
+        }
+        
+        .filter-section .col-md-4 {
+            margin-bottom: 12px;
+        }
+        
+        .sonuc-header {
+            flex-direction: column;
+            align-items: stretch !important;
+        }
+        
+        .sonuc-header .text-end {
+            text-align: left !important;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .indir-btn {
+            width: 100% !important;
+            justify-content: center;
+        }
     }
 </style>
 
@@ -385,5 +431,5 @@ if (highlightId) {
 }
 </style>
 
-<%- include('../partials/footer') %>
+<%- include('../partials/footer-dashboard', { user: user, activePage: 'sonuclar' }) %>
 

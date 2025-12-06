@@ -341,7 +341,7 @@
                                     <i class="bi bi-tag"></i> Fiyat
                                 </div>
                                 <div class="price-amount">
-                                    <%= sinav.fiyat %> TL
+                                    <%= typeof sinav.fiyat === 'number' ? sinav.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : sinav.fiyat %> ₺
                                 </div>
                             </div>
                             

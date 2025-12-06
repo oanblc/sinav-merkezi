@@ -1,5 +1,6 @@
 <%- include('../partials/header-dashboard', { title: 'Sonuç Yükle - Kurum Paneli', user: user }) %>
 
+<!-- 🆕 Akıllı Sistem v1.1 - Gelişmiş İsim Tanıma -->
 <style>
     .page-header {
         background: linear-gradient(135deg, #10b981 0%, #059669 100%);
@@ -212,21 +213,24 @@
         
         <div class="row mb-4">
             <div class="col-md-4">
-                <div class="p-3 bg-light rounded text-center">
-                    <h3 class="text-success" id="matchedCount">0</h3>
-                    <small class="text-muted">Eşleşen</small>
+                <div class="p-4 bg-gradient rounded-3 text-center border border-success shadow-sm" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);">
+                    <i class="bi bi-check-circle-fill text-success mb-2" style="font-size: 2rem;"></i>
+                    <h1 class="text-success mb-2" id="matchedCount" style="font-size: 3rem; font-weight: 800;">0</h1>
+                    <strong class="text-success">✅ Eşleşen</strong>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="p-3 bg-light rounded text-center">
-                    <h3 class="text-warning" id="unmatchedCount">0</h3>
-                    <small class="text-muted">Eşleşmeyen</small>
+                <div class="p-4 bg-gradient rounded-3 text-center border border-warning shadow-sm" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">
+                    <i class="bi bi-exclamation-triangle-fill text-warning mb-2" style="font-size: 2rem;"></i>
+                    <h1 class="text-warning mb-2" id="unmatchedCount" style="font-size: 3rem; font-weight: 800;">0</h1>
+                    <strong class="text-warning">⚠️ Eşleşmeyen</strong>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="p-3 bg-light rounded text-center">
-                    <h3 class="text-primary" id="totalCount">0</h3>
-                    <small class="text-muted">Toplam Sayfa</small>
+                <div class="p-4 bg-gradient rounded-3 text-center border border-primary shadow-sm" style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);">
+                    <i class="bi bi-file-pdf-fill text-primary mb-2" style="font-size: 2rem;"></i>
+                    <h1 class="text-primary mb-2" id="totalCount" style="font-size: 3rem; font-weight: 800;">0</h1>
+                    <strong class="text-primary">📄 Toplam Sayfa</strong>
                 </div>
             </div>
         </div>
@@ -280,15 +284,30 @@
 </div>
 
 <script>
+const SINAV_ID = <%= sinav.id || 0 %>;
+const KATILIMCILAR = <%- JSON.stringify(katilimcilar || []) %>;
 let analysisData = null;
 let selectedName = null;
 let selectedLineNumber = null;
 
-// Dropzone
-const dropzone = document.getElementById('dropzone');
-const fileInput = document.getElementById('pdfFile');
+// DOM hazır olunca başlat
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM hazir, event listenerlar ekleniyor...');
+    
+    initUploadForm();
+});
 
-dropzone.addEventListener('click', () => fileInput.click());
+function initUploadForm() {
+    // Dropzone
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('pdfFile');
+    
+    if (!dropzone || !fileInput) {
+        console.error('❌ Dropzone veya fileInput bulunamadı!');
+        return;
+    }
+    
+    dropzone.addEventListener('click', () => fileInput.click());
 
 dropzone.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -309,50 +328,69 @@ dropzone.addEventListener('drop', (e) => {
     }
 });
 
-fileInput.addEventListener('change', (e) => {
-    if (e.target.files.length) {
-        showFileInfo(e.target.files[0]);
-    }
-});
-
-function showFileInfo(file) {
-    document.getElementById('fileName').textContent = file.name;
-    document.getElementById('fileInfo').style.display = 'block';
-}
-
-function clearFile() {
-    fileInput.value = '';
-    document.getElementById('fileInfo').style.display = 'none';
-}
-
-// Form Submit - Analiz
-document.getElementById('uploadForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) {
+            showFileInfo(e.target.files[0]);
+        }
+    });
     
-    if (!fileInput.files.length) {
-        alert('Lütfen bir PDF dosyası seçin!');
+    // Form Submit - Analiz
+    const uploadForm = document.getElementById('uploadForm');
+    if (!uploadForm) {
+        console.error('❌ uploadForm bulunamadı!');
         return;
     }
     
+    uploadForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    console.log('📋 Form submit edildi!');
+    
+    if (!fileInput || !fileInput.files || !fileInput.files.length) {
+        alert('❌ Lütfen bir PDF dosyası seçin!');
+        return;
+    }
+    
+    console.log('📄 Dosya seçildi:', fileInput.files[0].name);
+    
     const formData = new FormData();
     formData.append('pdfFile', fileInput.files[0]);
-    formData.append('sinav_id', '<%= sinav.id %>');
+    formData.append('sinav_id', SINAV_ID);
+    
+    console.log('📤 FormData hazır, yükleniyor...');
     
     // UI güncelle
-    document.getElementById('uploadCard').style.display = 'none';
-    document.getElementById('progressSection').style.display = 'block';
+    const uploadCard = document.getElementById('uploadCard');
+    const progressSection = document.getElementById('progressSection');
+    
+    if (uploadCard) uploadCard.style.display = 'none';
+    if (progressSection) progressSection.style.display = 'block';
+    
     updateProgress(20, 'PDF analiz ediliyor...');
     
     try {
+        console.log('📤 PDF yükleniyor...', fileInput.files[0].name);
+        
         const response = await fetch('/kurum/sinav-sonuc-yukle-analiz', {
             method: 'POST',
             body: formData
         });
         
+        console.log('📥 Response alındı:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ HTTP Hatası:', response.status, errorText);
+            alert('❌ Sunucu hatası: ' + response.status + '\n' + errorText);
+            location.reload();
+            return;
+        }
+        
         const result = await response.json();
+        console.log('📊 Sonuç:', result);
         
         if (!result.success) {
-            alert('❌ ' + result.error);
+            alert('❌ ' + (result.error || 'Bilinmeyen hata!'));
             location.reload();
             return;
         }
@@ -360,15 +398,63 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
         analysisData = result.data;
         updateProgress(40, 'İsim seçiliyor...');
         
-        // İsim seçim modalını göster
-        showNameSelectionModal(result.data.potansiyelIsimler);
+        // 🧠 AKILLI SİSTEM KONTROLÜ
+        if (result.data.useAutoMode && result.data.autoSelectedPattern) {
+            // %85+ güven var - Otomatik devam et!
+            console.log('🎯 Otomatik mod aktif:', result.data.autoSelectedPattern);
+            selectedName = result.data.autoSelectedPattern.text;
+            selectedLineNumber = result.data.autoSelectedPattern.lineNumber;
+            
+            // Kullanıcıya bilgi ver
+            const autoConfirm = confirm(
+                `🧠 Akıllı Sistem Otomatik Eşleştirme Buldu!\n\n` +
+                `✅ Öğrenci: ${result.data.autoSelectedPattern.matchedStudent}\n` +
+                `📝 Çıkarılan İsim: ${result.data.autoSelectedPattern.text}\n` +
+                `🎯 Güven: ${(result.data.autoSelectedPattern.confidence * 100).toFixed(0)}%\n` +
+                `🔧 Strateji: ${result.data.autoSelectedPattern.strategy}\n\n` +
+                `Otomatik olarak devam edilsin mi?`
+            );
+            
+            if (autoConfirm) {
+                // Direkt işle
+                confirmNameSelection();
+            } else {
+                // Manuel seçim iste
+                showNameSelectionModal(result.data.potansiyelIsimler);
+            }
+        } else {
+            // Otomatik bulunamadı - Manuel seçim göster
+            console.log('⚠️ Otomatik eşleşme yok, manuel seçim gerekli');
+            showNameSelectionModal(result.data.potansiyelIsimler);
+        }
         
     } catch (error) {
-        console.error('Analiz hatası:', error);
-        alert('❌ Analiz sırasında bir hata oluştu!');
-        location.reload();
+        console.error('❌ Analiz hatası:', error);
+        console.error('Hata detayı:', error.message);
+        console.error('Stack:', error.stack);
+        alert('❌ Analiz sırasında bir hata oluştu!\n\nHata: ' + error.message + '\n\nLütfen console\'u kontrol edin (F12)');
+        
+        // UI'ı geri getir
+        const uploadCard = document.getElementById('uploadCard');
+        const progressSection = document.getElementById('progressSection');
+        if (uploadCard) uploadCard.style.display = 'block';
+        if (progressSection) progressSection.style.display = 'none';
     }
-});
+    });
+    
+    console.log('Form event listener eklendi!');
+}
+
+function showFileInfo(file) {
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileInfo').style.display = 'block';
+}
+
+function clearFile() {
+    const fileInput = document.getElementById('pdfFile');
+    if (fileInput) fileInput.value = '';
+    document.getElementById('fileInfo').style.display = 'none';
+}
 
 // İsim Seçim Modalı
 function showNameSelectionModal(names) {
@@ -376,7 +462,39 @@ function showNameSelectionModal(names) {
     container.innerHTML = '';
     
     if (!names || names.length === 0) {
-        container.innerHTML = '<div class="alert alert-warning">Hiç isim bulunamadı. Manuel giriş yapmanız gerekebilir.</div>';
+        // Hiç isim bulunamadı - Manuel giriş alanı göster
+        container.innerHTML = `
+            <div class="alert alert-warning mb-3">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Otomatik isim tanıma başarısız!</strong><br>
+                PDF formatı tanınmadı. Lütfen öğrenci ismini manuel olarak girin.
+            </div>
+            <div class="mb-3">
+                <label class="form-label"><strong>Öğrenci Adı ve Soyadı:</strong></label>
+                <input type="text" id="manualNameInput" class="form-control form-control-lg" 
+                       placeholder="Örn: AHMET YILMAZ" 
+                       style="text-transform: uppercase;"
+                       onkeyup="this.value = this.value.toUpperCase()">
+                <small class="text-muted">💡 İpucu: Büyük harfle, tam ad-soyad yazın</small>
+            </div>
+        `;
+        
+        // Manuel giriş için Enter tuşu desteği
+        setTimeout(() => {
+            document.getElementById('manualNameInput').focus();
+            document.getElementById('manualNameInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const input = this.value.trim();
+                    if (input.length >= 5) {
+                        selectedName = input;
+                        selectedLineNumber = -1; // Manuel giriş
+                        confirmNameSelection();
+                    } else {
+                        alert('Lütfen en az 5 karakter girin!');
+                    }
+                }
+            });
+        }, 100);
     } else {
         names.forEach((name, index) => {
             const confidenceClass = name.confidence === 'high' ? 'confidence-high' : 
@@ -412,15 +530,34 @@ function showNameSelectionModal(names) {
 
 // İsim Seçimi Onayla
 async function confirmNameSelection() {
+    // Eğer selectedName yoksa, manuel girişi kontrol et
     if (!selectedName) {
-        alert('Lütfen bir isim seçin!');
-        return;
+        const manualInput = document.getElementById('manualNameInput');
+        if (manualInput) {
+            const manualValue = manualInput.value.trim().toUpperCase();
+            if (manualValue.length >= 5) {
+                selectedName = manualValue;
+                selectedLineNumber = -1; // Manuel giriş işareti
+                console.log('✍️ Manuel isim girişi:', selectedName);
+            } else {
+                alert('❌ Lütfen geçerli bir öğrenci adı girin!\n\n💡 En az 5 karakter, büyük harfle yazın.\nÖrnek: AHMET YILMAZ');
+                manualInput.focus();
+                return;
+            }
+        } else {
+            alert('❌ Lütfen bir isim seçin veya manuel olarak girin!');
+            return;
+        }
     }
     
-    // Modalı kapat
-    bootstrap.Modal.getInstance(document.getElementById('nameSelectionModal')).hide();
+    // Modalı kapat (eğer açıksa)
+    const modal = document.getElementById('nameSelectionModal');
+    const modalInstance = bootstrap.Modal.getInstance(modal);
+    if (modalInstance) {
+        modalInstance.hide();
+    }
     
-    updateProgress(60, 'Tüm sayfalar işleniyor...');
+    updateProgress(60, '🧠 Akıllı sistem tüm sayfaları işliyor...');
     
     // Tüm sayfaları işle
     try {
@@ -428,7 +565,7 @@ async function confirmNameSelection() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                sinav_id: '<%= sinav.id %>',
+                sinav_id: SINAV_ID,
                 pdfPath: analysisData.uploadPath,
                 selectedPattern: selectedName,
                 selectedLineNumber: selectedLineNumber,
@@ -471,42 +608,127 @@ function updateProgress(percent, text) {
 function showResults(data) {
     document.getElementById('resultsSection').style.display = 'block';
     
+    // ✅ SAYAÇLARI GÜNCELLE
     document.getElementById('matchedCount').textContent = data.matchedCount;
     document.getElementById('unmatchedCount').textContent = data.unmatchedCount;
     document.getElementById('totalCount').textContent = data.totalPages;
     
+    // 🧠 Strateji istatistiklerini göster
+    if (data.strategyStats) {
+        console.log('📊 Kullanılan Stratejiler:', data.strategyStats);
+        // Strateji bilgisini header'a ekle
+        const header = document.querySelector('.results-section h5');
+        if (header) {
+            let strategyInfo = '<div class="mt-3"><small class="text-muted"><strong>🧠 Akıllı Sistem:</strong> ';
+            Object.entries(data.strategyStats).forEach(([strategy, count]) => {
+                const shortName = strategy.replace('strategy', 'Str.').replace('_', ' ');
+                strategyInfo += `${shortName}: ${count} sayfa | `;
+            });
+            strategyInfo = strategyInfo.slice(0, -3) + '</small></div>';
+            header.insertAdjacentHTML('afterend', strategyInfo);
+        }
+    }
+    
     const list = document.getElementById('resultsList');
     list.innerHTML = '';
     
-    // Eşleşmeyen sonuçları sakla
-    window.eslesmeyenSonuclar = data.results.filter(r => !r.eslesti);
+    // ✅ EŞLEŞENLERİ ve EŞLEŞMEYENLERİ AYIR
+    const eslesenler = data.results.filter(r => r.eslesti);
+    const eslesmeyenler = data.results.filter(r => !r.eslesti);
     
-    data.results.forEach(r => {
-        const div = document.createElement('div');
-        div.className = `result-item ${r.eslesti ? 'matched' : 'unmatched'}`;
-        div.innerHTML = `
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <strong>Sayfa ${r.sayfaNo}:</strong> ${r.ogrenciAdi}
-                    ${r.eslesti ? '<span class="badge bg-success ms-2">Eşleşti</span>' : '<span class="badge bg-warning ms-2">Eşleşmedi</span>'}
-                </div>
-                <div>
-                    ${r.pdfYolu ? `<a href="/${r.pdfYolu}" target="_blank" class="btn btn-sm btn-info me-2"><i class="bi bi-download"></i> İndir</a>` : ''}
-                    ${!r.eslesti ? `<button class="btn btn-sm btn-warning manuel-tek-btn" data-sayfa="${r.sayfaNo}" data-isim="${r.extractedName || ''}" data-pdf="${r.pdfYolu || ''}"><i class="bi bi-link-45deg"></i> Manuel Eşleştir</button>` : ''}
-                </div>
-            </div>
-            ${r.extractedName ? `<small class="text-muted">Çıkarılan isim: ${r.extractedName}</small>` : ''}
+    window.eslesmeyenSonuclar = eslesmeyenler;
+    
+    // ✅ EŞLEŞENLERİ GÖSTER
+    if (eslesenler.length > 0) {
+        const eslesenlerBaslik = document.createElement('div');
+        eslesenlerBaslik.className = 'alert alert-success mb-3';
+        eslesenlerBaslik.innerHTML = `
+            <h6 class="mb-0">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                ✅ Eşleşen Sonuçlar (${eslesenler.length})
+            </h6>
         `;
-        list.appendChild(div);
-    });
+        list.appendChild(eslesenlerBaslik);
+        
+        eslesenler.forEach(r => {
+            const div = document.createElement('div');
+            div.className = 'result-item matched';
+            
+            // Strateji bilgisi
+            let strategyBadge = '';
+            if (r.strategy) {
+                const strategyColor = r.strategy.includes('Learned') ? 'primary' : 
+                                     r.strategy.includes('Database') ? 'success' :
+                                     r.strategy.includes('Position') ? 'info' :
+                                     r.strategy.includes('Regex') ? 'warning' : 'secondary';
+                const strategyShort = r.strategy.replace('strategy', 'Str.').replace(/_/g, ' ');
+                strategyBadge = `<span class="badge bg-${strategyColor} ms-2" title="${r.strategy}">${strategyShort}</span>`;
+            }
+            
+            // Güven skoru
+            let confidenceBadge = '';
+            if (r.confidence) {
+                const confidencePercent = (r.confidence * 100).toFixed(0);
+                const confidenceColor = r.confidence >= 0.90 ? 'success' : r.confidence >= 0.80 ? 'info' : 'warning';
+                confidenceBadge = `<span class="badge bg-${confidenceColor} ms-1">%${confidencePercent}</span>`;
+            }
+            
+            div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>Sayfa ${r.sayfaNo}:</strong> ${r.ogrenciAdi}
+                        <span class="badge bg-success ms-2">✅ Eşleşti</span>
+                        ${strategyBadge}
+                        ${confidenceBadge}
+                    </div>
+                    <div>
+                        ${r.pdfYolu ? `<a href="/${r.pdfYolu.replace(/\\\\/g, '/')}" target="_blank" class="btn btn-sm btn-success me-2"><i class="bi bi-file-pdf"></i> PDF'i Görüntüle</a>` : ''}
+                    </div>
+                </div>
+                ${r.extractedName ? `<small class="text-muted">Çıkarılan isim: ${r.extractedName}</small>` : ''}
+            `;
+            list.appendChild(div);
+        });
+    }
     
-    // Eşleşmeyen varsa toplu eşleştirme butonu göster
-    if (window.eslesmeyenSonuclar.length > 0) {
+    // ⚠️ EŞLEŞMEYENLERİ GÖSTER
+    if (eslesmeyenler.length > 0) {
+        const eslesmeyenlerBaslik = document.createElement('div');
+        eslesmeyenlerBaslik.className = 'alert alert-warning mt-4 mb-3';
+        eslesmeyenlerBaslik.innerHTML = `
+            <h6 class="mb-0">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                ⚠️ Eşleşmeyen Sonuçlar (${eslesmeyenler.length})
+            </h6>
+        `;
+        list.appendChild(eslesmeyenlerBaslik);
+        
+        eslesmeyenler.forEach(r => {
+            const div = document.createElement('div');
+            div.className = 'result-item unmatched';
+            
+            div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>Sayfa ${r.sayfaNo}:</strong> ${r.ogrenciAdi}
+                        <span class="badge bg-warning ms-2">⚠️ Eşleşmedi</span>
+                    </div>
+                    <div>
+                        ${r.pdfYolu ? `<a href="/${r.pdfYolu.replace(/\\\\/g, '/')}" target="_blank" class="btn btn-sm btn-info me-2"><i class="bi bi-download"></i> İndir</a>` : ''}
+                        <button class="btn btn-sm btn-warning manuel-tek-btn" data-sayfa="${r.sayfaNo}" data-isim="${r.extractedName || ''}" data-pdf="${(r.pdfYolu || '').replace(/\\\\/g, '/')}"><i class="bi bi-link-45deg"></i> Manuel Eşleştir</button>
+                    </div>
+                </div>
+                ${r.extractedName ? `<small class="text-muted">Çıkarılan isim: ${r.extractedName}</small>` : ''}
+            `;
+            list.appendChild(div);
+        });
+        
+        // Toplu eşleştirme butonu
         const toplubtn = document.createElement('div');
         toplubtn.className = 'mt-3 text-center';
         toplubtn.innerHTML = `
             <button class="btn btn-warning btn-lg" onclick="topluManuelEslestir()">
-                <i class="bi bi-link-45deg"></i> Tümü İçin Manuel Eşleştirme Yap (${window.eslesmeyenSonuclar.length} adet)
+                <i class="bi bi-link-45deg"></i> Tümü İçin Manuel Eşleştirme Yap (${eslesmeyenler.length} adet)
             </button>
         `;
         list.appendChild(toplubtn);
@@ -528,24 +750,44 @@ document.addEventListener('click', function(e) {
         
         manuelEslestirBaslat(sayfaNo, extractedName, pdfYolu);
     }
+    
+    // PDF Preview Button Event
+    if (e.target.closest('.pdf-preview-btn')) {
+        const btn = e.target.closest('.pdf-preview-btn');
+        const pdfPath = btn.dataset.pdf;
+        const sayfaNo = btn.dataset.sayfa;
+        
+        console.log('👁️ PDF önizleme:', pdfPath, 'Sayfa:', sayfaNo);
+        showPdfPreview(pdfPath, sayfaNo);
+    }
 });
 
 function manuelEslestirBaslat(sayfaNo, extractedName, pdfYolu) {
     const modal = new bootstrap.Modal(document.getElementById('manuelEslestirmeModal'));
     const list = document.getElementById('manuelEslestirmeList');
     
+    const fixedPdfPath = pdfYolu ? pdfYolu.replace(/\\/g, '/') : '';
+    
     list.innerHTML = `
         <div class="card mb-3">
             <div class="card-body">
-                <h6 class="card-title">Sayfa ${sayfaNo}</h6>
-                <p class="text-muted small">Çıkarılan isim: ${extractedName || 'Bulunamadı'}</p>
-                <p class="text-muted small">PDF: ${pdfYolu || 'Yok'}</p>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="card-title mb-0">Sayfa ${sayfaNo}</h6>
+                    ${pdfYolu ? `
+                        <button class="btn btn-sm btn-outline-primary pdf-preview-btn" data-pdf="${fixedPdfPath}" data-sayfa="${sayfaNo}" title="PDF'i Görüntüle">
+                            <i class="bi bi-eye"></i> PDF'i Gör
+                        </button>
+                    ` : ''}
+                </div>
+                <p class="text-muted small mb-2">
+                    <i class="bi bi-file-text"></i> Çıkarılan isim: <strong>${extractedName || 'Bulunamadı'}</strong>
+                </p>
                 <label class="form-label"><strong>Öğrenci Seç:</strong></label>
-                <select class="form-select manuel-select" data-sayfa="${sayfaNo}" data-pdf="${pdfYolu}">
+                <select class="form-select manuel-select" data-sayfa="${sayfaNo}" data-pdf="${fixedPdfPath}">
                     <option value="">-- Öğrenci Seçin --</option>
-                    <% katilimcilar.forEach(k => { %>
-                        <option value="<%= k.ogrenci_id %>_<%= k.kaynak %>"><%= k.ad_soyad %> <%= k.kaynak === 'veli' ? '[Veli]' : '' %></option>
-                    <% }) %>
+                    ${KATILIMCILAR.map(k => `
+                        <option value="${k.ogrenci_id}_${k.kaynak}">${k.ad_soyad} ${k.kaynak === 'veli' ? '[Veli]' : ''}</option>
+                    `).join('')}
                 </select>
             </div>
         </div>
@@ -554,7 +796,7 @@ function manuelEslestirBaslat(sayfaNo, extractedName, pdfYolu) {
     modal.show();
 }
 
-// Toplu Manuel Eşleştirme
+// Toplu Manuel Eşleştirme - 👁️ PDF Önizleme ile
 function topluManuelEslestir() {
     if (!window.eslesmeyenSonuclar || window.eslesmeyenSonuclar.length === 0) {
         alert('Eşleşmeyen sonuç bulunamadı!');
@@ -566,17 +808,28 @@ function topluManuelEslestir() {
     
     let html = '';
     window.eslesmeyenSonuclar.forEach(r => {
+        const fixedPdfPath = r.pdfYolu ? r.pdfYolu.replace(/\\/g, '/') : '';
+        
         html += `
             <div class="card mb-3">
                 <div class="card-body">
-                    <h6 class="card-title">Sayfa ${r.sayfaNo}</h6>
-                    <p class="text-muted small">Çıkarılan isim: ${r.extractedName || 'Bulunamadı'}</p>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="card-title mb-0">Sayfa ${r.sayfaNo}</h6>
+                        ${r.pdfYolu ? `
+                            <button class="btn btn-sm btn-outline-primary pdf-preview-btn" data-pdf="${fixedPdfPath}" data-sayfa="${r.sayfaNo}" title="PDF'i Görüntüle">
+                                <i class="bi bi-eye"></i> PDF'i Gör
+                            </button>
+                        ` : ''}
+                    </div>
+                    <p class="text-muted small mb-2">
+                        <i class="bi bi-file-text"></i> Çıkarılan isim: <strong>${r.extractedName || 'Bulunamadı'}</strong>
+                    </p>
                     <label class="form-label"><strong>Öğrenci Seç:</strong></label>
-                    <select class="form-select manuel-select" data-sayfa="${r.sayfaNo}" data-pdf="${r.pdfYolu || ''}">
+                    <select class="form-select manuel-select" data-sayfa="${r.sayfaNo}" data-pdf="${fixedPdfPath}">
                         <option value="">-- Öğrenci Seçin --</option>
-                        <% katilimcilar.forEach(k => { %>
-                            <option value="<%= k.ogrenci_id %>_<%= k.kaynak %>"><%= k.ad_soyad %> <%= k.kaynak === 'veli' ? '[Veli]' : '' %></option>
-                        <% }) %>
+                        ${KATILIMCILAR.map(k => `
+                            <option value="${k.ogrenci_id}_${k.kaynak}">${k.ad_soyad} ${k.kaynak === 'veli' ? '[Veli]' : ''}</option>
+                        `).join('')}
                     </select>
                 </div>
             </div>
@@ -585,6 +838,54 @@ function topluManuelEslestir() {
     
     list.innerHTML = html;
     modal.show();
+}
+
+// 👁️ PDF Önizleme Göster
+function showPdfPreview(pdfPath, sayfaNo) {
+    console.log('👁️ PDF Önizleme açılıyor:', pdfPath);
+    
+    // Windows backslash'leri forward slash'e çevir
+    const fixedPath = pdfPath.replace(/\\/g, '/');
+    console.log('✅ Düzeltilmiş yol:', fixedPath);
+    
+    const modalHTML = `
+        <div id="pdfPreviewModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+             background: rgba(0,0,0,0.9); z-index: 10000; display: flex; flex-direction: column;">
+            <div style="background: #2c3e50; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;">
+                <h5 style="margin: 0;">
+                    <i class="bi bi-file-pdf"></i> Sayfa ${sayfaNo} - PDF Önizleme
+                </h5>
+                <button onclick="closePdfPreview()" class="btn btn-light btn-sm">
+                    <i class="bi bi-x-lg"></i> Kapat
+                </button>
+            </div>
+            <div style="flex: 1; overflow: auto; padding: 20px; display: flex; justify-content: center; align-items: center;">
+                <iframe src="/${fixedPath}" style="width: 90%; height: 95%; border: 2px solid #fff; border-radius: 8px; background: white;"></iframe>
+            </div>
+            <div style="background: #2c3e50; color: white; padding: 10px 20px; text-align: center;">
+                <small><i class="bi bi-info-circle"></i> PDF'i inceleyip öğrenci ismini belirleyin</small>
+            </div>
+        </div>
+    `;
+    
+    // Modal'ı ekle
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Escape tuşu ile kapat
+    document.addEventListener('keydown', function escapeHandler(e) {
+        if (e.key === 'Escape') {
+            closePdfPreview();
+            document.removeEventListener('keydown', escapeHandler);
+        }
+    });
+}
+
+// PDF Önizlemeyi Kapat
+function closePdfPreview() {
+    const modal = document.getElementById('pdfPreviewModal');
+    if (modal) {
+        modal.remove();
+    }
 }
 
 // Manuel Eşleşmeleri Kaydet
@@ -636,9 +937,9 @@ async function saveManuelEslesmeler() {
         const data = await response.json();
         
         if (data.success) {
-            alert(`✅ ${data.message}`);
+            alert(`✅ ${data.message}\n\n📊 Güncellenen sayılar:\n✅ Eşleşen: ${data.matchedCount || 'Güncelleniyor...'}\n⚠️ Eşleşmeyen: ${data.unmatchedCount || 'Güncelleniyor...'}`);
             bootstrap.Modal.getInstance(document.getElementById('manuelEslestirmeModal')).hide();
-            // Sayfayı yenile
+            // Sayfayı yenile - güncel sayıları gösterecek
             location.reload();
         } else {
             alert('❌ ' + data.message);
