@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const session = require('express-session');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcrypt');
@@ -11,42 +11,52 @@ const sqlite3 = require('sqlite3').verbose();
 const bodyParser = require('body-parser');
 const pdfParse = require('pdf-parse');
 const { PDFDocument } = require('pdf-lib');
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProd = process.env.NODE_ENV === 'production';
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'sinav_merkezi.db');
+const SESSION_SECRET = process.env.SESSION_SECRET;
+const ENABLE_ADMIN_RESET = process.env.ENABLE_ADMIN_RESET === 'true';
+
+if (!SESSION_SECRET) {
+  console.error('SESSION_SECRET environment variable is required. Set it in your .env file.');
+  process.exit(1);
+}
 
 // ============================================
 // RAILWAY PROXY CONFIGURATION
 // ============================================
-// Railway Metal Edge proxy kullanıyor, Express'e güvenmesini söyle
+// Railway Metal Edge proxy kullanÃƒÂ„Ã‚Â±yor, Express'e gÃƒÂƒÃ‚Â¼venmesini sÃƒÂƒÃ‚Â¶yle
 app.set('trust proxy', 1);
 
 // ============================================
 // RATE LIMITING - DDoS KORUMASI
 // ============================================
 
-// Genel rate limit (tüm istekler için)
+// Genel rate limit (tÃƒÂƒÃ‚Â¼m istekler iÃƒÂƒÃ‚Â§in)
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 dakika
-  max: 1000, // IP başına maksimum 1000 istek
-  message: 'Çok fazla istek gönderdiniz. Lütfen 15 dakika sonra tekrar deneyin.',
+  max: 1000, // IP baÃƒÂ…Ã‚ÂŸÃƒÂ„Ã‚Â±na maksimum 1000 istek
+  message: 'ÃƒÂƒÃ‚Â‡ok fazla istek gÃƒÂƒÃ‚Â¶nderdiniz. LÃƒÂƒÃ‚Â¼tfen 15 dakika sonra tekrar deneyin.',
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Login rate limit (brute force koruması)
+// Login rate limit (brute force korumasÃƒÂ„Ã‚Â±)
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 dakika
-  max: 5, // IP başına maksimum 5 deneme
-  message: 'Çok fazla giriş denemesi. Lütfen 15 dakika sonra tekrar deneyin.',
+  max: 5, // IP baÃƒÂ…Ã‚ÂŸÃƒÂ„Ã‚Â±na maksimum 5 deneme
+  message: 'ÃƒÂƒÃ‚Â‡ok fazla giriÃƒÂ…Ã‚ÂŸ denemesi. LÃƒÂƒÃ‚Â¼tfen 15 dakika sonra tekrar deneyin.',
   skipSuccessfulRequests: true,
 });
 
 // File upload rate limit
 const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 saat
-  max: 50, // IP başına maksimum 50 upload
-  message: 'Çok fazla dosya yükleme isteği. Lütfen 1 saat sonra tekrar deneyin.',
+  max: 50, // IP baÃƒÂ…Ã‚ÂŸÃƒÂ„Ã‚Â±na maksimum 50 upload
+  message: 'ÃƒÂƒÃ‚Â‡ok fazla dosya yÃƒÂƒÃ‚Â¼kleme isteÃƒÂ„Ã‚ÂŸi. LÃƒÂƒÃ‚Â¼tfen 1 saat sonra tekrar deneyin.',
 });
 
 app.use(generalLimiter);
@@ -81,48 +91,48 @@ function validateRequired(fields, data) {
 }
 
 // ============================================
-// WHATSAPP BİLDİRİM SİSTEMİ
+// WHATSAPP BÃƒÂ„Ã‚Â°LDÃƒÂ„Ã‚Â°RÃƒÂ„Ã‚Â°M SÃƒÂ„Ã‚Â°STEMÃƒÂ„Ã‚Â°
 // ============================================
 
-// WhatsApp bildirimi gönder (Whapi.cloud API kullanarak)
+// WhatsApp bildirimi gÃƒÂƒÃ‚Â¶nder (Whapi.cloud API kullanarak)
 async function whatsappBildirimGonder(telefon, mesaj, bildirimTipi = 'genel') {
-  console.log('\n📱 ════════════════════════════════════════════════════');
-  console.log('📱 WHATSAPP BİLDİRİM - Whapi.cloud');
-  console.log('📱 ════════════════════════════════════════════════════');
-  console.log(`📞 Alıcı: ${telefon}`);
-  console.log(`📝 Mesaj: ${mesaj}`);
-  console.log(`🏷️  Tip: ${bildirimTipi}`);
-  console.log('📱 ════════════════════════════════════════════════════\n');
+  console.log('\nÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â± ÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚Â');
+  console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â± WHATSAPP BÃƒÂ„Ã‚Â°LDÃƒÂ„Ã‚Â°RÃƒÂ„Ã‚Â°M - Whapi.cloud');
+  console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â± ÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚Â');
+  console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â AlÃƒÂ„Ã‚Â±cÃƒÂ„Ã‚Â±: ${telefon}`);
+  console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â Mesaj: ${mesaj}`);
+  console.log(`ÃƒÂ°Ã‚ÂŸÃ‚ÂÃ‚Â·ÃƒÂ¯Ã‚Â¸Ã‚Â  Tip: ${bildirimTipi}`);
+  console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â± ÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚Â\n');
   
   try {
-    // WhatsApp ayarlarını al
+    // WhatsApp ayarlarınÃƒÂ„Ã‚Â± al
     const ayarlar = await dbGet('SELECT * FROM whatsapp_ayarlari WHERE aktif = 1');
     
     if (!ayarlar || !ayarlar.api_token) {
-      console.log('⚠️  WhatsApp API token bulunamadı, sadece log yazılıyor');
+      console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â  WhatsApp API token bulunamadı, sadece log yazÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±yor');
       
-      // Bildirim geçmişine kaydet (simülasyon)
+      // Bildirim geÃƒÂƒÃ‚Â§miÃƒÂ…Ã‚ÂŸine kaydet (simÃƒÂƒÃ‚Â¼lasyon)
       await dbRun(
         `INSERT INTO bildirim_gecmisi (bildirim_tipi, alici_telefon, mesaj, durum, created_at) 
          VALUES (?, ?, ?, 'simulasyon', datetime('now'))`,
         [bildirimTipi, telefon, mesaj]
       );
       
-      return { success: true, message: 'Bildirim gönderildi (simülasyon - API token yok)' };
+      return { success: true, message: 'Bildirim gÃƒÂƒÃ‚Â¶nderildi (simÃƒÂƒÃ‚Â¼lasyon - API token yok)' };
     }
     
-    // Whapi.cloud API'ye istek gönder
+    // Whapi.cloud API'ye istek gÃƒÂƒÃ‚Â¶nder
     const https = require('https');
     const url = require('url');
     
-    // Telefon numarasını formatla (Whapi.cloud formatı: 905551234567@s.whatsapp.net)
+    // Telefon numarasÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± formatla (Whapi.cloud formatÃƒÂ„Ã‚Â±: 905551234567@s.whatsapp.net)
     let formattedPhone = telefon.replace(/[^0-9]/g, ''); // Sadece rakamlar
     if (!formattedPhone.startsWith('90')) {
-      formattedPhone = '90' + formattedPhone; // Türkiye kodu ekle
+      formattedPhone = '90' + formattedPhone; // TÃƒÂƒÃ‚Â¼rkiye kodu ekle
     }
     formattedPhone = formattedPhone + '@s.whatsapp.net';
     
-    // API URL'ini düzelt
+    // API URL'ini dÃƒÂƒÃ‚Â¼zelt
     const baseUrl = (ayarlar.api_url || 'https://gate.whapi.cloud').replace(/\/$/, '');
     const apiUrl = `${baseUrl}/messages/text`;
     
@@ -131,9 +141,9 @@ async function whatsappBildirimGonder(telefon, mesaj, bildirimTipi = 'genel') {
       body: mesaj
     });
     
-    console.log('📡 API URL:', apiUrl);
-    console.log('📞 Formatted Phone:', formattedPhone);
-    console.log('📦 POST Data:', postData);
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â¡ API URL:', apiUrl);
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â Formatted Phone:', formattedPhone);
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â¦ POST Data:', postData);
     
     const parsedUrl = url.parse(apiUrl);
     const options = {
@@ -157,22 +167,22 @@ async function whatsappBildirimGonder(telefon, mesaj, bildirimTipi = 'genel') {
         });
         
         res.on('end', async () => {
-          console.log('✅ Whapi.cloud API Yanıtı:', res.statusCode);
-          console.log('📦 Response:', data);
+          console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… Whapi.cloud API YanÃƒÂ„Ã‚Â±tÃƒÂ„Ã‚Â±:', res.statusCode);
+          console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â¦ Response:', data);
           
           if (res.statusCode === 200 || res.statusCode === 201) {
-            // Başarılı - Bildirim geçmişine kaydet
+            // BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â± - Bildirim geÃƒÂƒÃ‚Â§miÃƒÂ…Ã‚ÂŸine kaydet
             await dbRun(
               `INSERT INTO bildirim_gecmisi (bildirim_tipi, alici_telefon, mesaj, durum, created_at) 
                VALUES (?, ?, ?, 'basarili', datetime('now'))`,
               [bildirimTipi, telefon, mesaj]
             );
             
-            resolve({ success: true, message: 'WhatsApp bildirimi başarıyla gönderildi!' });
+            resolve({ success: true, message: 'WhatsApp bildirimi başarıyla gÃƒÂƒÃ‚Â¶nderildi!' });
           } else {
-            // API hatası
+            // API hatasÃƒÂ„Ã‚Â±
             const errorMsg = `API Error: ${res.statusCode} - ${data}`;
-            console.error('❌', errorMsg);
+            console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ', errorMsg);
             
             await dbRun(
               `INSERT INTO bildirim_gecmisi (bildirim_tipi, alici_telefon, mesaj, durum, hata_mesaji, created_at) 
@@ -180,13 +190,13 @@ async function whatsappBildirimGonder(telefon, mesaj, bildirimTipi = 'genel') {
               [bildirimTipi, telefon, mesaj, errorMsg]
             );
             
-            resolve({ success: false, message: 'WhatsApp bildirimi gönderilemedi', error: errorMsg });
+            resolve({ success: false, message: 'WhatsApp bildirimi gÃƒÂƒÃ‚Â¶nderilemedi', error: errorMsg });
           }
         });
       });
       
       req.on('error', async (error) => {
-        console.error('❌ Whapi.cloud bağlantı hatası:', error);
+        console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Whapi.cloud baÃƒÂ„Ã‚ÂŸlantÃƒÂ„Ã‚Â± hatasÃƒÂ„Ã‚Â±:', error);
         
         // Hata durumunu kaydet
         try {
@@ -196,10 +206,10 @@ async function whatsappBildirimGonder(telefon, mesaj, bildirimTipi = 'genel') {
             [bildirimTipi, telefon, mesaj, error.message]
           );
         } catch (logError) {
-          console.error('❌ Bildirim geçmişi kayıt hatası:', logError);
+          console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Bildirim geÃƒÂƒÃ‚Â§miÃƒÂ…Ã‚ÂŸi kayıt hatasÃƒÂ„Ã‚Â±:', logError);
         }
         
-        resolve({ success: false, message: 'Bağlantı hatası', error: error.message });
+        resolve({ success: false, message: 'BaÃƒÂ„Ã‚ÂŸlantÃƒÂ„Ã‚Â± hatasÃƒÂ„Ã‚Â±', error: error.message });
       });
       
       req.write(postData);
@@ -207,7 +217,7 @@ async function whatsappBildirimGonder(telefon, mesaj, bildirimTipi = 'genel') {
     });
     
   } catch (error) {
-    console.error('❌ WhatsApp bildirim hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ WhatsApp bildirim hatasÃƒÂ„Ã‚Â±:', error);
     
     // Hata durumunu kaydet
     try {
@@ -217,149 +227,149 @@ async function whatsappBildirimGonder(telefon, mesaj, bildirimTipi = 'genel') {
         [bildirimTipi, telefon, mesaj, error.message]
       );
     } catch (logError) {
-      console.error('❌ Bildirim geçmişi kayıt hatası:', logError);
+      console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Bildirim geÃƒÂƒÃ‚Â§miÃƒÂ…Ã‚ÂŸi kayıt hatasÃƒÂ„Ã‚Â±:', logError);
     }
     
-    return { success: false, message: 'Bildirim gönderilemedi', error: error.message };
+    return { success: false, message: 'Bildirim gÃƒÂƒÃ‚Â¶nderilemedi', error: error.message };
   }
 }
 
 // Yeni talep bildirimi oluştur
 function talepBildirimMesaji(veli, sinav) {
-  return `🔔 YENİ SINAV TALEBİ
+  return `ÃƒÂ°Ã‚ÂŸÃ‚Â”Ã‚Â” YENÃƒÂ„Ã‚Â° SINAV TALEBÃƒÂ„Ã‚Â°
 
-👤 Veli: ${veli.ad_soyad}
-📞 Telefon: ${veli.telefon}
-📧 E-posta: ${veli.email}
+ÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â¤ Veli: ${veli.ad_soyad}
+ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â Telefon: ${veli.telefon}
+ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â§ E-posta: ${veli.email}
 
-📚 Sınav: ${sinav.ad}
-💰 Fiyat: ${sinav.fiyat} TL
-📅 Tarih: ${new Date(sinav.tarih).toLocaleDateString('tr-TR')}
+ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Âš Sınav: ${sinav.ad}
+ÃƒÂ°Ã‚ÂŸÃ‚Â’Ã‚Â° Fiyat: ${sinav.fiyat} TL
+ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â… Tarih: ${new Date(sinav.tarih).toLocaleDateString('tr-TR')}
 
-⏱️  Talep Zamanı: ${new Date().toLocaleString('tr-TR')}
+ÃƒÂ¢Ã‚ÂÃ‚Â±ÃƒÂ¯Ã‚Â¸Ã‚Â  Talep ZamanÃƒÂ„Ã‚Â±: ${new Date().toLocaleString('tr-TR')}
 
-Lütfen bu talebi değerlendirin ve yanıtlayın.`;
+LÃƒÂƒÃ‚Â¼tfen bu talebi deÃƒÂ„Ã‚ÂŸerlendirin ve yanÃƒÂ„Ã‚Â±tlayÃƒÂ„Ã‚Â±n.`;
 }
 
 // ============================================
-// GELIŞMIŞ PDF TEXT EXTRACTION
+// GELIÃƒÂ…Ã‚ÂMIÃƒÂ…Ã‚Â PDF TEXT EXTRACTION
 // ============================================
 
 // Bozuk text tespit et
 function isGarbledText(text) {
   if (!text || text.length === 0) return true;
   
-  // 1. Aynı karakterin 10+ kez tekrarı (DYBNDYBNDYBN...)
+  // 1. AynÃƒÂ„Ã‚Â± karakterin 10+ kez tekrarÃƒÂ„Ã‚Â± (DYBNDYBNDYBN...)
   if (text.match(/(.)\1{9,}/)) {
-    console.log('   ⚠️ Tespit: Tekrarlayan karakter paterni');
+    console.log('   ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Tespit: Tekrarlayan karakter paterni');
     return true;
   }
   
   // 2. 2-3 karakterlik tekrar (DYBN DYBN DYBN...)
   if (text.match(/(.{2,4})\1{5,}/)) {
-    console.log('   ⚠️ Tespit: Tekrarlayan string paterni');
+    console.log('   ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Tespit: Tekrarlayan string paterni');
     return true;
   }
   
-  // 3. Çok az sesli harf (encoding sorunlarında sesliler kaybolur)
-  const vowelCount = (text.match(/[AEIOUÜÖIİaeıouüö]/g) || []).length;
+  // 3. ÃƒÂƒÃ‚Â‡ok az sesli harf (encoding sorunlarÃƒÂ„Ã‚Â±nda sesliler kaybolur)
+  const vowelCount = (text.match(/[AEIOUÃƒÂƒÃ‚ÂœÃƒÂƒÃ‚Â–IÃƒÂ„Ã‚Â°aeÃƒÂ„Ã‚Â±ouÃƒÂƒÃ‚Â¼ÃƒÂƒÃ‚Â¶]/g) || []).length;
   const totalChars = text.replace(/\s/g, '').length;
   if (totalChars > 50 && vowelCount / totalChars < 0.15) {
-    console.log(`   ⚠️ Tespit: Çok az sesli harf (${vowelCount}/${totalChars})`);
+    console.log(`   ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Tespit: ÃƒÂƒÃ‚Â‡ok az sesli harf (${vowelCount}/${totalChars})`);
     return true;
   }
   
   return false;
 }
 
-// Alternatif PDF okuma (şimdilik devre dışı - gelecekte OCR eklenebilir)
+// Alternatif PDF okuma (ÃƒÂ…Ã‚ÂŸimdilik devre dÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸÃƒÂ„Ã‚Â± - gelecekte OCR eklenebilir)
 async function extractTextWithAlternative(pdfPath) {
-  console.log('   ⚠️ Alternatif extraction şu anda desteklenmiyor');
-  console.log('   💡 PDF\'i farklı formatta export edin veya manuel giriş kullanın');
+  console.log('   ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Alternatif extraction ÃƒÂ…Ã‚ÂŸu anda desteklenmiyor');
+  console.log('   ÃƒÂ°Ã‚ÂŸÃ‚Â’Ã‚Â¡ PDF\'i farklÃƒÂ„Ã‚Â± formatta export edin veya manuel giriÃƒÂ…Ã‚ÂŸ kullanÃƒÂ„Ã‚Â±n');
   return null;
 }
 
-// Hibrit extraction: Önce pdf-parse, bozuksa PDF.js
+// Hibrit extraction: ÃƒÂƒÃ‚Â–nce pdf-parse, bozuksa PDF.js
 async function extractTextHybrid(pdfPath) {
-  // 1. Önce pdf-parse dene
+  // 1. ÃƒÂƒÃ‚Â–nce pdf-parse dene
   const buffer = fs.readFileSync(pdfPath);
   const data = await pdfParse(buffer);
   const text1 = data.text;
   
   // Bozuk mu kontrol et
   if (!isGarbledText(text1)) {
-    console.log('   ✅ pdf-parse başarılı');
+    console.log('   ÃƒÂ¢Ã‚ÂœÃ‚Â… pdf-parse başarılı');
     return { text: text1, method: 'pdf-parse' };
   }
   
-  console.log('   ⚠️ pdf-parse bozuk text üretti');
+  console.log('   ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â pdf-parse bozuk text ÃƒÂƒÃ‚Â¼retti');
   
-  // 2. Alternatif yöntem dene (şimdilik sadece uyarı)
+  // 2. Alternatif yÃƒÂƒÃ‚Â¶ntem dene (ÃƒÂ…Ã‚ÂŸimdilik sadece uyarÃƒÂ„Ã‚Â±)
   await extractTextWithAlternative(pdfPath);
   
-  // 3. Bozuk text ile devam et ama işaretle
-  console.log('   ⚠️ Bozuk text ile devam ediliyor - Manuel kontrol gerekli');
+  // 3. Bozuk text ile devam et ama iÃƒÂ…Ã‚ÂŸaretle
+  console.log('   ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Bozuk text ile devam ediliyor - Manuel kontrol gerekli');
   return { text: text1, method: 'pdf-parse-garbled', garbled: true };
 }
 
 // ============================================
-// AKILLI EŞLEŞTİRME SİSTEMİ - YARDIMCI FONKSİYONLAR
+// AKILLI EÃƒÂ…Ã‚ÂLEÃƒÂ…Ã‚ÂTÃƒÂ„Ã‚Â°RME SÃƒÂ„Ã‚Â°STEMÃƒÂ„Ã‚Â° - YARDIMCI FONKSÃƒÂ„Ã‚Â°YONLAR
 // ============================================
 
 /**
- * İsim gibi görünüyor mu kontrol et
+ * ÃƒÂ„Ã‚Â°sim gibi gÃƒÂƒÃ‚Â¶rÃƒÂƒÃ‚Â¼nÃƒÂƒÃ‚Â¼yor mu kontrol et
  */
 function looksLikeName(line) {
-  // Önce ismi rakamlardan ayır (örn: "ALİ OSMAN ÇÖZELİ08-A" → "ALİ OSMAN ÇÖZELİ")
+  // ÃƒÂƒÃ‚Â–nce ismi rakamlardan ayÃƒÂ„Ã‚Â±r (ÃƒÂƒÃ‚Â¶rn: "ALÃƒÂ„Ã‚Â° OSMAN ÃƒÂƒÃ‚Â‡ÃƒÂƒÃ‚Â–ZELÃƒÂ„Ã‚Â°08-A" ÃƒÂ¢Ã‚Â†Ã‚Â’ "ALÃƒÂ„Ã‚Â° OSMAN ÃƒÂƒÃ‚Â‡ÃƒÂƒÃ‚Â–ZELÃƒÂ„Ã‚Â°")
   const cleanedLine = line.replace(/\d+[-]?[A-Z]?$/g, '').trim();
   
   const words = cleanedLine.split(/\s+/);
   const wordCount = words.length;
   
-  // Kelime sayısı kontrolü (daha esnek)
+  // Kelime sayÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â± kontrolÃƒÂƒÃ‚Â¼ (daha esnek)
   if (wordCount < 2 || wordCount > 6) return false;
   
-  // Uzunluk kontrolü (daha esnek)
+  // Uzunluk kontrolÃƒÂƒÃ‚Â¼ (daha esnek)
   if (cleanedLine.length < 5 || cleanedLine.length > 60) return false;
   
-  // Türkçe harfler kontrolü
-  if (!cleanedLine.match(/^[A-ZÇĞİÖŞÜa-zçğıöşü\s]+$/)) return false;
+  // TÃƒÂƒÃ‚Â¼rkÃƒÂƒÃ‚Â§e harfler kontrolÃƒÂƒÃ‚Â¼
+  if (!cleanedLine.match(/^[A-ZÃƒÂƒÃ‚Â‡ÃƒÂ„Ã‚ÂÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â–ÃƒÂ…Ã‚ÂÃƒÂƒÃ‚Âœa-zÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚ÂŸÃƒÂ„Ã‚Â±ÃƒÂƒÃ‚Â¶ÃƒÂ…Ã‚ÂŸÃƒÂƒÃ‚Â¼\s]+$/)) return false;
   
-  // Blacklist: Başlık kelimeleri (daha kapsamlı)
-  if (cleanedLine.match(/BELGESİ|SINAV|SONUÇ|PUAN|OKUL|DERS|NET|DOĞRU|YANLIŞ|BOŞ|SIRA|ORTALAMA|İLÇE|KURUM|LİSE|ORTAOKUL|DENEME|NUMARA|GENEL|DERECE|KATILIM|BAŞARI|ANALİZ|CEVAP|SORU/i)) return false;
+  // Blacklist: BaÃƒÂ…Ã‚ÂŸlÃƒÂ„Ã‚Â±k kelimeleri (daha kapsamlÃƒÂ„Ã‚Â±)
+  if (cleanedLine.match(/BELGESÃƒÂ„Ã‚Â°|SINAV|SONUÃƒÂƒÃ‚Â‡|PUAN|OKUL|DERS|NET|DOÃƒÂ„Ã‚ÂRU|YANLIÃƒÂ…Ã‚Â|BOÃƒÂ…Ã‚Â|SIRA|ORTALAMA|ÃƒÂ„Ã‚Â°LÃƒÂƒÃ‚Â‡E|KURUM|LÃƒÂ„Ã‚Â°SE|ORTAOKUL|DENEME|NUMARA|GENEL|DERECE|KATILIM|BAÃƒÂ…Ã‚ÂARI|ANALÃƒÂ„Ã‚Â°Z|CEVAP|SORU/i)) return false;
   
-  // En az bir boşluk olmalı (ad-soyad)
+  // En az bir boÃƒÂ…Ã‚ÂŸluk olmalÃƒÂ„Ã‚Â± (ad-soyad)
   if (!cleanedLine.includes(' ')) return false;
   
   return true;
 }
 
 /**
- * İsmi temizle (rakamları ve özel karakterleri kaldır)
+ * ÃƒÂ„Ã‚Â°smi temizle (rakamlarÃƒÂ„Ã‚Â± ve ÃƒÂƒÃ‚Â¶zel karakterleri kaldÃƒÂ„Ã‚Â±r)
  */
 function cleanExtractedName(name) {
   if (!name) return '';
   
-  // 1. Önce sondaki rakam-harf kombinasyonlarını temizle (08-A, 123, vs)
+  // 1. ÃƒÂƒÃ‚Â–nce sondaki rakam-harf kombinasyonlarÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± temizle (08-A, 123, vs)
   let clean = name.replace(/\d+[-]?[A-Z]?$/g, '').trim();
   
-  // 2. Tüm rakamları temizle
+  // 2. TÃƒÂƒÃ‚Â¼m rakamlarÃƒÂ„Ã‚Â± temizle
   clean = clean.replace(/\d+/g, '');
   
-  // 3. Özel karakterleri temizle (Türkçe harfler hariç)
-  clean = clean.replace(/[^\wÇĞİÖŞÜçğıöşü\s]/g, '');
+  // 3. ÃƒÂƒÃ‚Â–zel karakterleri temizle (TÃƒÂƒÃ‚Â¼rkÃƒÂƒÃ‚Â§e harfler hariÃƒÂƒÃ‚Â§)
+  clean = clean.replace(/[^\wÃƒÂƒÃ‚Â‡ÃƒÂ„Ã‚ÂÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â–ÃƒÂ…Ã‚ÂÃƒÂƒÃ‚ÂœÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚ÂŸÃƒÂ„Ã‚Â±ÃƒÂƒÃ‚Â¶ÃƒÂ…Ã‚ÂŸÃƒÂƒÃ‚Â¼\s]/g, '');
   
-  // 4. Başındaki/sonundaki gereksiz kelimeleri temizle
-  clean = clean.replace(/^(Öğrenci|ÖĞRENCİ|Ogrenci|OGRENCI|Ad|AD|Adı|ADI|Soyad|SOYAD|Soyadı|SOYADI)\s*/gi, '');
-  clean = clean.replace(/\s*(Numara|NUMARA|Sınıf|SINIF|Sınıfı|SINIFI)$/gi, '');
+  // 4. BaÃƒÂ…Ã‚ÂŸÃƒÂ„Ã‚Â±ndaki/sonundaki gereksiz kelimeleri temizle
+  clean = clean.replace(/^(Öğrenci|ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂRENCÃƒÂ„Ã‚Â°|Ogrenci|OGRENCI|Ad|AD|Adı|ADI|Soyad|SOYAD|Soyadı|SOYADI)\s*/gi, '');
+  clean = clean.replace(/\s*(Numara|NUMARA|SÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â±f|SINIF|SÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â±fÃƒÂ„Ã‚Â±|SINIFI)$/gi, '');
   
-  // 5. Fazla boşlukları temizle
+  // 5. Fazla boÃƒÂ…Ã‚ÂŸluklarÃƒÂ„Ã‚Â± temizle
   clean = clean.replace(/\s+/g, ' ').trim();
   
-  // 6. Büyük harfe çevir
+  // 6. BÃƒÂƒÃ‚Â¼yÃƒÂƒÃ‚Â¼k harfe ÃƒÂƒÃ‚Â§evir
   clean = clean.toUpperCase();
   
-  // 7. Çok kısa veya çok uzunsa geçersiz
+  // 7. ÃƒÂƒÃ‚Â‡ok kÃƒÂ„Ã‚Â±sa veya ÃƒÂƒÃ‚Â§ok uzunsa geÃƒÂƒÃ‚Â§ersiz
   if (clean.length < 5 || clean.length > 50) return '';
   
   return clean;
@@ -397,7 +407,7 @@ function levenshteinDistance(str1, str2) {
 }
 
 /**
- * String benzerliği hesapla (0-1 arası, 1 = tam eşleşme)
+ * String benzerliÃƒÂ„Ã‚ÂŸi hesapla (0-1 arasÃƒÂ„Ã‚Â±, 1 = tam eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme)
  */
 function stringSimilarity(str1, str2) {
   if (!str1 || !str2) return 0;
@@ -417,7 +427,7 @@ function stringSimilarity(str1, str2) {
 }
 
 /**
- * En iyi eşleşmeyi bul
+ * En iyi eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmeyi bul
  */
 function findBestMatch(extractedName, katilimcilar) {
   if (!extractedName || !katilimcilar || katilimcilar.length === 0) {
@@ -438,7 +448,8 @@ function findBestMatch(extractedName, katilimcilar) {
     }
   }
   
-  return bestMatch && bestSimilarity >= 0.65 ? { ogrenci: bestMatch, similarity: bestSimilarity } : null;
+  // Threshold'u düşürdük (0.60) - daha fazla eşleşme için
+  return bestMatch && bestSimilarity >= 0.60 ? { ogrenci: bestMatch, similarity: bestSimilarity } : null;
 }
 
 // ============================================
@@ -468,21 +479,21 @@ const pdfUpload = multer({
     if (file.mimetype === 'application/pdf') {
       cb(null, true);
     } else {
-      cb(new Error('Sadece PDF dosyası yükleyebilirsiniz!'), false);
+      cb(new Error('Sadece PDF dosyasÃƒÂ„Ã‚Â± yÃƒÂƒÃ‚Â¼kleyebilirsiniz!'), false);
     }
   }
 });
 
-// Veritabanı bağlantısı
-const db = new sqlite3.Database('sinav_merkezi.db', (err) => {
+// VeritabanÃƒÂ„Ã‚Â± baÃƒÂ„Ã‚ÂŸlantÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±
+const db = new sqlite3.Database(DB_PATH, (err) => {
   if (err) {
-    console.error('Veritabanı bağlantı hatası:', err);
+    console.error('VeritabanÃƒÂ„Ã‚Â± baÃƒÂ„Ã‚ÂŸlantÃƒÂ„Ã‚Â± hatasÃƒÂ„Ã‚Â±:', err);
   } else {
-    console.log('✅ Veritabanı bağlandı');
+    console.log('Database connected:', DB_PATH);
   }
 });
 
-// Veritabanı tablolarını oluştur
+// VeritabanÃƒÂ„Ã‚Â± tablolarÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± oluştur
 db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
@@ -502,53 +513,53 @@ db.serialize(() => {
     )
   `);
   
-  // Mevcut veritabanına yeni sütunları ekle (eğer yoksa)
+  // Mevcut veritabanÃƒÂ„Ã‚Â±na yeni sÃƒÂƒÃ‚Â¼tunlarÃƒÂ„Ã‚Â± ekle (eÃƒÂ„Ã‚ÂŸer yoksa)
   db.run(`ALTER TABLE users ADD COLUMN ad_soyad TEXT`, (err) => {
     if (err && !err.message.includes('duplicate column')) {
-      // Sütun zaten var, sorun yok
+      // SÃƒÂƒÃ‚Â¼tun zaten var, sorun yok
     }
   });
   
   db.run(`ALTER TABLE users ADD COLUMN kurum TEXT`, (err) => {
     if (err && !err.message.includes('duplicate column')) {
-      // Sütun zaten var, sorun yok
+      // SÃƒÂƒÃ‚Â¼tun zaten var, sorun yok
     }
   });
   
-  // Veli ilk giriş kontrolü için password_changed kolonu
+  // Veli ilk giriÃƒÂ…Ã‚ÂŸ kontrolÃƒÂƒÃ‚Â¼ iÃƒÂƒÃ‚Â§in password_changed kolonu
   db.run(`ALTER TABLE users ADD COLUMN password_changed INTEGER DEFAULT 0`, (err) => {
     if (err && !err.message.includes('duplicate column')) {
-      // Sütun zaten var, sorun yok
+      // SÃƒÂƒÃ‚Â¼tun zaten var, sorun yok
     }
   });
   
   db.run(`ALTER TABLE users ADD COLUMN telefon TEXT`, (err) => {
     if (err && !err.message.includes('duplicate column')) {
-      // Sütun zaten var, sorun yok
+      // SÃƒÂƒÃ‚Â¼tun zaten var, sorun yok
     }
   });
   
   db.run(`ALTER TABLE users ADD COLUMN brans TEXT`, (err) => {
     if (err && !err.message.includes('duplicate column')) {
-      // Sütun zaten var, sorun yok
+      // SÃƒÂƒÃ‚Â¼tun zaten var, sorun yok
     }
   });
   
   db.run(`ALTER TABLE users ADD COLUMN uzmanlik_alani TEXT`, (err) => {
     if (err && !err.message.includes('duplicate column')) {
-      // Sütun zaten var, sorun yok
+      // SÃƒÂƒÃ‚Â¼tun zaten var, sorun yok
     }
   });
   
   db.run(`ALTER TABLE users ADD COLUMN mezuniyet TEXT`, (err) => {
     if (err && !err.message.includes('duplicate column')) {
-      // Sütun zaten var, sorun yok
+      // SÃƒÂƒÃ‚Â¼tun zaten var, sorun yok
     }
   });
   
   db.run(`ALTER TABLE users ADD COLUMN profil_foto TEXT`, (err) => {
     if (err && !err.message.includes('duplicate column')) {
-      // Sütun zaten var, sorun yok
+      // SÃƒÂƒÃ‚Â¼tun zaten var, sorun yok
     }
   });
   
@@ -566,28 +577,28 @@ db.serialize(() => {
     )
   `);
   
-  // Mevcut veritabanına yeni sütunları ekle
+  // Mevcut veritabanÃƒÂ„Ã‚Â±na yeni sÃƒÂƒÃ‚Â¼tunlarÃƒÂ„Ã‚Â± ekle
   db.run(`ALTER TABLE ogrenciler ADD COLUMN telefon TEXT`, (err) => {
     if (err && !err.message.includes('duplicate column')) {
-      // Sütun zaten var, sorun yok
+      // SÃƒÂƒÃ‚Â¼tun zaten var, sorun yok
     }
   });
   
   db.run(`ALTER TABLE ogrenciler ADD COLUMN okul TEXT`, (err) => {
     if (err && !err.message.includes('duplicate column')) {
-      // Sütun zaten var, sorun yok
+      // SÃƒÂƒÃ‚Â¼tun zaten var, sorun yok
     }
   });
   
   db.run(`ALTER TABLE ogrenciler ADD COLUMN sinif TEXT`, (err) => {
     if (err && !err.message.includes('duplicate column')) {
-      // Sütun zaten var, sorun yok
+      // SÃƒÂƒÃ‚Â¼tun zaten var, sorun yok
     }
   });
   
   db.run(`ALTER TABLE ogrenciler ADD COLUMN ogrenci_no TEXT UNIQUE`, (err) => {
     if (err && !err.message.includes('duplicate column')) {
-      // Sütun zaten var, sorun yok
+      // SÃƒÂƒÃ‚Â¼tun zaten var, sorun yok
     }
   });
   
@@ -605,7 +616,7 @@ db.serialize(() => {
     if (err && !err.message.includes('duplicate column')) {}
   });
   
-  // Satınalma tablosuna PayTR kolonları ekle
+  // SatÃƒÂ„Ã‚Â±nalma tablosuna PayTR kolonlarÃƒÂ„Ã‚Â± ekle
   db.run(`ALTER TABLE satinalma ADD COLUMN merchant_oid TEXT`, (err) => {
     if (err && !err.message.includes('duplicate column')) {}
   });
@@ -631,28 +642,28 @@ db.serialize(() => {
     )
   `);
   
-  // Mevcut sinavlar tablosuna yeni kolonları ekle (eğer yoksa)
+  // Mevcut sinavlar tablosuna yeni kolonlarÃƒÂ„Ã‚Â± ekle (eÃƒÂ„Ã‚ÂŸer yoksa)
   db.run(`ALTER TABLE sinavlar ADD COLUMN durum TEXT DEFAULT 'taslak'`, (err) => {
-    if (err && !err.message.includes('duplicate column')) console.log('⚠️ durum kolonu zaten var veya hata:', err.message);
+    if (err && !err.message.includes('duplicate column')) console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â durum kolonu zaten var veya hata:', err.message);
   });
   
   db.run(`ALTER TABLE sinavlar ADD COLUMN sonuclar_aciklandi INTEGER DEFAULT 0`, (err) => {
-    if (err && !err.message.includes('duplicate column')) console.log('⚠️ sonuclar_aciklandi kolonu zaten var veya hata:', err.message);
+    if (err && !err.message.includes('duplicate column')) console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â sonuclar_aciklandi kolonu zaten var veya hata:', err.message);
   });
   db.run(`ALTER TABLE sinavlar ADD COLUMN katilimci_sayisi INTEGER DEFAULT 0`, (err) => {
-    if (err && !err.message.includes('duplicate column')) console.log('⚠️ katilimci_sayisi kolonu zaten var veya hata:', err.message);
+    if (err && !err.message.includes('duplicate column')) console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â katilimci_sayisi kolonu zaten var veya hata:', err.message);
   });
   db.run(`ALTER TABLE sinavlar ADD COLUMN sonuc_yuklendi INTEGER DEFAULT 0`, (err) => {
-    if (err && !err.message.includes('duplicate column')) console.log('⚠️ sonuc_yuklendi kolonu zaten var veya hata:', err.message);
+    if (err && !err.message.includes('duplicate column')) console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â sonuc_yuklendi kolonu zaten var veya hata:', err.message);
   });
   db.run(`ALTER TABLE sinavlar ADD COLUMN cevap_anahtari_pdf TEXT`, (err) => {
-    if (err && !err.message.includes('duplicate column')) console.log('⚠️ cevap_anahtari_pdf kolonu zaten var veya hata:', err.message);
+    if (err && !err.message.includes('duplicate column')) console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â cevap_anahtari_pdf kolonu zaten var veya hata:', err.message);
   });
-  db.run(`ALTER TABLE sinavlar ADD COLUMN sinav_durumu TEXT DEFAULT 'Başvuru aşamasında'`, (err) => {
-    if (err && !err.message.includes('duplicate column')) console.log('⚠️ sinav_durumu kolonu zaten var veya hata:', err.message);
+  db.run(`ALTER TABLE sinavlar ADD COLUMN sinav_durumu TEXT DEFAULT 'BaÃƒÂ…Ã‚ÂŸvuru aÃƒÂ…Ã‚ÂŸamasÃƒÂ„Ã‚Â±nda'`, (err) => {
+    if (err && !err.message.includes('duplicate column')) console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â sinav_durumu kolonu zaten var veya hata:', err.message);
   });
   
-  // Sınav Katılımcıları Tablosu (Sınav-Öğrenci İlişkisi + PDF Sonuçları)
+  // Sınav KatÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â±larÃƒÂ„Ã‚Â± Tablosu (Sınav-Öğrenci ÃƒÂ„Ã‚Â°liÃƒÂ…Ã‚ÂŸkisi + PDF Sonuçları)
   db.run(`
     CREATE TABLE IF NOT EXISTS sinav_katilimcilari (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -669,21 +680,25 @@ db.serialize(() => {
   
   // Mevcut sinav_katilimcilari tablosuna ogrenci_kaynak kolonu ekle
   db.run(`ALTER TABLE sinav_katilimcilari ADD COLUMN ogrenci_kaynak TEXT DEFAULT 'kurum'`, (err) => {
-    if (err && !err.message.includes('duplicate column')) console.log('⚠️ ogrenci_kaynak kolonu zaten var veya hata:', err.message);
+    if (err && !err.message.includes('duplicate column')) console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â ogrenci_kaynak kolonu zaten var veya hata:', err.message);
   });
   
-  // PDF görüntülenme takibi için kolonlar ekle
+  // PDF gÃƒÂƒÃ‚Â¶rÃƒÂƒÃ‚Â¼ntÃƒÂƒÃ‚Â¼lenme takibi iÃƒÂƒÃ‚Â§in kolonlar ekle
   db.run(`ALTER TABLE sinav_katilimcilari ADD COLUMN pdf_goruldu INTEGER DEFAULT 0`, (err) => {
-    if (err && !err.message.includes('duplicate column')) console.log('⚠️ pdf_goruldu kolonu zaten var veya hata:', err.message);
+    if (err && !err.message.includes('duplicate column')) console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â pdf_goruldu kolonu zaten var veya hata:', err.message);
   });
   
   db.run(`ALTER TABLE sinav_katilimcilari ADD COLUMN pdf_gorunme_tarihi DATETIME`, (err) => {
-    if (err && !err.message.includes('duplicate column')) console.log('⚠️ pdf_gorunme_tarihi kolonu zaten var veya hata:', err.message);
+    if (err && !err.message.includes('duplicate column')) console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â pdf_gorunme_tarihi kolonu zaten var veya hata:', err.message);
   });
   
   db.run(`ALTER TABLE sinav_katilimcilari ADD COLUMN pdf_indirilme_sayisi INTEGER DEFAULT 0`, (err) => {
-    if (err && !err.message.includes('duplicate column')) console.log('⚠️ pdf_indirilme_sayisi kolonu zaten var veya hata:', err.message);
+    if (err && !err.message.includes('duplicate column')) console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â pdf_indirilme_sayisi kolonu zaten var veya hata:', err.message);
   });
+  db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_sinav_katilimci_unique ON sinav_katilimcilari (sinav_id, ogrenci_id, ogrenci_kaynak)", (err) => {
+    if (err && !err.message.includes("already exists")) console.log("idx_sinav_katilimci_unique olusturulamadi:", err.message);
+  });
+
   
   db.run(`
     CREATE TABLE IF NOT EXISTS sinav_sonuclari (
@@ -698,7 +713,7 @@ db.serialize(() => {
     )
   `);
   
-  // Sınav Talepleri Tablosu (Satın alma sistemi kaldırıldı)
+  // Sınav Talepleri Tablosu (SatÃƒÂ„Ã‚Â±n alma sistemi kaldÃƒÂ„Ã‚Â±rÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â±)
   db.run(`
     CREATE TABLE IF NOT EXISTS sinav_talepleri (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -714,9 +729,9 @@ db.serialize(() => {
     )
   `);
   
-  // PayTR Ayarları Tablosu - KALDIRILDİ (Talep sistemi kullanılıyor)
+  // PayTR Ayarları Tablosu - KALDIRILDÃƒÂ„Ã‚Â° (Talep sistemi kullanÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±yor)
   
-  // ============ SINAV PAKETLERİ SİSTEMİ ============
+  // ============ SINAV PAKETLERÃƒÂ„Ã‚Â° SÃƒÂ„Ã‚Â°STEMÃƒÂ„Ã‚Â° ============
   
   // Sınav Paketleri Tablosu
   db.run(`
@@ -732,7 +747,7 @@ db.serialize(() => {
     )
   `);
   
-  // Paket-Sınav İlişkisi (Many-to-Many)
+  // Paket-Sınav ÃƒÂ„Ã‚Â°liÃƒÂ…Ã‚ÂŸkisi (Many-to-Many)
   db.run(`
     CREATE TABLE IF NOT EXISTS paket_sinavlari (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -744,7 +759,7 @@ db.serialize(() => {
     )
   `);
   
-  // Paket-Öğrenci Atamaları
+  // Paket-Öğrenci AtamalarÃƒÂ„Ã‚Â±
   db.run(`
     CREATE TABLE IF NOT EXISTS paket_atamalari (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -757,9 +772,9 @@ db.serialize(() => {
     )
   `);
   
-  console.log('✅ Sınav Paketleri tabloları oluşturuldu');
+  console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… Sınav Paketleri tablolarÃƒÂ„Ã‚Â± oluşturuldu');
   
-  // Kurumsal İçerik Yönetimi Tablosu
+  // Kurumsal ÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â§erik YÃƒÂƒÃ‚Â¶netimi Tablosu
   db.run(`
     CREATE TABLE IF NOT EXISTS kurumsal_icerik (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -776,27 +791,27 @@ db.serialize(() => {
     )
   `);
   
-  // Varsayılan kurumsal içerikleri ekle (eğer yoksa)
+  // VarsayÃƒÂ„Ã‚Â±lan kurumsal iÃƒÂƒÃ‚Â§erikleri ekle (eÃƒÂ„Ã‚ÂŸer yoksa)
   db.get(`SELECT COUNT(*) as count FROM kurumsal_icerik`, (err, row) => {
     if (!err && row.count === 0) {
       const defaultPages = [
         {
           sayfa_adi: 'hakkimizda',
-          baslik: 'Türkiye\'nin Simülasyon Sınav Merkezi',
-          alt_baslik: '30 yıllık eğitim tecrübesiyle, gerçek sınav ortamında öğrencilerimizi geleceğe hazırlıyoruz.',
-          icerik: 'Sınav Merkezi, Türkiye\'nin önde gelen simülasyon sınav organizasyonlarından biridir. 1995 yılından bu yana öğrencilerimize gerçek sınav deneyimi yaşatarak, onları en iyi şekilde geleceğe hazırlamaktayız.',
-          meta_description: 'Türkiye\'nin önde gelen simülasyon sınav merkezi. 30 yıllık tecrübe ile LGS, YKS ve tüm sınavlar için profesyonel deneme sınavları.',
-          meta_keywords: 'sınav merkezi, deneme sınavı, LGS, YKS, simülasyon sınavı',
+          baslik: 'TÃƒÂƒÃ‚Â¼rkiye\'nin SimÃƒÂƒÃ‚Â¼lasyon Sınav Merkezi',
+          alt_baslik: '30 yÃƒÂ„Ã‚Â±llÃƒÂ„Ã‚Â±k eÃƒÂ„Ã‚ÂŸitim tecrÃƒÂƒÃ‚Â¼besiyle, gerÃƒÂƒÃ‚Â§ek sınav ortamÃƒÂ„Ã‚Â±nda ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerimizi geleceÃƒÂ„Ã‚ÂŸe hazÃƒÂ„Ã‚Â±rlÃƒÂ„Ã‚Â±yoruz.',
+          icerik: 'Sınav Merkezi, TÃƒÂƒÃ‚Â¼rkiye\'nin ÃƒÂƒÃ‚Â¶nde gelen simÃƒÂƒÃ‚Â¼lasyon sınav organizasyonlarÃƒÂ„Ã‚Â±ndan biridir. 1995 yÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±ndan bu yana ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerimize gerÃƒÂƒÃ‚Â§ek sınav deneyimi yaÃƒÂ…Ã‚ÂŸatarak, onlarÃƒÂ„Ã‚Â± en iyi ÃƒÂ…Ã‚ÂŸekilde geleceÃƒÂ„Ã‚ÂŸe hazÃƒÂ„Ã‚Â±rlamaktayÃƒÂ„Ã‚Â±z.',
+          meta_description: 'TÃƒÂƒÃ‚Â¼rkiye\'nin ÃƒÂƒÃ‚Â¶nde gelen simÃƒÂƒÃ‚Â¼lasyon sınav merkezi. 30 yÃƒÂ„Ã‚Â±llÃƒÂ„Ã‚Â±k tecrÃƒÂƒÃ‚Â¼be ile LGS, YKS ve tÃƒÂƒÃ‚Â¼m sınavlar iÃƒÂƒÃ‚Â§in profesyonel deneme sınavlarÃƒÂ„Ã‚Â±.',
+          meta_keywords: 'sınav merkezi, deneme sınavÃƒÂ„Ã‚Â±, LGS, YKS, simÃƒÂƒÃ‚Â¼lasyon sınavÃƒÂ„Ã‚Â±',
           aktif: 1,
           sira: 1
         },
         {
           sayfa_adi: 'iletisim',
-          baslik: 'İletişim',
-          alt_baslik: 'Bizimle iletişime geçin',
-          icerik: 'Sorularınız ve talepleriniz için bizimle iletişime geçebilirsiniz.',
-          meta_description: 'Sınav Merkezi iletişim bilgileri',
-          meta_keywords: 'iletişim, telefon, e-posta, adres',
+          baslik: 'ÃƒÂ„Ã‚Â°letiÃƒÂ…Ã‚ÂŸim',
+          alt_baslik: 'Bizimle iletiÃƒÂ…Ã‚ÂŸime geÃƒÂƒÃ‚Â§in',
+          icerik: 'SorularÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â±z ve talepleriniz iÃƒÂƒÃ‚Â§in bizimle iletiÃƒÂ…Ã‚ÂŸime geÃƒÂƒÃ‚Â§ebilirsiniz.',
+          meta_description: 'Sınav Merkezi iletiÃƒÂ…Ã‚ÂŸim bilgileri',
+          meta_keywords: 'iletiÃƒÂ…Ã‚ÂŸim, telefon, e-posta, adres',
           aktif: 1,
           sira: 2
         }
@@ -809,13 +824,13 @@ db.serialize(() => {
         `, [page.sayfa_adi, page.baslik, page.alt_baslik, page.icerik, page.meta_description, page.meta_keywords, page.aktif, page.sira]);
       });
       
-      console.log('✅ Varsayılan kurumsal içerikler oluşturuldu');
+      console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… VarsayÃƒÂ„Ã‚Â±lan kurumsal iÃƒÂƒÃ‚Â§erikler oluşturuldu');
     }
   });
   
-  console.log('✅ Kurumsal İçerik Yönetimi tablosu oluşturuldu');
+  console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… Kurumsal ÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â§erik YÃƒÂƒÃ‚Â¶netimi tablosu oluşturuldu');
   
-  // Öğrenci Kayıtları Tablosu (Kurum için)
+  // Öğrenci KayıtlarÃƒÂ„Ã‚Â± Tablosu (Kurum iÃƒÂƒÃ‚Â§in)
   db.run(`
     CREATE TABLE IF NOT EXISTS ogrenci_kayitlari (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -826,7 +841,7 @@ db.serialize(() => {
       veli_adi TEXT,
       veli_telefon TEXT,
       tutar TEXT,
-      odeme_durumu TEXT DEFAULT 'BEKLİYOR',
+      odeme_durumu TEXT DEFAULT 'BEKLÃƒÂ„Ã‚Â°YOR',
       odeme_turu TEXT,
       edessis_kaydi TEXT,
       taksit TEXT,
@@ -848,7 +863,7 @@ db.serialize(() => {
     )
   `);
   
-  // Bildirim Geçmişi Tablosu
+  // Bildirim GeÃƒÂƒÃ‚Â§miÃƒÂ…Ã‚ÂŸi Tablosu
   db.run(`
     CREATE TABLE IF NOT EXISTS bildirim_gecmisi (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -862,10 +877,10 @@ db.serialize(() => {
   `);
   
   // ============================================
-  // AKILLI ÖĞRENME SİSTEMİ TABLOLARI
+  // AKILLI ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂRENME SÃƒÂ„Ã‚Â°STEMÃƒÂ„Ã‚Â° TABLOLARI
   // ============================================
   
-  // PDF Pattern Öğrenme Tablosu
+  // PDF Pattern ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸrenme Tablosu
   db.run(`
     CREATE TABLE IF NOT EXISTS pdf_learning_patterns (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -883,7 +898,7 @@ db.serialize(() => {
     )
   `);
   
-  // Başarısız Eşleştirmeler Tablosu (Öğrenme için)
+  // BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±z EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirmeler Tablosu (ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸrenme iÃƒÂƒÃ‚Â§in)
   db.run(`
     CREATE TABLE IF NOT EXISTS matching_failures (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -895,7 +910,7 @@ db.serialize(() => {
     )
   `);
   
-  // PDF Yapısı Hafızası
+  // PDF YapÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â± HafÃƒÂ„Ã‚Â±zasÃƒÂ„Ã‚Â±
   db.run(`
     CREATE TABLE IF NOT EXISTS pdf_structure_memory (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -908,7 +923,7 @@ db.serialize(() => {
     )
   `);
   
-  console.log('✅ Akıllı Öğrenme Sistemi tabloları hazır');
+  console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… AkÃƒÂ„Ã‚Â±llÃƒÂ„Ã‚Â± ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸrenme Sistemi tablolarÃƒÂ„Ã‚Â± hazÃƒÂ„Ã‚Â±r');
   
   // Slider tablosu
   db.run(`
@@ -938,7 +953,7 @@ db.serialize(() => {
     )
   `);
   
-  // Satın alınabilir sınavlar tablosu
+  // SatÃƒÂ„Ã‚Â±n alÃƒÂ„Ã‚Â±nabilir sınavlar tablosu
   db.run(`
     CREATE TABLE IF NOT EXISTS satin_alinabilir_sinavlar (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -957,7 +972,7 @@ db.serialize(() => {
     )
   `);
   
-  // Hakkımızda ve site ayarları
+  // HakkÃƒÂ„Ã‚Â±mÃƒÂ„Ã‚Â±zda ve site ayarları
   db.run(`
     CREATE TABLE IF NOT EXISTS site_ayarlari (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -967,12 +982,12 @@ db.serialize(() => {
     )
   `);
   
-  // Varsayılan site ayarlarını ekle
+  // VarsayÃƒÂ„Ã‚Â±lan site ayarlarınÃƒÂ„Ã‚Â± ekle
   db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_adi', 'Sınav Merkezi')`);
-  db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_adres', 'Ankara, Türkiye')`);
+  db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_adres', 'Ankara, TÃƒÂƒÃ‚Â¼rkiye')`);
   db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_telefon', '+90 (312) 123 45 67')`);
   db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_email', 'info@sinavmerkezi.com')`);
-  db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_aciklama', '30 yıllık eğitim tecrübesiyle öğrencilerimizi geleceğe hazırlıyoruz.')`);
+  db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_aciklama', '30 yÃƒÂ„Ã‚Â±llÃƒÂ„Ã‚Â±k eÃƒÂ„Ã‚ÂŸitim tecrÃƒÂƒÃ‚Â¼besiyle ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerimizi geleceÃƒÂ„Ã‚ÂŸe hazÃƒÂ„Ã‚Â±rlÃƒÂ„Ã‚Â±yoruz.')`);
 
   
   // Kurumsal Sayfalar Tablosu
@@ -992,21 +1007,21 @@ db.serialize(() => {
     )
   `);
   
-  // Varsayılan kurumsal sayfaları ekle (eğer yoksa)
+  // VarsayÃƒÂ„Ã‚Â±lan kurumsal sayfalarÃƒÂ„Ã‚Â± ekle (eÃƒÂ„Ã‚ÂŸer yoksa)
   db.run(`
     INSERT OR IGNORE INTO kurumsal_sayfalar (sayfa_slug, sayfa_adi, baslik, icerik, sira)
     VALUES 
-    ('hakkimizda', 'Hakkımızda', 'Sınav Merkezi Hakkında', 
+    ('hakkimizda', 'HakkÃƒÂ„Ã‚Â±mÃƒÂ„Ã‚Â±zda', 'Sınav Merkezi HakkÃƒÂ„Ã‚Â±nda', 
     '<div class="row mb-5">
       <div class="col-lg-6">
         <h3 class="mb-4">Misyonumuz</h3>
-        <p class="lead">Sınav Merkezi olarak, öğrencilerin akademik başarılarını en üst düzeye çıkarmak ve onları geleceğe hazırlamak için kapsamlı sınav hizmetleri sunuyoruz.</p>
-        <p>30 yıllık eğitim tecrübemizle, öğrencilerimize en kaliteli sınav deneyimini yaşatmayı hedefliyoruz.</p>
+        <p class="lead">Sınav Merkezi olarak, ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerin akademik baÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±larÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± en ÃƒÂƒÃ‚Â¼st dÃƒÂƒÃ‚Â¼zeye ÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â±karmak ve onlarÃƒÂ„Ã‚Â± geleceÃƒÂ„Ã‚ÂŸe hazÃƒÂ„Ã‚Â±rlamak iÃƒÂƒÃ‚Â§in kapsamlÃƒÂ„Ã‚Â± sınav hizmetleri sunuyoruz.</p>
+        <p>30 yÃƒÂ„Ã‚Â±llÃƒÂ„Ã‚Â±k eÃƒÂ„Ã‚ÂŸitim tecrÃƒÂƒÃ‚Â¼bemizle, ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerimize en kaliteli sınav deneyimini yaÃƒÂ…Ã‚ÂŸatmayÃƒÂ„Ã‚Â± hedefliyoruz.</p>
       </div>
       <div class="col-lg-6">
         <h3 class="mb-4">Vizyonumuz</h3>
-        <p class="lead">Türkiye''nin en güvenilir ve yenilikçi sınav merkezi olmak.</p>
-        <p>Modern teknoloji ve deneyimli kadromuzla, eğitim sektöründe fark yaratan hizmetler sunmaya devam ediyoruz.</p>
+        <p class="lead">TÃƒÂƒÃ‚Â¼rkiye''nin en gÃƒÂƒÃ‚Â¼venilir ve yenilikÃƒÂƒÃ‚Â§i sınav merkezi olmak.</p>
+        <p>Modern teknoloji ve deneyimli kadromuzla, eÃƒÂ„Ã‚ÂŸitim sektÃƒÂƒÃ‚Â¶rÃƒÂƒÃ‚Â¼nde fark yaratan hizmetler sunmaya devam ediyoruz.</p>
       </div>
     </div>
     <div class="row mb-5">
@@ -1016,29 +1031,29 @@ db.serialize(() => {
           <div class="col-md-3 mb-3">
             <div class="text-center">
               <i class="bi bi-award-fill text-primary" style="font-size: 3rem;"></i>
-              <h5 class="mt-3">30+ Yıl Tecrübe</h5>
-              <p>Eğitim sektöründe köklü geçmiş</p>
+              <h5 class="mt-3">30+ YÃƒÂ„Ã‚Â±l TecrÃƒÂƒÃ‚Â¼be</h5>
+              <p>EÃƒÂ„Ã‚ÂŸitim sektÃƒÂƒÃ‚Â¶rÃƒÂƒÃ‚Â¼nde kÃƒÂƒÃ‚Â¶klÃƒÂƒÃ‚Â¼ geÃƒÂƒÃ‚Â§miÃƒÂ…Ã‚ÂŸ</p>
             </div>
           </div>
           <div class="col-md-3 mb-3">
             <div class="text-center">
               <i class="bi bi-people-fill text-success" style="font-size: 3rem;"></i>
               <h5 class="mt-3">10,000+ Öğrenci</h5>
-              <p>Binlerce öğrenciye hizmet</p>
+              <p>Binlerce ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenciye hizmet</p>
             </div>
           </div>
           <div class="col-md-3 mb-3">
             <div class="text-center">
               <i class="bi bi-mortarboard-fill text-info" style="font-size: 3rem;"></i>
               <h5 class="mt-3">Uzman Kadro</h5>
-              <p>Deneyimli eğitim ekibi</p>
+              <p>Deneyimli eÃƒÂ„Ã‚ÂŸitim ekibi</p>
             </div>
           </div>
           <div class="col-md-3 mb-3">
             <div class="text-center">
               <i class="bi bi-graph-up-arrow text-warning" style="font-size: 3rem;"></i>
-              <h5 class="mt-3">Yüksek Başarı</h5>
-              <p>Kanıtlanmış sonuçlar</p>
+              <h5 class="mt-3">YÃƒÂƒÃ‚Â¼ksek BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±</h5>
+              <p>KanÃƒÂ„Ã‚Â±tlanmÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸ sonuÃƒÂƒÃ‚Â§lar</p>
             </div>
           </div>
         </div>
@@ -1048,19 +1063,19 @@ db.serialize(() => {
       <div class="col-12">
         <h3 class="mb-4">Hizmetlerimiz</h3>
         <ul class="list-unstyled">
-          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Deneme Sınavları (TYT, AYT, LGS)</li>
-          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Dijital Sonuç Takibi</li>
-          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Kişiselleştirilmiş Performans Raporları</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Deneme SınavlarÃƒÂ„Ã‚Â± (TYT, AYT, LGS)</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Dijital SonuÃƒÂƒÃ‚Â§ Takibi</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> KiÃƒÂ…Ã‚ÂŸiselleÃƒÂ…Ã‚ÂŸtirilmiÃƒÂ…Ã‚ÂŸ Performans RaporlarÃƒÂ„Ã‚Â±</li>
           <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Veli Bilgilendirme Sistemi</li>
           <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Online Sınav Platformu</li>
         </ul>
       </div>
     </div>', 1),
-    ('iletisim', 'İletişim', 'İletişim', '<p><strong>Adres:</strong> İstanbul, Türkiye</p><p><strong>Email:</strong> info@sinavmerkezi.com</p><p><strong>Telefon:</strong> 0 (505) 354 12 30</p>', 2),
-    ('sinav-merkezleri', 'Sınav Merkezleri', 'Sınav Merkezlerimiz', '<p>Tüm Türkiye genelinde sınav merkezlerimiz bulunmaktadır.</p>', 3)
+    ('iletisim', 'ÃƒÂ„Ã‚Â°letiÃƒÂ…Ã‚ÂŸim', 'ÃƒÂ„Ã‚Â°letiÃƒÂ…Ã‚ÂŸim', '<p><strong>Adres:</strong> ÃƒÂ„Ã‚Â°stanbul, TÃƒÂƒÃ‚Â¼rkiye</p><p><strong>Email:</strong> info@sinavmerkezi.com</p><p><strong>Telefon:</strong> 0 (505) 354 12 30</p>', 2),
+    ('sinav-merkezleri', 'Sınav Merkezleri', 'Sınav Merkezlerimiz', '<p>TÃƒÂƒÃ‚Â¼m TÃƒÂƒÃ‚Â¼rkiye genelinde sınav merkezlerimiz bulunmaktadır.</p>', 3)
   `);
   
-  // Eski sınav_takvimi tablosu kaldırıldı - yeni yapı aşağıda
+  // Eski sınav_takvimi tablosu kaldÃƒÂ„Ã‚Â±rÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â± - yeni yapÃƒÂ„Ã‚Â± aÃƒÂ…Ã‚ÂŸaÃƒÂ„Ã‚ÂŸÃƒÂ„Ã‚Â±da
   
   db.run(`
     CREATE TABLE IF NOT EXISTS cevap_anahtarlari (
@@ -1069,7 +1084,7 @@ db.serialize(() => {
       sinav_turu TEXT NOT NULL,
       sinif TEXT NOT NULL,
       sinav_tarihi DATETIME NOT NULL,
-      durum TEXT DEFAULT 'Sonuç açıklandı',
+      durum TEXT DEFAULT 'SonuÃƒÂƒÃ‚Â§ aÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â±klandÃƒÂ„Ã‚Â±',
       cevap_anahtari_url TEXT,
       sonuc_url TEXT,
       sira INTEGER DEFAULT 0,
@@ -1124,9 +1139,9 @@ db.serialize(() => {
     ALTER TABLE ogrenci_talepleri ADD COLUMN sonuc_goruntuleme_aktif INTEGER DEFAULT 1
   `, (err) => {
     if (err && !err.message.includes('duplicate column')) {
-      console.error('❌ Kolon ekleme hatası:', err);
+      console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Kolon ekleme hatasÃƒÂ„Ã‚Â±:', err);
     } else if (!err) {
-      console.log('✅ sonuc_goruntuleme_aktif kolonu eklendi');
+      console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… sonuc_goruntuleme_aktif kolonu eklendi');
     }
   });
   
@@ -1147,7 +1162,7 @@ db.serialize(() => {
     )
   `);
   
-  // Cevap anahtarları tablosu
+  // Cevap anahtarlarÃƒÂ„Ã‚Â± tablosu
   db.run(`
     CREATE TABLE IF NOT EXISTS cevap_anahtarlari (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1161,51 +1176,51 @@ db.serialize(() => {
     )
   `);
   
-  // Eksik kolonları ekle (ALTER TABLE)
+  // Eksik kolonlarÃƒÂ„Ã‚Â± ekle (ALTER TABLE)
   db.run(`ALTER TABLE ogrenci_talepleri ADD COLUMN rehber_ogretmen_id INTEGER`, (err) => {
     if (err && !err.message.includes('duplicate column name')) {
-      console.log('⚠️ rehber_ogretmen_id kolonu zaten var veya hata:', err.message);
+      console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â rehber_ogretmen_id kolonu zaten var veya hata:', err.message);
     } else if (!err) {
-      console.log('✅ ogrenci_talepleri.rehber_ogretmen_id kolonu eklendi');
+      console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… ogrenci_talepleri.rehber_ogretmen_id kolonu eklendi');
     }
   });
   
   db.run(`ALTER TABLE ogrenci_talepleri ADD COLUMN ogrenci_id INTEGER`, (err) => {
     if (err && !err.message.includes('duplicate column name')) {
-      console.log('⚠️ ogrenci_id kolonu zaten var veya hata:', err.message);
+      console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â ogrenci_id kolonu zaten var veya hata:', err.message);
     } else if (!err) {
-      console.log('✅ ogrenci_talepleri.ogrenci_id kolonu eklendi');
+      console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… ogrenci_talepleri.ogrenci_id kolonu eklendi');
     }
   });
   
   db.run(`ALTER TABLE sinav_sonuclari_pdf ADD COLUMN pdf_isim TEXT`, (err) => {
     if (err && !err.message.includes('duplicate column')) {
-      // Sütun zaten var, sorun yok
+      // SÃƒÂƒÃ‚Â¼tun zaten var, sorun yok
     }
   });
   
   db.run(`ALTER TABLE sinav_sonuclari_pdf ADD COLUMN sayfa_no INTEGER`, (err) => {
     if (err && !err.message.includes('duplicate column')) {
-      // Sütun zaten var, sorun yok
+      // SÃƒÂƒÃ‚Â¼tun zaten var, sorun yok
     }
   });
   
   // Sınav paketlerine fiyat kolonu ekle
   db.run(`ALTER TABLE sinav_paketleri ADD COLUMN fiyat REAL DEFAULT 0`, (err) => {
     if (err && !err.message.includes('duplicate column')) {
-      console.log('⚠️ sinav_paketleri.fiyat kolonu zaten var veya hata:', err.message);
+      console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â sinav_paketleri.fiyat kolonu zaten var veya hata:', err.message);
     } else if (!err) {
-      console.log('✅ sinav_paketleri.fiyat kolonu eklendi');
+      console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… sinav_paketleri.fiyat kolonu eklendi');
     }
   });
 });
 
-// Veritabanı yardımcı fonksiyonları (Promise wrapper)
-// Öğrenci Numarası Oluşturma Fonksiyonu
+// VeritabanÃƒÂ„Ã‚Â± yardÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â± fonksiyonlarÃƒÂ„Ã‚Â± (Promise wrapper)
+// Öğrenci NumarasÃƒÂ„Ã‚Â± OluÃƒÂ…Ã‚ÂŸturma Fonksiyonu
 async function generateOgrenciNo() {
   const yil = new Date().getFullYear();
   
-  // Bu yıl eklenen son öğrenci numarasını bul
+  // Bu yÃƒÂ„Ã‚Â±l eklenen son ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci numarasÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± bul
   const sonOgrenci = await dbGet(
     `SELECT ogrenci_no FROM ogrenciler 
      WHERE ogrenci_no LIKE ? 
@@ -1215,12 +1230,12 @@ async function generateOgrenciNo() {
   
   let sira = 1;
   if (sonOgrenci && sonOgrenci.ogrenci_no) {
-    // Son 4 haneyi al ve 1 artır
+    // Son 4 haneyi al ve 1 artÃƒÂ„Ã‚Â±r
     const sonSira = parseInt(sonOgrenci.ogrenci_no.substring(4));
     sira = sonSira + 1;
   }
   
-  // Yıl + 4 haneli sıra numarası
+  // YÃƒÂ„Ã‚Â±l + 4 haneli sÃƒÂ„Ã‚Â±ra numarasÃƒÂ„Ã‚Â±
   const ogrenciNo = `${yil}${sira.toString().padStart(4, '0')}`;
   return ogrenciNo;
 }
@@ -1253,18 +1268,18 @@ function dbRun(query, params = []) {
 }
 
 /**
- * TC bazlı öğrenci tekrarlarını temizler
- * Aynı TC'ye sahip öğrenciler varsa, kurum kaydını öncelikli tutar
- * @param {Array} veliOgrencileri - Veli tarafından eklenen öğrenciler
- * @param {Array} kurumOgrencileri - Kurum tarafından eklenen öğrenciler
- * @returns {Array} Temizlenmiş öğrenci listesi
+ * TC bazlÃƒÂ„Ã‚Â± ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci tekrarlarÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± temizler
+ * AynÃƒÂ„Ã‚Â± TC'ye sahip ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenciler varsa, kurum kaydÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± ÃƒÂƒÃ‚Â¶ncelikli tutar
+ * @param {Array} veliOgrencileri - Veli tarafÃƒÂ„Ã‚Â±ndan eklenen ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenciler
+ * @param {Array} kurumOgrencileri - Kurum tarafÃƒÂ„Ã‚Â±ndan eklenen ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenciler
+ * @returns {Array} TemizlenmiÃƒÂ…Ã‚ÂŸ ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci listesi
  */
 function temizleOgrenciTekrarlari(veliOgrencileri = [], kurumOgrencileri = []) {
   const tcMap = new Map();
   const tcSizOgrenciler = [];
   let tekrarSayisi = 0;
   
-  // Önce kurum öğrencilerini ekle (öncelikli)
+  // ÃƒÂƒÃ‚Â–nce kurum ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerini ekle (ÃƒÂƒÃ‚Â¶ncelikli)
   kurumOgrencileri.forEach(ogr => {
     const tc = ogr.tc_no ? String(ogr.tc_no).replace('.0', '').trim() : null;
     if (tc && tc !== '' && tc !== 'null' && tc !== 'undefined') {
@@ -1277,7 +1292,7 @@ function temizleOgrenciTekrarlari(veliOgrencileri = [], kurumOgrencileri = []) {
     }
   });
   
-  // Sonra veli öğrencilerini ekle (sadece TC tekrar etmeyenler)
+  // Sonra veli ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerini ekle (sadece TC tekrar etmeyenler)
   veliOgrencileri.forEach(ogr => {
     const tc = ogr.tc_no ? String(ogr.tc_no).replace('.0', '').trim() : null;
     if (tc && tc !== '' && tc !== 'null' && tc !== 'undefined') {
@@ -1285,7 +1300,7 @@ function temizleOgrenciTekrarlari(veliOgrencileri = [], kurumOgrencileri = []) {
         tcMap.set(tc, ogr);
       } else {
         tekrarSayisi++;
-        console.log(`   ⚠️  Tekrar: ${ogr.ad_soyad || ogr.ogrenci_adi} (TC: ${tc}) - Kurum kaydı kullanılıyor`);
+        console.log(`   ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â  Tekrar: ${ogr.ad_soyad || ogr.ogrenci_adi} (TC: ${tc}) - Kurum kaydÃƒÂ„Ã‚Â± kullanÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±yor`);
       }
     } else {
       // TC yok, direkt ekle
@@ -1293,7 +1308,7 @@ function temizleOgrenciTekrarlari(veliOgrencileri = [], kurumOgrencileri = []) {
     }
   });
   
-  // Tüm öğrencileri birleştir ve isme göre sırala
+  // TÃƒÂƒÃ‚Â¼m ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri birleÃƒÂ…Ã‚ÂŸtir ve isme gÃƒÂƒÃ‚Â¶re sÃƒÂ„Ã‚Â±rala
   const temizlenmis = [...Array.from(tcMap.values()), ...tcSizOgrenciler];
   temizlenmis.sort((a, b) => {
     const adA = (a.ad_soyad || a.ogrenci_adi || '').toLowerCase();
@@ -1302,7 +1317,7 @@ function temizleOgrenciTekrarlari(veliOgrencileri = [], kurumOgrencileri = []) {
   });
   
   if (tekrarSayisi > 0) {
-    console.log(`   🧹 ${tekrarSayisi} tekrar temizlendi`);
+    console.log(`   ÃƒÂ°Ã‚ÂŸÃ‚Â§Ã‚Â¹ ${tekrarSayisi} tekrar temizlendi`);
   }
   
   return temizlenmis;
@@ -1321,28 +1336,28 @@ app.use(async (req, res, next) => {
   } catch (error) {
     res.locals.siteAyarlari = {
       site_adi: 'Sınav Merkezi',
-      site_adres: 'Ankara, Türkiye',
+      site_adres: 'Ankara, TÃƒÂƒÃ‚Â¼rkiye',
       site_telefon: '+90 (312) 123 45 67',
       site_email: 'info@sinavmerkezi.com',
-      site_aciklama: '30 yıllık eğitim tecrübesiyle öğrencilerimizi geleceğe hazırlıyoruz.'
+      site_aciklama: '30 yÃƒÂ„Ã‚Â±llÃƒÂ„Ã‚Â±k eÃƒÂ„Ã‚ÂŸitim tecrÃƒÂƒÃ‚Â¼besiyle ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerimizi geleceÃƒÂ„Ã‚ÂŸe hazÃƒÂ„Ã‚Â±rlÃƒÂ„Ã‚Â±yoruz.'
     };
   }
   next();
 });
 
 // ============================================
-// AKILLI EŞLEŞTİRME SİSTEMİ - STRATEJİLER
+// AKILLI EÃƒÂ…Ã‚ÂLEÃƒÂ…Ã‚ÂTÃƒÂ„Ã‚Â°RME SÃƒÂ„Ã‚Â°STEMÃƒÂ„Ã‚Â° - STRATEJÃƒÂ„Ã‚Â°LER
 // ============================================
 
 /**
- * STRATEJİ 1: Öğrenilmiş Pattern (En Hızlı)
- * Daha önce başarılı olan pattern'leri kullanır
+ * STRATEJÃƒÂ„Ã‚Â° 1: ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸrenilmiÃƒÂ…Ã‚ÂŸ Pattern (En HÃƒÂ„Ã‚Â±zlÃƒÂ„Ã‚Â±)
+ * Daha ÃƒÂƒÃ‚Â¶nce başarılı olan pattern'leri kullanÃƒÂ„Ã‚Â±r
  */
 async function strategy1_LearnedPattern(lines, katilimcilar, kurumId, sinavId, pdfPath) {
-  console.log('   📚 Geçmiş öğrenmelere bakılıyor...');
+  console.log('   ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Âš GeÃƒÂƒÃ‚Â§miÃƒÂ…Ã‚ÂŸ ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenmelere bakÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±yor...');
   
   try {
-    // Bu kurumun geçmiş başarılı pattern'lerini al
+    // Bu kurumun geÃƒÂƒÃ‚Â§miÃƒÂ…Ã‚ÂŸ başarılı pattern'lerini al
     const learnedPattern = await dbGet(`
       SELECT name_line_number, name_position_type, success_rate, use_count
       FROM pdf_learning_patterns
@@ -1353,24 +1368,24 @@ async function strategy1_LearnedPattern(lines, katilimcilar, kurumId, sinavId, p
     `, [kurumId]);
     
     if (!learnedPattern) {
-      console.log('   ℹ️ Öğrenilmiş pattern yok');
+      console.log('   ÃƒÂ¢Ã‚Â„Ã‚Â¹ÃƒÂ¯Ã‚Â¸Ã‚Â ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸrenilmiÃƒÂ…Ã‚ÂŸ pattern yok');
       return null;
     }
     
-    console.log(`   📖 Öğrenilmiş pattern: Satır ${learnedPattern.name_line_number} (Başarı: ${(learnedPattern.success_rate * 100).toFixed(0)}%, Kullanım: ${learnedPattern.use_count}x)`);
+    console.log(`   ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â– ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸrenilmiÃƒÂ…Ã‚ÂŸ pattern: SatÃƒÂ„Ã‚Â±r ${learnedPattern.name_line_number} (BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±: ${(learnedPattern.success_rate * 100).toFixed(0)}%, KullanÃƒÂ„Ã‚Â±m: ${learnedPattern.use_count}x)`);
     
-    // Öğrenilmiş satırdan ismi çıkar
+    // ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸrenilmiÃƒÂ…Ã‚ÂŸ satÃƒÂ„Ã‚Â±rdan ismi ÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â±kar
     const extractedName = lines[learnedPattern.name_line_number];
     
     if (!extractedName) {
-      console.log('   ⚠️ Satır bulunamadı');
+      console.log('   ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â SatÃƒÂ„Ã‚Â±r bulunamadı');
       return null;
     }
     
-    // İsmi temizle
+    // ÃƒÂ„Ã‚Â°smi temizle
     const cleanName = cleanExtractedName(extractedName);
     
-    // Katılımcılarla eşleştir
+    // KatÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â±larla eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtir
     const match = findBestMatch(cleanName, katilimcilar);
     
     if (match && match.similarity >= 0.80) {
@@ -1384,48 +1399,47 @@ async function strategy1_LearnedPattern(lines, katilimcilar, kurumId, sinavId, p
       };
     }
     
-    console.log('   ❌ Öğrenilmiş pattern eşleşmedi');
+    console.log('   ÃƒÂ¢Ã‚ÂÃ‚ÂŒ ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸrenilmiÃƒÂ…Ã‚ÂŸ pattern eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmedi');
     return null;
   } catch (error) {
-    console.error('   ❌ Strateji 1 hatası:', error.message);
+    console.error('   ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Strateji 1 hatasÃƒÂ„Ã‚Â±:', error.message);
     return null;
   }
 }
 
 /**
- * STRATEJİ 2: Veritabanı Benzerlik Taraması (Ana Yöntem)
- * Tüm satırları tarayıp veritabanındaki öğrencilerle karşılaştırır
+ * STRATEJÃƒÂ„Ã‚Â° 2: VeritabanÃƒÂ„Ã‚Â± Benzerlik TaramasÃƒÂ„Ã‚Â± (Ana YÃƒÂƒÃ‚Â¶ntem)
+ * TÃƒÂƒÃ‚Â¼m satÃƒÂ„Ã‚Â±rlarÃƒÂ„Ã‚Â± tarayÃƒÂ„Ã‚Â±p veritabanÃƒÂ„Ã‚Â±ndaki ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerle karÃƒÂ…Ã‚ÂŸÃƒÂ„Ã‚Â±laÃƒÂ…Ã‚ÂŸtÃƒÂ„Ã‚Â±rÃƒÂ„Ã‚Â±r
  */
-async function strategy2_DatabaseSimilarity(lines, katilimcilar, kurumId, sinavId) {
-  console.log('   🔎 Tüm satırlarda veritabanı benzerliği aranıyor...');
+async function strategy2_DatabaseSimilarity(lines, katilimcilar, kurumId, sinavId) {    console.log('Database connected:', DB_PATH);
   
   let bestMatch = null;
   let bestSimilarity = 0;
   let bestLineNumber = -1;
   let bestExtractedName = '';
   
-  // İlk 50 satırı tara
+  // ÃƒÂ„Ã‚Â°lk 50 satÃƒÂ„Ã‚Â±rÃƒÂ„Ã‚Â± tara
   for (let i = 0; i < Math.min(lines.length, 50); i++) {
     const line = lines[i];
     
-    // Boş satırları atla
+    // BoÃƒÂ…Ã‚ÂŸ satÃƒÂ„Ã‚Â±rlarÃƒÂ„Ã‚Â± atla
     if (!line || line.length < 5) continue;
     
-    // 🆕 GELİŞMİŞ PARSE: Satırı farklı şekillerde parse et
+    // ÃƒÂ°Ã‚ÂŸÃ‚Â†Ã‚Â• GELÃƒÂ„Ã‚Â°ÃƒÂ…Ã‚ÂMÃƒÂ„Ã‚Â°ÃƒÂ…Ã‚Â PARSE: SatÃƒÂ„Ã‚Â±rÃƒÂ„Ã‚Â± farklÃƒÂ„Ã‚Â± ÃƒÂ…Ã‚ÂŸekillerde parse et
     const parsedNames = [];
     
-    // 1. Direkt satır
+    // 1. Direkt satÃƒÂ„Ã‚Â±r
     parsedNames.push({ text: line, source: 'direct' });
     
-    // 2. Rakamlardan önceki kısım (örn: "ALİ OSMAN ÇÖZELİ08-A" → "ALİ OSMAN ÇÖZELİ")
-    const beforeNumber = line.match(/^([A-ZÇĞİÖŞÜa-zçğıöşü\s]+?)(?=\d|$)/);
+    // 2. Rakamlardan ÃƒÂƒÃ‚Â¶nceki kÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±m (ÃƒÂƒÃ‚Â¶rn: "ALÃƒÂ„Ã‚Â° OSMAN ÃƒÂƒÃ‚Â‡ÃƒÂƒÃ‚Â–ZELÃƒÂ„Ã‚Â°08-A" ÃƒÂ¢Ã‚Â†Ã‚Â’ "ALÃƒÂ„Ã‚Â° OSMAN ÃƒÂƒÃ‚Â‡ÃƒÂƒÃ‚Â–ZELÃƒÂ„Ã‚Â°")
+    const beforeNumber = line.match(/^([A-ZÃƒÂƒÃ‚Â‡ÃƒÂ„Ã‚ÂÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â–ÃƒÂ…Ã‚ÂÃƒÂƒÃ‚Âœa-zÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚ÂŸÃƒÂ„Ã‚Â±ÃƒÂƒÃ‚Â¶ÃƒÂ…Ã‚ÂŸÃƒÂƒÃ‚Â¼\s]+?)(?=\d|$)/);
     if (beforeNumber && beforeNumber[1].trim().length >= 5) {
       parsedNames.push({ text: beforeNumber[1].trim(), source: 'before_number' });
     }
     
-    // 3. Kelime tabanlı parse (birleşik satırları böl)
-    // "ÖğrenciNumaraSınıfALİ OSMAN ÇÖZELİ08-A" gibi durumlar için
-    const words = line.split(/(?=[A-ZÇĞİÖŞÜ][a-zçğıöşü])/);
+    // 3. Kelime tabanlÃƒÂ„Ã‚Â± parse (birleÃƒÂ…Ã‚ÂŸik satÃƒÂ„Ã‚Â±rlarÃƒÂ„Ã‚Â± bÃƒÂƒÃ‚Â¶l)
+    // "ÖğrenciNumaraSÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â±fALÃƒÂ„Ã‚Â° OSMAN ÃƒÂƒÃ‚Â‡ÃƒÂƒÃ‚Â–ZELÃƒÂ„Ã‚Â°08-A" gibi durumlar iÃƒÂƒÃ‚Â§in
+    const words = line.split(/(?=[A-ZÃƒÂƒÃ‚Â‡ÃƒÂ„Ã‚ÂÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â–ÃƒÂ…Ã‚ÂÃƒÂƒÃ‚Âœ][a-zÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚ÂŸÃƒÂ„Ã‚Â±ÃƒÂƒÃ‚Â¶ÃƒÂ…Ã‚ÂŸÃƒÂƒÃ‚Â¼])/);
     words.forEach(w => {
       const clean = cleanExtractedName(w);
       if (clean && clean.length >= 5 && clean.split(' ').length >= 2) {
@@ -1433,15 +1447,15 @@ async function strategy2_DatabaseSimilarity(lines, katilimcilar, kurumId, sinavI
       }
     });
     
-    // Her parse edilmiş ismi test et
+    // Her parse edilmiÃƒÂ…Ã‚ÂŸ ismi test et
     for (const parsed of parsedNames) {
-      // İsim gibi mi kontrol et
+      // ÃƒÂ„Ã‚Â°sim gibi mi kontrol et
       if (!looksLikeName(parsed.text)) continue;
       
       const cleanLine = cleanExtractedName(parsed.text);
       if (!cleanLine) continue;
       
-      // Her katılımcı ile karşılaştır
+      // Her katÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â± ile karÃƒÂ…Ã‚ÂŸÃƒÂ„Ã‚Â±laÃƒÂ…Ã‚ÂŸtÃƒÂ„Ã‚Â±r
       for (const katilimci of katilimcilar) {
         const similarity = stringSimilarity(cleanLine, katilimci.ad_soyad);
         
@@ -1450,14 +1464,14 @@ async function strategy2_DatabaseSimilarity(lines, katilimcilar, kurumId, sinavI
           bestMatch = katilimci;
           bestLineNumber = i;
           bestExtractedName = cleanLine;
-          console.log(`   🔍 Yeni aday: "${cleanLine}" → "${katilimci.ad_soyad}" (${(similarity * 100).toFixed(0)}%, kaynak: ${parsed.source})`);
+          console.log(`   ÃƒÂ°Ã‚ÂŸÃ‚Â”Ã‚Â Yeni aday: "${cleanLine}" ÃƒÂ¢Ã‚Â†Ã‚Â’ "${katilimci.ad_soyad}" (${(similarity * 100).toFixed(0)}%, kaynak: ${parsed.source})`);
         }
       }
     }
   }
   
-  if (bestMatch && bestSimilarity >= 0.70) { // Eşiği 0.70'e düşürdük
-    console.log(`   ✅ Eşleşme bulundu: "${bestMatch.ad_soyad}" (Benzerlik: ${(bestSimilarity * 100).toFixed(0)}%, Satır: ${bestLineNumber})`);
+  if (bestMatch && bestSimilarity >= 0.70) { // EÃƒÂ…Ã‚ÂŸiÃƒÂ„Ã‚ÂŸi 0.70'e dÃƒÂƒÃ‚Â¼ÃƒÂ…Ã‚ÂŸÃƒÂƒÃ‚Â¼rdÃƒÂƒÃ‚Â¼k
+    console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme bulundu: "${bestMatch.ad_soyad}" (Benzerlik: ${(bestSimilarity * 100).toFixed(0)}%, SatÃƒÂ„Ã‚Â±r: ${bestLineNumber})`);
     
     return {
       ogrenciId: bestMatch.ogrenci_id,
@@ -1469,18 +1483,18 @@ async function strategy2_DatabaseSimilarity(lines, katilimcilar, kurumId, sinavI
     };
   }
   
-  console.log(`   ⚠️ Yeterli benzerlik bulunamadı (En iyi: ${(bestSimilarity * 100).toFixed(0)}%)`);
+  console.log(`   ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Yeterli benzerlik bulunamadı (En iyi: ${(bestSimilarity * 100).toFixed(0)}%)`);
   return null;
 }
 
 /**
- * STRATEJİ 3: Pozisyon Tabanlı
- * PDF'deki pozisyona göre isim tahmini yapar
+ * STRATEJÃƒÂ„Ã‚Â° 3: Pozisyon TabanlÃƒÂ„Ã‚Â±
+ * PDF'deki pozisyona gÃƒÂƒÃ‚Â¶re isim tahmini yapar
  */
 async function strategy3_PositionBased(lines, katilimcilar, kurumId, sinavId, pdfPath) {
-  console.log('   📍 PDF koordinatlarına bakılıyor...');
+  console.log('   ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â PDF koordinatlarÃƒÂ„Ã‚Â±na bakÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±yor...');
   
-  // İlk 15 satırda, en çok kelime sayısına sahip satırı bul
+  // ÃƒÂ„Ã‚Â°lk 15 satÃƒÂ„Ã‚Â±rda, en ÃƒÂƒÃ‚Â§ok kelime sayÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±na sahip satÃƒÂ„Ã‚Â±rÃƒÂ„Ã‚Â± bul
   const candidates = lines.slice(0, 15)
     .map((line, index) => ({
       line: line,
@@ -1496,33 +1510,33 @@ async function strategy3_PositionBased(lines, katilimcilar, kurumId, sinavId, pd
     const match = findBestMatch(cleanLine, katilimcilar);
     
     if (match && match.similarity >= 0.70) {
-      console.log(`   ✅ Pozisyon eşleşmesi: "${match.ogrenci.ad_soyad}"`);
+      console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… Pozisyon eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmesi: "${match.ogrenci.ad_soyad}"`);
       return {
         ogrenciId: match.ogrenci.ogrenci_id,
         ogrenciAd: match.ogrenci.ad_soyad,
         kaynak: match.ogrenci.kaynak,
         extractedName: cleanLine,
-        confidence: match.similarity * 0.9, // Pozisyon tabanlı biraz daha düşük güven
+        confidence: match.similarity * 0.9, // Pozisyon tabanlÃƒÂ„Ã‚Â± biraz daha dÃƒÂƒÃ‚Â¼ÃƒÂ…Ã‚ÂŸÃƒÂƒÃ‚Â¼k gÃƒÂƒÃ‚Â¼ven
         lineNumber: candidate.index
       };
     }
   }
   
-  console.log('   ❌ Pozisyon tabanlı eşleşme başarısız');
+  console.log('   ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Pozisyon tabanlÃƒÂ„Ã‚Â± eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme baÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±z');
   return null;
 }
 
 /**
- * STRATEJİ 4: Gelişmiş Regex Pattern'leri
+ * STRATEJÃƒÂ„Ã‚Â° 4: GeliÃƒÂ…Ã‚ÂŸmiÃƒÂ…Ã‚ÂŸ Regex Pattern'leri
  */
 async function strategy4_AdvancedRegex(lines, katilimcilar, kurumId, sinavId) {
-  console.log('   🔤 Regex pattern\'leri deneniyor...');
+  console.log('   ÃƒÂ°Ã‚ÂŸÃ‚Â”Ã‚Â¤ Regex pattern\'leri deneniyor...');
   
   const patterns = [
-    /(?:Öğrenci|ADI|SOYADI|İSİM)[:\s]+([A-ZÇĞİÖŞÜ\s]{10,40})/i,
-    /(?:Ad Soyad)[:\s]+([A-ZÇĞİÖŞÜ\s]{10,40})/i,
-    /^([A-ZÇĞİÖŞÜ]+\s+[A-ZÇĞİÖŞÜ]+(?:\s+[A-ZÇĞİÖŞÜ]+)?)\s+\d/,
-    /\d+\s+([A-ZÇĞİÖŞÜ]+\s+[A-ZÇĞİÖŞÜ]+)/
+    /(?:Öğrenci|ADI|SOYADI|ÃƒÂ„Ã‚Â°SÃƒÂ„Ã‚Â°M)[:\s]+([A-ZÃƒÂƒÃ‚Â‡ÃƒÂ„Ã‚ÂÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â–ÃƒÂ…Ã‚ÂÃƒÂƒÃ‚Âœ\s]{10,40})/i,
+    /(?:Ad Soyad)[:\s]+([A-ZÃƒÂƒÃ‚Â‡ÃƒÂ„Ã‚ÂÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â–ÃƒÂ…Ã‚ÂÃƒÂƒÃ‚Âœ\s]{10,40})/i,
+    /^([A-ZÃƒÂƒÃ‚Â‡ÃƒÂ„Ã‚ÂÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â–ÃƒÂ…Ã‚ÂÃƒÂƒÃ‚Âœ]+\s+[A-ZÃƒÂƒÃ‚Â‡ÃƒÂ„Ã‚ÂÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â–ÃƒÂ…Ã‚ÂÃƒÂƒÃ‚Âœ]+(?:\s+[A-ZÃƒÂƒÃ‚Â‡ÃƒÂ„Ã‚ÂÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â–ÃƒÂ…Ã‚ÂÃƒÂƒÃ‚Âœ]+)?)\s+\d/,
+    /\d+\s+([A-ZÃƒÂƒÃ‚Â‡ÃƒÂ„Ã‚ÂÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â–ÃƒÂ…Ã‚ÂÃƒÂƒÃ‚Âœ]+\s+[A-ZÃƒÂƒÃ‚Â‡ÃƒÂ„Ã‚ÂÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â–ÃƒÂ…Ã‚ÂÃƒÂƒÃ‚Âœ]+)/
   ];
   
   for (const pattern of patterns) {
@@ -1534,7 +1548,7 @@ async function strategy4_AdvancedRegex(lines, katilimcilar, kurumId, sinavId) {
         const match = findBestMatch(extractedName, katilimcilar);
         
         if (match && match.similarity >= 0.75) {
-          console.log(`   ✅ Regex eşleşmesi: "${match.ogrenci.ad_soyad}"`);
+          console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… Regex eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmesi: "${match.ogrenci.ad_soyad}"`);
           return {
             ogrenciId: match.ogrenci.ogrenci_id,
             ogrenciAd: match.ogrenci.ad_soyad,
@@ -1548,58 +1562,58 @@ async function strategy4_AdvancedRegex(lines, katilimcilar, kurumId, sinavId) {
     }
   }
   
-  console.log('   ❌ Regex eşleşmesi başarısız');
+  console.log('   ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Regex eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmesi baÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±z');
   return null;
 }
 
 /**
- * STRATEJİ 5: Fuzzy Search (En agresif)
+ * STRATEJÃƒÂ„Ã‚Â° 5: Fuzzy Search (En agresif)
  */
 async function strategy5_FuzzySearch(lines, katilimcilar, kurumId, sinavId) {
-  console.log('   🌫️ Fuzzy search yapılıyor (agresif)...');
+  console.log('   ÃƒÂ°Ã‚ÂŸÃ‚ÂŒÃ‚Â«ÃƒÂ¯Ã‚Â¸Ã‚Â Fuzzy search yapÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±yor (agresif)...');
   
-  // Tüm PDF textini birleştir ve her katılımcıyı ara
+  // TÃƒÂƒÃ‚Â¼m PDF textini birleÃƒÂ…Ã‚ÂŸtir ve her katÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â±yÃƒÂ„Ã‚Â± ara
   const fullText = lines.join(' ').toUpperCase();
   
   for (const katilimci of katilimcilar) {
     const nameWords = katilimci.ad_soyad.toUpperCase().split(/\s+/);
     
-    // İsmin tüm kelimeleri PDF'de var mı?
+    // ÃƒÂ„Ã‚Â°smin tÃƒÂƒÃ‚Â¼m kelimeleri PDF'de var mÃƒÂ„Ã‚Â±?
     const allWordsExist = nameWords.every(word => fullText.includes(word));
     
     if (allWordsExist && nameWords.length >= 2) {
-      console.log(`   ✅ Fuzzy eşleşme: "${katilimci.ad_soyad}" (tüm kelimeler bulundu)`);
+      console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… Fuzzy eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme: "${katilimci.ad_soyad}" (tÃƒÂƒÃ‚Â¼m kelimeler bulundu)`);
       
       return {
         ogrenciId: katilimci.ogrenci_id,
         ogrenciAd: katilimci.ad_soyad,
         kaynak: katilimci.kaynak,
         extractedName: katilimci.ad_soyad,
-        confidence: 0.70, // Düşük güven
+        confidence: 0.70, // DÃƒÂƒÃ‚Â¼ÃƒÂ…Ã‚ÂŸÃƒÂƒÃ‚Â¼k gÃƒÂƒÃ‚Â¼ven
         lineNumber: -1
       };
     }
   }
   
-  console.log('   ❌ Fuzzy search başarısız');
+  console.log('   ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Fuzzy search baÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±z');
   return null;
 }
 
 // ============================================
-// AKILLI ÖĞRENME SİSTEMİ FONKSİYONLARI
+// AKILLI ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂRENME SÃƒÂ„Ã‚Â°STEMÃƒÂ„Ã‚Â° FONKSÃƒÂ„Ã‚Â°YONLARI
 // ============================================
 
 /**
- * Başarılı pattern'i öğren
+ * BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â± pattern'i ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸren
  */
 async function learnSuccessfulPattern(kurumId, sinavId, result, strategyName) {
   try {
-    console.log(`\n🎓 ÖĞRENME: Başarılı pattern kaydediliyor...`);
+    console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚ÂÃ‚Â“ ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂRENME: BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â± pattern kaydediliyor...`);
     
     // Sınav tipini al
     const sinav = await dbGet('SELECT sinav_turu FROM sinavlar WHERE id = ?', [sinavId]);
     
-    // Var olan pattern'i güncelle veya yeni ekle
+    // Var olan pattern'i gÃƒÂƒÃ‚Â¼ncelle veya yeni ekle
     const existing = await dbGet(`
       SELECT id, success_rate, use_count 
       FROM pdf_learning_patterns 
@@ -1607,7 +1621,7 @@ async function learnSuccessfulPattern(kurumId, sinavId, result, strategyName) {
     `, [kurumId, result.lineNumber]);
     
     if (existing) {
-      // Başarı oranını güncelle (moving average)
+      // BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â± oranÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± gÃƒÂƒÃ‚Â¼ncelle (moving average)
       const newSuccessRate = (existing.success_rate * existing.use_count + result.confidence) / (existing.use_count + 1);
       
       await dbRun(`
@@ -1618,7 +1632,7 @@ async function learnSuccessfulPattern(kurumId, sinavId, result, strategyName) {
         WHERE id = ?
       `, [newSuccessRate, existing.id]);
       
-      console.log(`   ✅ Pattern güncellendi (Yeni başarı: ${(newSuccessRate * 100).toFixed(0)}%)`);
+      console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… Pattern güncellendi (Yeni baÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±: ${(newSuccessRate * 100).toFixed(0)}%)`);
     } else {
       // Yeni pattern ekle
       await dbRun(`
@@ -1627,15 +1641,15 @@ async function learnSuccessfulPattern(kurumId, sinavId, result, strategyName) {
         VALUES (?, ?, ?, ?, ?)
       `, [kurumId, sinav?.sinav_turu || 'unknown', result.lineNumber, strategyName, result.confidence]);
       
-      console.log(`   ✅ Yeni pattern öğrenildi (Satır: ${result.lineNumber})`);
+      console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… Yeni pattern ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenildi (SatÃƒÂ„Ã‚Â±r: ${result.lineNumber})`);
     }
   } catch (error) {
-    console.error('❌ Öğrenme hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸrenme hatasÃƒÂ„Ã‚Â±:', error);
   }
 }
 
 /**
- * Başarısızlığı kaydet (gelecekte analiz için)
+ * BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±zlÃƒÂ„Ã‚Â±ÃƒÂ„Ã‚ÂŸÃƒÂ„Ã‚Â± kaydet (gelecekte analiz iÃƒÂƒÃ‚Â§in)
  */
 async function logMatchingFailure(sinavId, lines, reason) {
   try {
@@ -1646,21 +1660,21 @@ async function logMatchingFailure(sinavId, lines, reason) {
       VALUES (?, ?, ?)
     `, [sinavId, attemptedNames.substring(0, 200), reason]);
     
-    console.log('   📝 Başarısızlık kaydedildi (gelecek analiz için)');
+    console.log('   ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±zlÃƒÂ„Ã‚Â±k kaydedildi (gelecek analiz iÃƒÂƒÃ‚Â§in)');
   } catch (error) {
-    console.error('❌ Başarısızlık kayıt hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±zlÃƒÂ„Ã‚Â±k kayıt hatasÃƒÂ„Ã‚Â±:', error);
   }
 }
 
 /**
- * ANA CASCADE MATCHING SİSTEMİ
- * Çok Katmanlı Akıllı Eşleştirme - Strateji 1 başarısız olursa Strateji 2'ye geçer
+ * ANA CASCADE MATCHING SÃƒÂ„Ã‚Â°STEMÃƒÂ„Ã‚Â°
+ * ÃƒÂƒÃ‚Â‡ok KatmanlÃƒÂ„Ã‚Â± AkÃƒÂ„Ã‚Â±llÃƒÂ„Ã‚Â± EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme - Strateji 1 baÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±z olursa Strateji 2'ye geÃƒÂƒÃ‚Â§er
  */
 async function intelligentCascadeMatching(pdfText, sinavId, kurumId, pdfPath) {
-  console.log('\n🧠 AKILLI EŞLEŞTİRME BAŞLADI');
+  console.log('\nÃƒÂ°Ã‚ÂŸÃ‚Â§Ã‚Â  AKILLI EÃƒÂ…Ã‚ÂLEÃƒÂ…Ã‚ÂTÃƒÂ„Ã‚Â°RME BAÃƒÂ…Ã‚ÂLADI');
   
   try {
-    // 1. Sınava katılan öğrencileri al
+    // 1. Sınava katÃƒÂ„Ã‚Â±lan ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri al
     const katilimcilar = await dbAll(`
       SELECT 
         sk.ogrenci_id,
@@ -1675,14 +1689,14 @@ async function intelligentCascadeMatching(pdfText, sinavId, kurumId, pdfPath) {
       WHERE sk.sinav_id = ?
     `, [sinavId]);
     
-    console.log(`👥 Sınava katılan: ${katilimcilar.length} öğrenci`);
+    console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â¥ Sınava katÃƒÂ„Ã‚Â±lan: ${katilimcilar.length} ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci`);
     
     if (katilimcilar.length === 0) {
-      console.log('⚠️ Sınava katılan öğrenci bulunamadı!');
+      console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Sınava katÃƒÂ„Ã‚Â±lan ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci bulunamadı!');
       return null;
     }
     
-    // PDF'den tüm satırları çıkar
+    // PDF'den tÃƒÂƒÃ‚Â¼m satÃƒÂ„Ã‚Â±rlarÃƒÂ„Ã‚Â± ÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â±kar
     const lines = pdfText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     
     const strategies = [
@@ -1696,36 +1710,36 @@ async function intelligentCascadeMatching(pdfText, sinavId, kurumId, pdfPath) {
     let result = null;
     let usedStrategy = null;
     
-    // Her stratejiyi sırayla dene
+    // Her stratejiyi sÃƒÂ„Ã‚Â±rayla dene
     for (let i = 0; i < strategies.length; i++) {
       const strategy = strategies[i];
-      console.log(`\n🔍 Strateji ${i+1}: ${strategy.name}`);
+      console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â”Ã‚Â Strateji ${i+1}: ${strategy.name}`);
       
       try {
         result = await strategy(lines, katilimcilar, kurumId, sinavId, pdfPath);
         
-        // Strateji 1 ve 2 için daha düşük eşik, diğerleri için 0.75
+        // Strateji 1 ve 2 iÃƒÂƒÃ‚Â§in daha dÃƒÂƒÃ‚Â¼ÃƒÂ…Ã‚ÂŸÃƒÂƒÃ‚Â¼k eÃƒÂ…Ã‚ÂŸik, diÃƒÂ„Ã‚ÂŸerleri iÃƒÂƒÃ‚Â§in 0.75
         const minConfidence = (i === 0 || i === 1) ? 0.70 : 0.75;
         
         if (result && result.confidence >= minConfidence) {
           usedStrategy = strategy.name;
-          console.log(`✅ Strateji ${i+1} BAŞARILI! (Güven: ${(result.confidence * 100).toFixed(0)}%)`);
+          console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… Strateji ${i+1} BAÃƒÂ…Ã‚ÂARILI! (GÃƒÂƒÃ‚Â¼ven: ${(result.confidence * 100).toFixed(0)}%)`);
           
-          // Başarılı stratejiyi öğren
+          // BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â± stratejiyi ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸren
           await learnSuccessfulPattern(kurumId, sinavId, result, strategy.name);
           break;
         } else {
-          console.log(`⚠️ Strateji ${i+1} yeterli güvende değil (Mevcut: ${result?.confidence ? (result.confidence * 100).toFixed(0) + '%' : 'yok'}, Gereken: ${(minConfidence * 100).toFixed(0)}%)`);
+          console.log(`ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Strateji ${i+1} yeterli gÃƒÂƒÃ‚Â¼vende deÃƒÂ„Ã‚ÂŸil (Mevcut: ${result?.confidence ? (result.confidence * 100).toFixed(0) + '%' : 'yok'}, Gereken: ${(minConfidence * 100).toFixed(0)}%)`);
         }
       } catch (error) {
-        console.error(`❌ Strateji ${i+1} hatası:`, error.message);
+        console.error(`ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Strateji ${i+1} hatasÃƒÂ„Ã‚Â±:`, error.message);
       }
     }
     
-    // Hiçbir strateji işe yaramadıysa
+    // HiÃƒÂƒÃ‚Â§bir strateji iÃƒÂ…Ã‚ÂŸe yaramadıysa
     if (!result || result.confidence < 0.70) {
-      console.log('❌ TÜM STRATEJİLER BAŞARISIZ - Manuel eşleştirme gerekli');
-      console.log(`   En iyi sonuç: ${result?.confidence ? (result.confidence * 100).toFixed(0) + '%' : 'Bulunamadı'}`);
+      console.log('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ TÃƒÂƒÃ‚ÂœM STRATEJÃƒÂ„Ã‚Â°LER BAÃƒÂ…Ã‚ÂARISIZ - Manuel eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme gerekli');
+      console.log(`   En iyi sonuÃƒÂƒÃ‚Â§: ${result?.confidence ? (result.confidence * 100).toFixed(0) + '%' : 'Bulunamadı'}`);
       await logMatchingFailure(sinavId, lines, 'all_strategies_failed');
       return null;
     }
@@ -1735,7 +1749,7 @@ async function intelligentCascadeMatching(pdfText, sinavId, kurumId, pdfPath) {
       usedStrategy: usedStrategy
     };
   } catch (error) {
-    console.error('❌ Cascade matching hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Cascade matching hatasÃƒÂ„Ã‚Â±:', error);
     return null;
   }
 }
@@ -1744,32 +1758,32 @@ async function intelligentCascadeMatching(pdfText, sinavId, kurumId, pdfPath) {
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static('public'));
-app.use('/uploads', express.static('uploads')); // PDF dosyalarına erişim için
+app.use('/uploads', express.static('uploads')); // PDF dosyalarÃƒÂ„Ã‚Â±na erişim iÃƒÂƒÃ‚Â§in
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-// EJS cache'i devre dışı bırak (development için)
+// EJS cache'i devre dÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸÃƒÂ„Ã‚Â± bÃƒÂ„Ã‚Â±rak (development iÃƒÂƒÃ‚Â§in)
 app.set('view cache', false);
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'sinav-merkezi-secret-key-2024-production',
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: { 
-    secure: false, // Railway proxy arkasında çalıştığı için false
-    httpOnly: true, // XSS koruması
+    secure: isProd, // production'da HTTPS zorunlu, local gelistirmede false
+    httpOnly: true, // XSS korumasÃƒÂ„Ã‚Â±
     maxAge: 24 * 60 * 60 * 1000, // 24 saat
-    sameSite: 'lax' // Railway için lax daha uygun
+    sameSite: 'lax' // CSRF riskini azaltmak icin
   },
-  proxy: true // Railway proxy desteği
+  proxy: true // Railway proxy desteÃƒÂ„Ã‚ÂŸi
 }));
 
-// Upload klasörü
+// Upload klasÃƒÂƒÃ‚Â¶rÃƒÂƒÃ‚Â¼
 const uploadDir = 'uploads';
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Multer yapılandırması
+// Multer yapÃƒÂ„Ã‚Â±landÃƒÂ„Ã‚Â±rmasÃƒÂ„Ã‚Â±
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
@@ -1789,22 +1803,22 @@ const upload = multer({
     if (allowedTypes.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error('Sadece Excel ve CSV dosyaları yüklenebilir!'));
+      cb(new Error('Sadece Excel ve CSV dosyalarÃƒÂ„Ã‚Â± yÃƒÂƒÃ‚Â¼klenebilir!'));
     }
   }
 });
 
-// Yardımcı fonksiyonlar
+// YardÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â± fonksiyonlar
 function requireAuth(req, res, next) {
-  console.log('🔒 requireAuth middleware:');
+  console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â”Ã‚Â’ requireAuth middleware:');
   console.log('   Session ID:', req.session.userId);
   console.log('   User Type:', req.session.userType);
   
   if (req.session.userId) {
-    console.log('   ✅ Kimlik doğrulandı\n');
+    console.log('   ÃƒÂ¢Ã‚ÂœÃ‚Â… Kimlik doÃƒÂ„Ã‚ÂŸrulandÃƒÂ„Ã‚Â±\n');
     next();
   } else {
-    console.log('   ❌ Kimlik doğrulanamadı, login\'e yönlendiriliyor\n');
+    console.log('   ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Kimlik doÃƒÂ„Ã‚ÂŸrulanamadı, login\'e yÃƒÂƒÃ‚Â¶nlendiriliyor\n');
     res.redirect('/login');
   }
 }
@@ -1856,7 +1870,7 @@ async function ogrenciEslestir(data, ogrenciAdiKolonu = null) {
     const keys = Object.keys(data[0]);
     ogrenciAdiKolonu = keys.find(key => {
       const keyLower = String(key).toLowerCase();
-      return ['ad', 'isim', 'name', 'öğrenci', 'student', 'ad soyad', 'ad_soyad'].some(kelime => 
+      return ['ad', 'isim', 'name', 'ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci', 'student', 'ad soyad', 'ad_soyad'].some(kelime => 
         keyLower.includes(kelime)
       );
     });
@@ -1864,7 +1878,7 @@ async function ogrenciEslestir(data, ogrenciAdiKolonu = null) {
   
   if (!ogrenciAdiKolonu) return [];
   
-  // Tüm öğrencileri çek
+  // TÃƒÂƒÃ‚Â¼m ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri ÃƒÂƒÃ‚Â§ek
   const tumOgrenciler = await dbAll('SELECT * FROM ogrenciler');
   const ogrenciMap = {};
   tumOgrenciler.forEach(ogr => {
@@ -1872,7 +1886,7 @@ async function ogrenciEslestir(data, ogrenciAdiKolonu = null) {
     ogrenciMap[normalized] = ogr;
   });
   
-  // Eşleştirme yap
+  // EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme yap
   const eslesmeler = [];
   data.forEach((row, idx) => {
     const ogrenciAdi = normalizeIsim(row[ogrenciAdiKolonu]);
@@ -1898,14 +1912,14 @@ async function readExcelFile(filePath) {
   const data = [];
   const headers = [];
   
-  // İlk satırı başlık olarak al
+  // ÃƒÂ„Ã‚Â°lk satÃƒÂ„Ã‚Â±rÃƒÂ„Ã‚Â± baÃƒÂ…Ã‚ÂŸlÃƒÂ„Ã‚Â±k olarak al
   worksheet.getRow(1).eachCell((cell, colNumber) => {
     headers[colNumber] = cell.value;
   });
   
-  // Diğer satırları oku
+  // DiÃƒÂ„Ã‚ÂŸer satÃƒÂ„Ã‚Â±rlarÃƒÂ„Ã‚Â± oku
   worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return; // Başlık satırını atla
+    if (rowNumber === 1) return; // BaÃƒÂ…Ã‚ÂŸlÃƒÂ„Ã‚Â±k satÃƒÂ„Ã‚Â±rÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± atla
     
     const rowData = {};
     row.eachCell((cell, colNumber) => {
@@ -1930,7 +1944,7 @@ function readCSVFile(filePath) {
 
 // Routes
 app.get('/', async (req, res) => {
-  // Eğer giriş yapmışsa ve force parametresi yoksa dashboard'a yönlendir
+  // EÃƒÂ„Ã‚ÂŸer giriÃƒÂ…Ã‚ÂŸ yapmÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸsa ve force parametresi yoksa dashboard'a yÃƒÂƒÃ‚Â¶nlendir
   if (req.session.userId && !req.query.force) {
     if (req.session.userType === 'veli') {
       return res.redirect('/veli/dashboard');
@@ -1941,7 +1955,7 @@ app.get('/', async (req, res) => {
     }
   }
   
-  // Anasayfa verilerini çek
+  // Anasayfa verilerini ÃƒÂƒÃ‚Â§ek
   try {
     let slider = [];
     let duyurular = [];
@@ -1952,17 +1966,17 @@ app.get('/', async (req, res) => {
     try {
       slider = await dbAll('SELECT * FROM slider WHERE aktif = 1 ORDER BY sira ASC');
     } catch (e) {
-      console.log('Slider hatası:', e.message);
+      console.log('Slider hatasÃƒÂ„Ã‚Â±:', e.message);
     }
     
     try {
       duyurular = await dbAll('SELECT * FROM duyurular WHERE aktif = 1 ORDER BY sira ASC, tarih DESC LIMIT 6');
     } catch (e) {
-      console.log('Duyurular hatası:', e.message);
+      console.log('Duyurular hatasÃƒÂ„Ã‚Â±:', e.message);
     }
     
     try {
-      // Yeni sınavlar tablosundan çek (fiyat > 0 olanlar satılık)
+      // Yeni sınavlar tablosundan ÃƒÂƒÃ‚Â§ek (fiyat > 0 olanlar satÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±k)
       const sinavlarRaw = await dbAll('SELECT * FROM sinavlar WHERE fiyat > 0 ORDER BY tarih ASC LIMIT 6');
       // ozellikler JSON string ise parse et
       satinAlinabilirSinavlar = sinavlarRaw.map(sinav => {
@@ -1984,13 +1998,13 @@ app.get('/', async (req, res) => {
         return { ...sinav, ozellikler_parsed };
       });
     } catch (e) {
-      console.log('Sınavlar hatası:', e.message);
+      console.log('Sınavlar hatasÃƒÂ„Ã‚Â±:', e.message);
       satinAlinabilirSinavlar = [];
     }
     
     let sinavPaketleri = [];
     try {
-      // Aktif sınav paketlerini çek
+      // Aktif sınav paketlerini ÃƒÂƒÃ‚Â§ek
       sinavPaketleri = await dbAll(`
         SELECT 
           sp.*,
@@ -2003,20 +2017,20 @@ app.get('/', async (req, res) => {
         LIMIT 6
       `);
     } catch (e) {
-      console.log('Sınav paketleri hatası:', e.message);
+      console.log('Sınav paketleri hatasÃƒÂ„Ã‚Â±:', e.message);
     }
     
-    // İstatistikler
+    // ÃƒÂ„Ã‚Â°statistikler
     try {
       toplamOgrenci = await dbGet('SELECT COUNT(*) as sayi FROM ogrenciler') || { sayi: 0 };
     } catch (e) {
-      console.log('Öğrenci sayısı hatası:', e.message);
+      console.log('Öğrenci sayÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â± hatasÃƒÂ„Ã‚Â±:', e.message);
     }
     
     try {
       toplamSinav = await dbGet('SELECT COUNT(*) as sayi FROM sinavlar') || { sayi: 0 };
     } catch (e) {
-      console.log('Sınav sayısı hatası:', e.message);
+      console.log('Sınav sayÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â± hatasÃƒÂ„Ã‚Â±:', e.message);
     }
     
     res.render('index', {
@@ -2031,8 +2045,8 @@ app.get('/', async (req, res) => {
       user: req.session.userId ? { username: req.session.username, type: req.session.userType } : null
     });
   } catch (error) {
-    console.error('Anasayfa hatası:', error);
-    // Hata olsa bile anasayfayı göster
+    console.error('Anasayfa hatasÃƒÂ„Ã‚Â±:', error);
+    // Hata olsa bile anasayfayÃƒÂ„Ã‚Â± gÃƒÂƒÃ‚Â¶ster
     try {
       res.render('index', {
         slider: [],
@@ -2043,7 +2057,7 @@ app.get('/', async (req, res) => {
         user: null
       });
     } catch (renderError) {
-      console.error('Template render hatası:', renderError);
+      console.error('Template render hatasÃƒÂ„Ã‚Â±:', renderError);
       res.send('Anasayfa yüklenirken bir hata oluştu: ' + renderError.message);
     }
   }
@@ -2062,7 +2076,7 @@ app.get('/kurum', requireAuth, (req, res) => {
   res.redirect('/kurum/dashboard');
 });
 
-// Sınav Paketleri Sayfası
+// Sınav Paketleri SayfasÃƒÂ„Ã‚Â±
 app.get('/sinav-paketleri', async (req, res) => {
   try {
     // Tekil sınavlar (fiyat > 0 olanlar)
@@ -2090,7 +2104,7 @@ app.get('/sinav-paketleri', async (req, res) => {
       } : null
     });
   } catch (error) {
-    console.error('Sınav paketleri hatası:', error);
+    console.error('Sınav paketleri hatasÃƒÂ„Ã‚Â±:', error);
     res.render('sinav-paketleri', {
       sinavlar: [],
       paketler: [],
@@ -2103,25 +2117,25 @@ app.get('/sinav-paketleri', async (req, res) => {
   }
 });
 
-// Sınav Talep Gönderme - Giriş Zorunlu Değil
+// Sınav Talep GÃƒÂƒÃ‚Â¶nderme - GiriÃƒÂ…Ã‚ÂŸ Zorunlu DeÃƒÂ„Ã‚ÂŸil
 app.post('/sinav-talep-gonder', async (req, res) => {
   try {
     const { sinav_id, ad_soyad, email, telefon, password, aciklama } = req.body;
-    let veli_id = req.session.userId; // Eğer giriş yapılmışsa
+    let veli_id = req.session.userId; // EÃƒÂ„Ã‚ÂŸer giriÃƒÂ…Ã‚ÂŸ yapÃƒÂ„Ã‚Â±lmÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸsa
     
-    // Sınavı kontrol et
+    // SınavÃƒÂ„Ã‚Â± kontrol et
     const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinav_id]);
     if (!sinav) {
       return res.json({ success: false, message: 'Sınav bulunamadı!' });
     }
     
-    // DURUM 1: Giriş yapılmamış - Yeni hesap oluştur veya temp hesap kullan
+    // DURUM 1: GiriÃƒÂ…Ã‚ÂŸ yapÃƒÂ„Ã‚Â±lmamÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸ - Yeni hesap oluştur veya temp hesap kullan
     if (!veli_id) {
-      // Zorunlu alanlar kontrolü (sadece ad_soyad ve telefon)
+      // Zorunlu alanlar kontrolÃƒÂƒÃ‚Â¼ (sadece ad_soyad ve telefon)
       if (!ad_soyad || !telefon) {
         return res.json({ 
           success: false, 
-          message: 'Lütfen tüm bilgileri eksiksiz doldurun!' 
+          message: 'LÃƒÂƒÃ‚Â¼tfen tÃƒÂƒÃ‚Â¼m bilgileri eksiksiz doldurun!' 
         });
       }
       
@@ -2129,18 +2143,18 @@ app.post('/sinav-talep-gonder', async (req, res) => {
       const tempEmail = email || `${telefon.replace(/\D/g, '')}@temp.com`;
       const tempPassword = password || telefon.replace(/\D/g, '').slice(-6);
       
-      // E-posta daha önce kullanılmış mı?
+      // E-posta daha ÃƒÂƒÃ‚Â¶nce kullanÃƒÂ„Ã‚Â±lmÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸ mÃƒÂ„Ã‚Â±?
       const mevcutKullanici = await dbGet('SELECT id FROM users WHERE email = ?', [tempEmail]);
       if (mevcutKullanici) {
         veli_id = mevcutKullanici.id;
       } else {
-        // Şifre hash'le
+        // ÃƒÂ…Ã‚Âifre hash'le
         const password_hash = await bcrypt.hash(tempPassword, 10);
         
         // Username oluştur (telefondan)
         const username = telefon.replace(/\D/g, '') + '_' + Date.now();
         
-        // Yeni veli hesabı oluştur
+        // Yeni veli hesabÃƒÂ„Ã‚Â± oluştur
         const result = await dbRun(
           `INSERT INTO users (username, email, password_hash, user_type, ad_soyad, telefon, created_at) 
            VALUES (?, ?, ?, 'veli', ?, ?, datetime('now'))`,
@@ -2149,23 +2163,23 @@ app.post('/sinav-talep-gonder', async (req, res) => {
         
         veli_id = result.lastID;
         
-        console.log(`✅ Yeni veli hesabı oluşturuldu: ${tempEmail} (ID: ${veli_id})`);
+        console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… Yeni veli hesabÃƒÂ„Ã‚Â± oluşturuldu: ${tempEmail} (ID: ${veli_id})`);
       }
       
-      // Otomatik giriş yapma (session oluşturma)
+      // Otomatik giriÃƒÂ…Ã‚ÂŸ yapma (session oluşturma)
       // req.session.userId = veli_id;
       // req.session.username = username;
       // req.session.userType = 'veli';
     }
     
-    // DURUM 2: Daha önce talep gönderilmiş mi kontrol et
+    // DURUM 2: Daha ÃƒÂƒÃ‚Â¶nce talep gÃƒÂƒÃ‚Â¶nderilmiÃƒÂ…Ã‚ÂŸ mi kontrol et
     const mevcutTalep = await dbGet(
       'SELECT * FROM sinav_talepleri WHERE veli_id = ? AND sinav_id = ? AND durum != "reddedildi"',
       [veli_id, sinav_id]
     );
     
     if (mevcutTalep) {
-      return res.json({ success: false, message: 'Bu sınav için zaten bir talebiniz bulunmaktadır!' });
+      return res.json({ success: false, message: 'Bu sınav iÃƒÂƒÃ‚Â§in zaten bir talebiniz bulunmaktadır!' });
     }
     
     // Talep kaydet
@@ -2175,46 +2189,46 @@ app.post('/sinav-talep-gonder', async (req, res) => {
       [veli_id, sinav_id, aciklama || '']
     );
     
-    // Veli bilgilerini al (WhatsApp bildirimi için)
+    // Veli bilgilerini al (WhatsApp bildirimi iÃƒÂƒÃ‚Â§in)
     const veliDetay = await dbGet('SELECT * FROM users WHERE id = ?', [veli_id]);
     
-    // WhatsApp API ayarlarını kontrol et
+    // WhatsApp API ayarlarınÃƒÂ„Ã‚Â± kontrol et
     const whatsappAyarlari = await dbGet('SELECT * FROM whatsapp_ayarlari WHERE aktif = 1');
     
     if (whatsappAyarlari && whatsappAyarlari.phone_number) {
-      // Bildirim mesajı oluştur
+      // Bildirim mesajÃƒÂ„Ã‚Â± oluştur
       const mesaj = talepBildirimMesaji(veliDetay, sinav);
       
-      // WhatsApp bildirimi gönder (arka planda, hata olsa bile kullanıcıya başarılı dön)
+      // WhatsApp bildirimi gÃƒÂƒÃ‚Â¶nder (arka planda, hata olsa bile kullanıcıya başarılı dÃƒÂƒÃ‚Â¶n)
       whatsappBildirimGonder(whatsappAyarlari.phone_number, mesaj, 'yeni_talep')
         .then(result => {
-          console.log('✅ WhatsApp bildirimi sonucu:', result);
+          console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… WhatsApp bildirimi sonucu:', result);
         })
         .catch(error => {
-          console.error('❌ WhatsApp bildirimi hatası (arka plan):', error);
+          console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ WhatsApp bildirimi hatasÃƒÂ„Ã‚Â± (arka plan):', error);
         });
     } else {
-      console.log('⚠️  WhatsApp ayarları yapılmamış, bildirim gönderilmedi');
+      console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â  WhatsApp ayarları yapÃƒÂ„Ã‚Â±lmamÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸ, bildirim gÃƒÂƒÃ‚Â¶nderilmedi');
     }
     
     res.json({ 
       success: true, 
-      message: `${sinav.ad} için talebiniz başarıyla gönderildi! En kısa sürede değerlendirilecektir.`,
+      message: `${sinav.ad} iÃƒÂƒÃ‚Â§in talebiniz başarıyla gÃƒÂƒÃ‚Â¶nderildi! En kÃƒÂ„Ã‚Â±sa sÃƒÂƒÃ‚Â¼rede deÃƒÂ„Ã‚ÂŸerlendirilecektir.`,
       yeniHesap: (ad_soyad && email) ? true : false,
       veli_id: veli_id
     });
     
   } catch (error) {
-    console.error('Talep gönderme hatası:', error);
-    res.json({ success: false, message: 'Talep gönderilirken bir hata oluştu: ' + error.message });
+    console.error('Talep gÃƒÂƒÃ‚Â¶nderme hatasÃƒÂ„Ã‚Â±:', error);
+    res.json({ success: false, message: 'Talep gÃƒÂƒÃ‚Â¶nderilirken bir hata oluştu: ' + error.message });
   }
 });
 
-// Paket Talebi Gönder
+// Paket Talebi GÃƒÂƒÃ‚Â¶nder
 app.post('/paket-talep-gonder', async (req, res) => {
   try {
     const { paket_id, ad_soyad, email, telefon, password, aciklama } = req.body;
-    let veli_id = req.session.userId; // Eğer giriş yapılmışsa
+    let veli_id = req.session.userId; // EÃƒÂ„Ã‚ÂŸer giriÃƒÂ…Ã‚ÂŸ yapÃƒÂ„Ã‚Â±lmÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸsa
     
     // Paketi kontrol et
     const paket = await dbGet('SELECT * FROM sinav_paketleri WHERE id = ? AND aktif = 1', [paket_id]);
@@ -2222,13 +2236,13 @@ app.post('/paket-talep-gonder', async (req, res) => {
       return res.json({ success: false, message: 'Paket bulunamadı!' });
     }
     
-    // DURUM 1: Giriş yapılmamış - Yeni hesap oluştur veya temp hesap kullan
+    // DURUM 1: GiriÃƒÂ…Ã‚ÂŸ yapÃƒÂ„Ã‚Â±lmamÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸ - Yeni hesap oluştur veya temp hesap kullan
     if (!veli_id) {
-      // Zorunlu alanlar kontrolü (sadece ad_soyad ve telefon)
+      // Zorunlu alanlar kontrolÃƒÂƒÃ‚Â¼ (sadece ad_soyad ve telefon)
       if (!ad_soyad || !telefon) {
         return res.json({ 
           success: false, 
-          message: 'Lütfen tüm bilgileri eksiksiz doldurun!' 
+          message: 'LÃƒÂƒÃ‚Â¼tfen tÃƒÂƒÃ‚Â¼m bilgileri eksiksiz doldurun!' 
         });
       }
       
@@ -2236,18 +2250,18 @@ app.post('/paket-talep-gonder', async (req, res) => {
       const tempEmail = email || `${telefon.replace(/\D/g, '')}@temp.com`;
       const tempPassword = password || telefon.replace(/\D/g, '').slice(-6);
       
-      // E-posta daha önce kullanılmış mı?
+      // E-posta daha ÃƒÂƒÃ‚Â¶nce kullanÃƒÂ„Ã‚Â±lmÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸ mÃƒÂ„Ã‚Â±?
       const mevcutKullanici = await dbGet('SELECT id FROM users WHERE email = ?', [tempEmail]);
       if (mevcutKullanici) {
         veli_id = mevcutKullanici.id;
       } else {
-        // Şifre hash'le
+        // ÃƒÂ…Ã‚Âifre hash'le
         const password_hash = await bcrypt.hash(tempPassword, 10);
         
         // Username oluştur (telefondan)
         const username = telefon.replace(/\D/g, '') + '_' + Date.now();
         
-        // Yeni veli hesabı oluştur
+        // Yeni veli hesabÃƒÂ„Ã‚Â± oluştur
         const result = await dbRun(
           `INSERT INTO users (username, email, password_hash, user_type, ad_soyad, telefon, created_at) 
            VALUES (?, ?, ?, 'veli', ?, ?, datetime('now'))`,
@@ -2256,24 +2270,24 @@ app.post('/paket-talep-gonder', async (req, res) => {
         
         veli_id = result.lastID;
         
-        console.log(`✅ Yeni veli hesabı oluşturuldu: ${tempEmail} (ID: ${veli_id})`);
+        console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… Yeni veli hesabÃƒÂ„Ã‚Â± oluşturuldu: ${tempEmail} (ID: ${veli_id})`);
       }
     }
     
-    // Paket içindeki sınavları al
+    // Paket iÃƒÂƒÃ‚Â§indeki sınavlarÃƒÂ„Ã‚Â± al
     const paketSinavlari = await dbAll(
       'SELECT sinav_id FROM paket_sinavlari WHERE paket_id = ?',
       [paket_id]
     );
     
     if (paketSinavlari.length === 0) {
-      return res.json({ success: false, message: 'Paket içinde sınav bulunamadı!' });
+      return res.json({ success: false, message: 'Paket iÃƒÂƒÃ‚Â§inde sınav bulunamadı!' });
     }
     
-    // Her sınav için talep oluştur
+    // Her sınav iÃƒÂƒÃ‚Â§in talep oluştur
     let olusturulanTalep = 0;
     for (const ps of paketSinavlari) {
-      // Daha önce talep gönderilmiş mi kontrol et
+      // Daha ÃƒÂƒÃ‚Â¶nce talep gÃƒÂƒÃ‚Â¶nderilmiÃƒÂ…Ã‚ÂŸ mi kontrol et
       const mevcutTalep = await dbGet(
         'SELECT * FROM sinav_talepleri WHERE veli_id = ? AND sinav_id = ? AND durum != "reddedildi"',
         [veli_id, ps.sinav_id]
@@ -2292,50 +2306,50 @@ app.post('/paket-talep-gonder', async (req, res) => {
     }
     
     if (olusturulanTalep === 0) {
-      return res.json({ success: false, message: 'Bu paket için zaten tüm sınavlara talebiniz bulunmaktadır!' });
+      return res.json({ success: false, message: 'Bu paket iÃƒÂƒÃ‚Â§in zaten tÃƒÂƒÃ‚Â¼m sınavlara talebiniz bulunmaktadır!' });
     }
     
-    // Veli bilgilerini al (WhatsApp bildirimi için)
+    // Veli bilgilerini al (WhatsApp bildirimi iÃƒÂƒÃ‚Â§in)
     const veliDetay = await dbGet('SELECT * FROM users WHERE id = ?', [veli_id]);
     
-    // WhatsApp API ayarlarını kontrol et
+    // WhatsApp API ayarlarınÃƒÂ„Ã‚Â± kontrol et
     const whatsappAyarlari = await dbGet('SELECT * FROM whatsapp_ayarlari WHERE aktif = 1');
     
     if (whatsappAyarlari && whatsappAyarlari.phone_number) {
-      // Bildirim mesajı oluştur
-      const mesaj = `📦 YENİ PAKET TALEBİ\n\n` +
+      // Bildirim mesajÃƒÂ„Ã‚Â± oluştur
+      const mesaj = `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â¦ YENÃƒÂ„Ã‚Â° PAKET TALEBÃƒÂ„Ã‚Â°\n\n` +
         `Merhaba,\n\n` +
-        `${veliDetay.ad_soyad || veliDetay.username} adlı veli "${paket.ad}" paketi için talep gönderdi.\n\n` +
-        `📦 Paket: ${paket.ad}\n` +
-        `📚 Sınıf: ${paket.sinif || 'Belirtilmemiş'}\n` +
-        `📝 Sınav Sayısı: ${paketSinavlari.length}\n` +
-        `${aciklama ? `💬 Açıklama: ${aciklama}\n` : ''}\n` +
-        `📞 Telefon: ${veliDetay.telefon || 'Belirtilmemiş'}\n` +
-        `📧 Email: ${veliDetay.email || 'Belirtilmemiş'}\n\n` +
-        `Lütfen kurum panelinden talebi değerlendirin.`;
+        `${veliDetay.ad_soyad || veliDetay.username} adlÃƒÂ„Ã‚Â± veli "${paket.ad}" paketi iÃƒÂƒÃ‚Â§in talep gÃƒÂƒÃ‚Â¶nderdi.\n\n` +
+        `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â¦ Paket: ${paket.ad}\n` +
+        `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Âš SÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â±f: ${paket.sinif || 'BelirtilmemiÃƒÂ…Ã‚ÂŸ'}\n` +
+        `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â Sınav SayÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±: ${paketSinavlari.length}\n` +
+        `${aciklama ? `ÃƒÂ°Ã‚ÂŸÃ‚Â’Ã‚Â¬ AÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â±klama: ${aciklama}\n` : ''}\n` +
+        `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â Telefon: ${veliDetay.telefon || 'BelirtilmemiÃƒÂ…Ã‚ÂŸ'}\n` +
+        `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â§ Email: ${veliDetay.email || 'BelirtilmemiÃƒÂ…Ã‚ÂŸ'}\n\n` +
+        `LÃƒÂƒÃ‚Â¼tfen kurum panelinden talebi deÃƒÂ„Ã‚ÂŸerlendirin.`;
       
-      // WhatsApp bildirimi gönder (arka planda, hata olsa bile kullanıcıya başarılı dön)
+      // WhatsApp bildirimi gÃƒÂƒÃ‚Â¶nder (arka planda, hata olsa bile kullanıcıya başarılı dÃƒÂƒÃ‚Â¶n)
       whatsappBildirimGonder(whatsappAyarlari.phone_number, mesaj, 'paket_talebi')
         .then(result => {
-          console.log('✅ WhatsApp bildirimi sonucu:', result);
+          console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… WhatsApp bildirimi sonucu:', result);
         })
         .catch(error => {
-          console.error('❌ WhatsApp bildirimi hatası (arka plan):', error);
+          console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ WhatsApp bildirimi hatasÃƒÂ„Ã‚Â± (arka plan):', error);
         });
     } else {
-      console.log('⚠️  WhatsApp ayarları yapılmamış, bildirim gönderilmedi');
+      console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â  WhatsApp ayarları yapÃƒÂ„Ã‚Â±lmamÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸ, bildirim gÃƒÂƒÃ‚Â¶nderilmedi');
     }
     
     res.json({ 
       success: true, 
-      message: `${paket.ad} paketi için ${olusturulanTalep} sınav talebi başarıyla gönderildi! En kısa sürede değerlendirilecektir.`,
+      message: `${paket.ad} paketi iÃƒÂƒÃ‚Â§in ${olusturulanTalep} sınav talebi başarıyla gÃƒÂƒÃ‚Â¶nderildi! En kÃƒÂ„Ã‚Â±sa sÃƒÂƒÃ‚Â¼rede deÃƒÂ„Ã‚ÂŸerlendirilecektir.`,
       yeniHesap: (ad_soyad && email) ? true : false,
       veli_id: veli_id
     });
     
   } catch (error) {
-    console.error('Paket talep gönderme hatası:', error);
-    res.json({ success: false, message: 'Talep gönderilirken bir hata oluştu: ' + error.message });
+    console.error('Paket talep gÃƒÂƒÃ‚Â¶nderme hatasÃƒÂ„Ã‚Â±:', error);
+    res.json({ success: false, message: 'Talep gÃƒÂƒÃ‚Â¶nderilirken bir hata oluştu: ' + error.message });
   }
 });
 
@@ -2351,12 +2365,12 @@ app.post('/login', loginLimiter, async (req, res) => {
   try {
     const user = await dbGet('SELECT * FROM users WHERE username = ?', [username]);
     
-    console.log('\n🔐 GİRİŞ DENEMESİ:');
+    console.log('\nÃƒÂ°Ã‚ÂŸÃ‚Â”Ã‚Â GÃƒÂ„Ã‚Â°RÃƒÂ„Ã‚Â°ÃƒÂ…Ã‚Â DENEMESÃƒÂ„Ã‚Â°:');
     console.log('   Kullanıcı Adı:', username);
-    console.log('   Veritabanında Bulundu:', user ? 'Evet' : 'Hayır');
+    console.log('Database connected:', DB_PATH);
     if (user) {
       console.log('   Kullanıcı Tipi:', user.user_type);
-      console.log('   Hash Karşılaştırma:', await bcrypt.compare(password, user.password_hash) ? 'Başarılı' : 'Başarısız');
+      console.log('   Hash KarÃƒÂ…Ã‚ÂŸÃƒÂ„Ã‚Â±laÃƒÂ…Ã‚ÂŸtÃƒÂ„Ã‚Â±rma:', await bcrypt.compare(password, user.password_hash) ? 'BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±' : 'BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±z');
     }
     
     if (user && await bcrypt.compare(password, user.password_hash)) {
@@ -2364,16 +2378,16 @@ app.post('/login', loginLimiter, async (req, res) => {
       req.session.username = user.username;
       req.session.userType = user.user_type;
       
-      console.log('   ✅ GİRİŞ BAŞARILI!');
+      console.log('   ÃƒÂ¢Ã‚ÂœÃ‚Â… GÃƒÂ„Ã‚Â°RÃƒÂ„Ã‚Â°ÃƒÂ…Ã‚Â BAÃƒÂ…Ã‚ÂARILI!');
       console.log('   Session ID:', req.session.userId);
       
-      // İlk giriş kontrolü (password_changed = 0 veya NULL)
+      // ÃƒÂ„Ã‚Â°lk giriÃƒÂ…Ã‚ÂŸ kontrolÃƒÂƒÃ‚Â¼ (password_changed = 0 veya NULL)
       if (user.user_type === 'veli' && (user.password_changed === 0 || user.password_changed === null)) {
-        console.log('   🔐 İLK GİRİŞ - Şifre değiştirme ekranına yönlendiriliyor\n');
+        console.log('   ÃƒÂ°Ã‚ÂŸÃ‚Â”Ã‚Â ÃƒÂ„Ã‚Â°LK GÃƒÂ„Ã‚Â°RÃƒÂ„Ã‚Â°ÃƒÂ…Ã‚Â - ÃƒÂ…Ã‚Âifre değiştirme ekranÃƒÂ„Ã‚Â±na yÃƒÂƒÃ‚Â¶nlendiriliyor\n');
         return res.redirect('/sifre-degistir');
       }
       
-      console.log('   Yönlendirme:', user.user_type + ' dashboard\n');
+      console.log('   YÃƒÂƒÃ‚Â¶nlendirme:', user.user_type + ' dashboard\n');
       
       if (user.user_type === 'veli') {
         return res.redirect('/veli/dashboard');
@@ -2384,17 +2398,17 @@ app.post('/login', loginLimiter, async (req, res) => {
       }
     }
     
-    console.log('   ❌ GİRİŞ BAŞARISIZ!\n');
+    console.log('   ÃƒÂ¢Ã‚ÂÃ‚ÂŒ GÃƒÂ„Ã‚Â°RÃƒÂ„Ã‚Â°ÃƒÂ…Ã‚Â BAÃƒÂ…Ã‚ÂARISIZ!\n');
     req.session.error = 'Kullanıcı adı veya şifre hatalı!';
     res.redirect('/login');
   } catch (error) {
-    console.error('Login hatası:', error);
+    console.error('Login hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Giriş sırasında bir hata oluştu!';
     res.redirect('/login');
   }
 });
 
-// Şifre Değiştirme Sayfası (İlk Giriş)
+// ÃƒÂ…Ã‚Âifre DeÃƒÂ„Ã‚ÂŸiÃƒÂ…Ã‚ÂŸtirme SayfasÃƒÂ„Ã‚Â± (ÃƒÂ„Ã‚Â°lk GiriÃƒÂ…Ã‚ÂŸ)
 app.get('/sifre-degistir', (req, res) => {
   if (!req.session.userId) {
     return res.redirect('/login');
@@ -2412,34 +2426,34 @@ app.post('/sifre-degistir', async (req, res) => {
   const { yeni_sifre, yeni_sifre_tekrar } = req.body;
   
   try {
-    // Şifre kontrolü
+    // ÃƒÂ…Ã‚Âifre kontrolÃƒÂƒÃ‚Â¼
     if (yeni_sifre.length < 6) {
-      req.session.error = 'Şifre en az 6 karakter olmalıdır!';
+      req.session.error = 'ÃƒÂ…Ã‚Âifre en az 6 karakter olmalıdır!';
       return res.redirect('/sifre-degistir');
     }
     
     if (yeni_sifre !== yeni_sifre_tekrar) {
-      req.session.error = 'Şifreler uyuşmuyor!';
+      req.session.error = 'ÃƒÂ…Ã‚Âifreler uyuşmuyor!';
       return res.redirect('/sifre-degistir');
     }
     
     // Yeni şifreyi hashle
     const hashedPassword = await bcrypt.hash(yeni_sifre, 10);
     
-    // Veritabanını güncelle
+    // VeritabanÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± gÃƒÂƒÃ‚Â¼ncelle
     await dbRun(`
       UPDATE users 
       SET password_hash = ?, password_changed = 1 
       WHERE id = ?
     `, [hashedPassword, req.session.userId]);
     
-    console.log(`\n🔐 ŞİFRE DEĞİŞTİRİLDİ`);
+    console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â”Ã‚Â ÃƒÂ…Ã‚ÂÃƒÂ„Ã‚Â°FRE DEÃƒÂ„Ã‚ÂÃƒÂ„Ã‚Â°ÃƒÂ…Ã‚ÂTÃƒÂ„Ã‚Â°RÃƒÂ„Ã‚Â°LDÃƒÂ„Ã‚Â°`);
     console.log(`   User ID: ${req.session.userId}`);
-    console.log(`   ✅ Şifre başarıyla değiştirildi\n`);
+    console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… ÃƒÂ…Ã‚Âifre başarıyla değiştirildi\n`);
     
-    req.session.success = 'Şifreniz başarıyla değiştirildi!';
+    req.session.success = 'ÃƒÂ…Ã‚Âifreniz başarıyla değiştirildi!';
     
-    // Kullanıcı tipine göre yönlendir
+    // Kullanıcı tipine gÃƒÂƒÃ‚Â¶re yÃƒÂƒÃ‚Â¶nlendir
     const user = await dbGet('SELECT user_type FROM users WHERE id = ?', [req.session.userId]);
     
     if (user.user_type === 'veli') {
@@ -2449,8 +2463,8 @@ app.post('/sifre-degistir', async (req, res) => {
     }
     
   } catch (error) {
-    console.error('Şifre değiştirme hatası:', error);
-    req.session.error = 'Şifre değiştirme sırasında bir hata oluştu!';
+    console.error('ÃƒÂ…Ã‚Âifre değiştirme hatasÃƒÂ„Ã‚Â±:', error);
+    req.session.error = 'ÃƒÂ…Ã‚Âifre değiştirme sırasında bir hata oluştu!';
     res.redirect('/sifre-degistir');
   }
 });
@@ -2465,26 +2479,26 @@ app.post('/register', async (req, res) => {
   const { username, email, password, user_type } = req.body;
   
   try {
-    // Kullanıcı adı kontrolü
+    // Kullanıcı adı kontrolÃƒÂƒÃ‚Â¼
     const existingUser = await dbGet('SELECT * FROM users WHERE username = ? OR email = ?', [username, email]);
     if (existingUser) {
       req.session.error = existingUser.username === username 
-        ? 'Bu kullanıcı adı zaten kullanılıyor!'
-        : 'Bu e-posta adresi zaten kullanılıyor!';
+        ? 'Bu kullanıcı adı zaten kullanÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±yor!'
+        : 'Bu e-posta adresi zaten kullanÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±yor!';
       return res.redirect('/register');
     }
     
-    // Şifreyi hashle
+    // ÃƒÂ…Ã‚Âifreyi hashle
     const passwordHash = await bcrypt.hash(password, 10);
     
-    // Kullanıcıyı kaydet
+    // KullanıcıyÃƒÂ„Ã‚Â± kaydet
     await dbRun('INSERT INTO users (username, email, password_hash, user_type) VALUES (?, ?, ?, ?)', 
       [username, email, passwordHash, user_type]);
     
     req.session.success = 'Kayıt başarılı! Giriş yapabilirsiniz.';
     res.redirect('/login');
   } catch (error) {
-    console.error('Register hatası:', error);
+    console.error('Register hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Kayıt sırasında bir hata oluştu!';
     res.redirect('/register');
   }
@@ -2495,17 +2509,20 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
-// ÖNEMLİ: Bu endpoint'i production'da kaldırın veya şifreleyin!
+// ÃƒÂƒÃ‚Â–NEMLÃƒÂ„Ã‚Â°: Bu endpoint'i production'da kaldÃƒÂ„Ã‚Â±rÃƒÂ„Ã‚Â±n veya şifreleyin!
 app.get('/reset-admin-password-secret-endpoint-12345', async (req, res) => {
+  if (!ENABLE_ADMIN_RESET) {
+    return res.status(404).send('Not found');
+  }
   try {
     const password_hash = await bcrypt.hash('Admin2024!', 10);
     await dbRun(
       'UPDATE users SET password_hash = ? WHERE username = ?',
       [password_hash, 'kurum_admin']
     );
-    res.send('✅ Admin şifresi sıfırlandı! Username: kurum_admin, Password: Admin2024!');
+    res.send('ÃƒÂ¢Ã‚ÂœÃ‚Â… Admin şifresi sÃƒÂ„Ã‚Â±fÃƒÂ„Ã‚Â±rlandÃƒÂ„Ã‚Â±! Username: kurum_admin, Password: Admin2024!');
   } catch (error) {
-    res.status(500).send('❌ Hata: ' + error.message);
+    res.status(500).send('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Hata: ' + error.message);
   }
 });
 
@@ -2516,27 +2533,27 @@ app.get('/kurum/dashboard', requireAuth, async (req, res) => {
   }
   
   try {
-    // İstatistikler
+    // ÃƒÂ„Ã‚Â°statistikler
     const sinavSayisi = await dbGet('SELECT COUNT(*) as sayi FROM sinavlar');
     const sinavAktif = await dbGet('SELECT COUNT(*) as sayi FROM sinavlar WHERE sonuc_yuklendi = 0 AND katilimci_sayisi > 0');
     const sinavTamamlandi = await dbGet('SELECT COUNT(*) as sayi FROM sinavlar WHERE sonuc_yuklendi = 1');
     const sinavTaslak = await dbGet('SELECT COUNT(*) as sayi FROM sinavlar WHERE katilimci_sayisi = 0');
     const toplamKatilimci = await dbGet('SELECT SUM(katilimci_sayisi) as toplam FROM sinavlar');
-    const takvimSayisi = await dbGet('SELECT COUNT(*) as sayi FROM sinavlar'); // Düzeltildi: sinav_takvimi → sinavlar
+    const takvimSayisi = await dbGet('SELECT COUNT(*) as sayi FROM sinavlar'); // DÃƒÂƒÃ‚Â¼zeltildi: sinav_takvimi ÃƒÂ¢Ã‚Â†Ã‚Â’ sinavlar
     const veliSayisi = await dbGet('SELECT COUNT(*) as sayi FROM users WHERE user_type = "veli"');
     
-    // Tüm öğrenci sayısı (kurum + veli kayıtları)
+    // TÃƒÂƒÃ‚Â¼m ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci sayÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â± (kurum + veli kayıtlarÃƒÂ„Ã‚Â±)
     const ogrenciKurumSayisi = await dbGet('SELECT COUNT(*) as sayi FROM ogrenci_kayitlari');
     const ogrenciVeliSayisi = await dbGet('SELECT COUNT(*) as sayi FROM ogrenciler');
     const ogrenciSayisi = { sayi: (ogrenciKurumSayisi.sayi || 0) + (ogrenciVeliSayisi.sayi || 0) };
-    const ogrenciKayitSayisi = ogrenciKurumSayisi; // Kurum kayıtları için ayrı
+    const ogrenciKayitSayisi = ogrenciKurumSayisi; // Kurum kayıtlarÃƒÂ„Ã‚Â± iÃƒÂƒÃ‚Â§in ayrÃƒÂ„Ã‚Â±
     
     const talepBeklemede = await dbGet('SELECT COUNT(*) as sayi FROM sinav_talepleri WHERE durum = "beklemede"');
     const talepOnaylandi = await dbGet('SELECT COUNT(*) as sayi FROM sinav_talepleri WHERE durum = "onaylandi"');
     const talepReddedildi = await dbGet('SELECT COUNT(*) as sayi FROM sinav_talepleri WHERE durum = "reddedildi"');
     const talepToplam = await dbGet('SELECT COUNT(*) as sayi FROM sinav_talepleri');
     
-    // Paket İstatistikleri
+    // Paket ÃƒÂ„Ã‚Â°statistikleri
     const paketSayisi = await dbGet('SELECT COUNT(*) as sayi FROM sinav_paketleri WHERE aktif = 1');
     const paketToplamOgrenci = await dbGet('SELECT COUNT(DISTINCT ogrenci_id) as sayi FROM paket_atamalari WHERE durum = "aktif"');
     
@@ -2561,12 +2578,12 @@ app.get('/kurum/dashboard', requireAuth, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Kurum dashboard hatası:', error);
+    console.error('Kurum dashboard hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).send('Bir hata oluştu!');
   }
 });
 
-// PayTR Entegrasyon Sayfası - KALDIRILDI (Gerek yok)
+// PayTR Entegrasyon SayfasÃƒÂ„Ã‚Â± - KALDIRILDI (Gerek yok)
 
 // Kurum - WhatsApp Ayarları (GET)
 app.get('/kurum/whatsapp-ayarlari', requireAuth, async (req, res) => {
@@ -2596,7 +2613,7 @@ app.get('/kurum/whatsapp-ayarlari', requireAuth, async (req, res) => {
     req.session.error = null;
     req.session.success = null;
   } catch (error) {
-    console.error('WhatsApp ayarları hatası:', error);
+    console.error('WhatsApp ayarları hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).send('Bir hata oluştu!');
   }
 });
@@ -2630,14 +2647,14 @@ app.post('/kurum/whatsapp-ayarlari', requireAuth, async (req, res) => {
     req.session.success = 'WhatsApp ayarları başarıyla kaydedildi!';
     res.redirect('/kurum/whatsapp-ayarlari');
   } catch (error) {
-    console.error('WhatsApp ayarları kaydetme hatası:', error);
+    console.error('WhatsApp ayarları kaydetme hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Ayarlar kaydedilirken bir hata oluştu!';
     res.redirect('/kurum/whatsapp-ayarlari');
   }
 });
 
 // Kurum - WhatsApp Test Bildirimi
-// Test için manuel endpoint (GEÇİCİ - üretimde kaldırılmalı)
+// Test iÃƒÂƒÃ‚Â§in manuel endpoint (GEÃƒÂƒÃ‚Â‡ÃƒÂ„Ã‚Â°CÃƒÂ„Ã‚Â° - ÃƒÂƒÃ‚Â¼retimde kaldÃƒÂ„Ã‚Â±rÃƒÂ„Ã‚Â±lmalÃƒÂ„Ã‚Â±)
 app.post('/test-whatsapp-mesaj', async (req, res) => {
   try {
     const { telefon, mesaj } = req.body;
@@ -2646,18 +2663,18 @@ app.post('/test-whatsapp-mesaj', async (req, res) => {
       return res.json({ success: false, message: 'Telefon ve mesaj gerekli!' });
     }
     
-    console.log('\n🧪 ═══════════════════════════════════');
-    console.log('🧪 MANUEL TEST MESAJI GÖNDERİLİYOR');
-    console.log('🧪 ═══════════════════════════════════');
-    console.log(`📞 Telefon: ${telefon}`);
-    console.log(`📝 Mesaj: ${mesaj}`);
-    console.log('🧪 ═══════════════════════════════════\n');
+    console.log('\nÃƒÂ°Ã‚ÂŸÃ‚Â§Ã‚Âª ÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚Â');
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â§Ã‚Âª MANUEL TEST MESAJI GÃƒÂƒÃ‚Â–NDERÃƒÂ„Ã‚Â°LÃƒÂ„Ã‚Â°YOR');
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â§Ã‚Âª ÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚Â');
+    console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â Telefon: ${telefon}`);
+    console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â Mesaj: ${mesaj}`);
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â§Ã‚Âª ÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚ÂÃƒÂ¢Ã‚Â•Ã‚Â\n');
     
     const result = await whatsappBildirimGonder(telefon, mesaj, 'test_manuel');
     
     res.json(result);
   } catch (error) {
-    console.error('❌ Test mesajı hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Test mesajÃƒÂ„Ã‚Â± hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: error.message });
   }
 });
@@ -2673,38 +2690,38 @@ app.post('/kurum/whatsapp-test', requireAuth, async (req, res) => {
     if (!ayarlar || !ayarlar.phone_number) {
       return res.json({ 
         success: false, 
-        message: 'WhatsApp ayarları yapılmamış veya telefon numarası eksik!' 
+        message: 'WhatsApp ayarları yapÃƒÂ„Ã‚Â±lmamÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸ veya telefon numarasÃƒÂ„Ã‚Â± eksik!' 
       });
     }
     
-    const testMesaj = `🧪 TEST BİLDİRİMİ
+    const testMesaj = `ÃƒÂ°Ã‚ÂŸÃ‚Â§Ã‚Âª TEST BÃƒÂ„Ã‚Â°LDÃƒÂ„Ã‚Â°RÃƒÂ„Ã‚Â°MÃƒÂ„Ã‚Â°
 
-Bu bir test mesajıdır.
+Bu bir test mesajÃƒÂ„Ã‚Â±dÃƒÂ„Ã‚Â±r.
 
-✅ WhatsApp API entegrasyonunuz başarıyla çalışıyor!
+ÃƒÂ¢Ã‚ÂœÃ‚Â… WhatsApp API entegrasyonunuz başarıyla ÃƒÂƒÃ‚Â§alÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸÃƒÂ„Ã‚Â±yor!
 
-📅 Test Zamanı: ${new Date().toLocaleString('tr-TR')}`;
+ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â… Test ZamanÃƒÂ„Ã‚Â±: ${new Date().toLocaleString('tr-TR')}`;
     
     const result = await whatsappBildirimGonder(ayarlar.phone_number, testMesaj, 'test');
     
     if (result.success) {
       return res.json({ 
         success: true, 
-        message: 'Test mesajı başarıyla gönderildi! Console logları kontrol edin.' 
+        message: 'Test mesajÃƒÂ„Ã‚Â± başarıyla gÃƒÂƒÃ‚Â¶nderildi! Console loglarÃƒÂ„Ã‚Â± kontrol edin.' 
       });
     } else {
       return res.json({ 
         success: false, 
-        message: 'Test mesajı gönderilemedi: ' + result.message 
+        message: 'Test mesajÃƒÂ„Ã‚Â± gÃƒÂƒÃ‚Â¶nderilemedi: ' + result.message 
       });
     }
   } catch (error) {
-    console.error('Test bildirimi hatası:', error);
+    console.error('Test bildirimi hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'Test sırasında bir hata oluştu: ' + error.message });
   }
 });
 
-// Kurum - Talep Yönetimi
+// Kurum - Talep YÃƒÂƒÃ‚Â¶netimi
 app.get('/kurum/talepler', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
@@ -2730,7 +2747,7 @@ app.get('/kurum/talepler', requireAuth, async (req, res) => {
       INNER JOIN users u ON st.veli_id = u.id
     `);
     
-    // Rehber Öğretmen Talepleri (Hem kurum hem veli öğrencileri)
+    // Rehber ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸretmen Talepleri (Hem kurum hem veli ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri)
     const rehberTalepleri = await dbAll(`
       SELECT 
         ot.*,
@@ -2752,14 +2769,14 @@ app.get('/kurum/talepler', requireAuth, async (req, res) => {
       WHERE ot.durum IN ('beklemede', 'onaylandi', 'reddedildi')
     `);
     
-    // İki listeyi birleştir
+    // ÃƒÂ„Ã‚Â°ki listeyi birleÃƒÂ…Ã‚ÂŸtir
     const talepler = [...sinavTalepleri, ...rehberTalepleri].sort((a, b) => {
-      // Önce duruma göre sırala
+      // ÃƒÂƒÃ‚Â–nce duruma gÃƒÂƒÃ‚Â¶re sÃƒÂ„Ã‚Â±rala
       const durumOrder = { 'beklemede': 1, 'onaylandi': 2, 'reddedildi': 3 };
       const durumDiff = durumOrder[a.durum] - durumOrder[b.durum];
       if (durumDiff !== 0) return durumDiff;
       
-      // Sonra tarihe göre sırala (en yeni en üstte)
+      // Sonra tarihe gÃƒÂƒÃ‚Â¶re sÃƒÂ„Ã‚Â±rala (en yeni en ÃƒÂƒÃ‚Â¼stte)
       return new Date(b.talep_tarihi || b.created_at) - new Date(a.talep_tarihi || a.created_at);
     });
     
@@ -2773,12 +2790,12 @@ app.get('/kurum/talepler', requireAuth, async (req, res) => {
     req.session.error = null;
     req.session.success = null;
   } catch (error) {
-    console.error('Talep listesi hatası:', error);
+    console.error('Talep listesi hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).send('Bir hata oluştu!');
   }
 });
 
-// Kurum - Talep Yönetimi (Alias - /kurum/talepler ile aynı)
+// Kurum - Talep YÃƒÂƒÃ‚Â¶netimi (Alias - /kurum/talepler ile aynÃƒÂ„Ã‚Â±)
 app.get('/kurum/talep-yonetimi', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
@@ -2819,12 +2836,12 @@ app.get('/kurum/talep-yonetimi', requireAuth, async (req, res) => {
     req.session.error = null;
     req.session.success = null;
   } catch (error) {
-    console.error('Talep listesi hatası:', error);
+    console.error('Talep listesi hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).send('Bir hata oluştu!');
   }
 });
 
-// Kurum - Talep Yanıtla (Onayla/Reddet)
+// Kurum - Talep YanÃƒÂ„Ã‚Â±tla (Onayla/Reddet)
 app.post('/kurum/talep-yanitla', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
@@ -2834,12 +2851,12 @@ app.post('/kurum/talep-yanitla', requireAuth, async (req, res) => {
     const { talep_id, durum, yanit, talep_tipi } = req.body;
     
     if (!talep_id || !durum || !['onaylandi', 'reddedildi'].includes(durum)) {
-      return res.json({ success: false, message: 'Geçersiz parametreler!' });
+      return res.json({ success: false, message: 'GeÃƒÂƒÃ‚Â§ersiz parametreler!' });
     }
     
-    // Talep tipine göre farklı tablolardan güncelle
+    // Talep tipine gÃƒÂƒÃ‚Â¶re farklÃƒÂ„Ã‚Â± tablolardan gÃƒÂƒÃ‚Â¼ncelle
     if (talep_tipi === 'rehber') {
-      // Rehber öğretmen talebi
+      // Rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmen talebi
       await dbRun(
         `UPDATE ogrenci_talepleri 
          SET durum = ?, mesaj = ?
@@ -2861,26 +2878,26 @@ app.post('/kurum/talep-yanitla', requireAuth, async (req, res) => {
         WHERE ot.id = ?
       `, [talep_id]);
       
-      // WhatsApp bildirimi gönder
+      // WhatsApp bildirimi gÃƒÂƒÃ‚Â¶nder
       if (talep && talep.veli_telefon) {
         const mesaj = durum === 'onaylandi' 
-          ? `✅ REHBER ÖĞRETMEN TALEBİNİZ ONAYLANDI!\n\n` +
-            `Merhaba ${talep.veli_ad_soyad || 'Değerli Velimiz'},\n\n` +
-            `👨‍🏫 Öğrenci: ${talep.ogrenci_adi}\n` +
-            `📚 Rehber: ${talep.rehber_ad_soyad || 'Rehber Öğretmen'}\n` +
-            `✅ Durum: Onaylandı\n\n` +
-            (yanit ? `💬 Kurum Yanıtı: ${yanit}\n\n` : '') +
-            `Rehber öğretmen yetkisi aktif hale getirilmiştir.`
-          : `❌ REHBER ÖĞRETMEN TALEBİNİZ REDDEDİLDİ\n\n` +
-            `Merhaba ${talep.veli_ad_soyad || 'Değerli Velimiz'},\n\n` +
-            `👨‍🏫 Öğrenci: ${talep.ogrenci_adi}\n` +
-            `❌ Durum: Reddedildi\n\n` +
-            (yanit ? `💬 Kurum Yanıtı: ${yanit}\n\n` : '') +
-            `Daha fazla bilgi için lütfen bizimle iletişime geçiniz.`;
+          ? `ÃƒÂ¢Ã‚ÂœÃ‚Â… REHBER ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂRETMEN TALEBÃƒÂ„Ã‚Â°NÃƒÂ„Ã‚Â°Z ONAYLANDI!\n\n` +
+            `Merhaba ${talep.veli_ad_soyad || 'DeÃƒÂ„Ã‚ÂŸerli Velimiz'},\n\n` +
+            `ÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â¨ÃƒÂ¢Ã‚Â€Ã‚ÂÃƒÂ°Ã‚ÂŸÃ‚ÂÃ‚Â« Öğrenci: ${talep.ogrenci_adi}\n` +
+            `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Âš Rehber: ${talep.rehber_ad_soyad || 'Rehber ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸretmen'}\n` +
+            `ÃƒÂ¢Ã‚ÂœÃ‚Â… Durum: OnaylandÃƒÂ„Ã‚Â±\n\n` +
+            (yanit ? `ÃƒÂ°Ã‚ÂŸÃ‚Â’Ã‚Â¬ Kurum YanÃƒÂ„Ã‚Â±tÃƒÂ„Ã‚Â±: ${yanit}\n\n` : '') +
+            `Rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmen yetkisi aktif hale getirilmiÃƒÂ…Ã‚ÂŸtir.`
+          : `ÃƒÂ¢Ã‚ÂÃ‚ÂŒ REHBER ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂRETMEN TALEBÃƒÂ„Ã‚Â°NÃƒÂ„Ã‚Â°Z REDDEDÃƒÂ„Ã‚Â°LDÃƒÂ„Ã‚Â°\n\n` +
+            `Merhaba ${talep.veli_ad_soyad || 'DeÃƒÂ„Ã‚ÂŸerli Velimiz'},\n\n` +
+            `ÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â¨ÃƒÂ¢Ã‚Â€Ã‚ÂÃƒÂ°Ã‚ÂŸÃ‚ÂÃ‚Â« Öğrenci: ${talep.ogrenci_adi}\n` +
+            `ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Durum: Reddedildi\n\n` +
+            (yanit ? `ÃƒÂ°Ã‚ÂŸÃ‚Â’Ã‚Â¬ Kurum YanÃƒÂ„Ã‚Â±tÃƒÂ„Ã‚Â±: ${yanit}\n\n` : '') +
+            `Daha fazla bilgi iÃƒÂƒÃ‚Â§in lÃƒÂƒÃ‚Â¼tfen bizimle iletiÃƒÂ…Ã‚ÂŸime geÃƒÂƒÃ‚Â§iniz.`;
         
         whatsappBildirimGonder(talep.veli_telefon, mesaj, `rehber_talep_${durum}`)
-          .then(result => console.log('✅ WhatsApp bildirimi gönderildi:', result))
-          .catch(error => console.error('❌ WhatsApp bildirimi hatası:', error));
+          .then(result => console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… WhatsApp bildirimi gÃƒÂƒÃ‚Â¶nderildi:', result))
+          .catch(error => console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ WhatsApp bildirimi hatasÃƒÂ„Ã‚Â±:', error));
       }
       
     } else {
@@ -2892,7 +2909,7 @@ app.post('/kurum/talep-yanitla', requireAuth, async (req, res) => {
         [durum, yanit || '', talep_id]
       );
       
-      // Talep bilgilerini al (WhatsApp bildirimi için)
+      // Talep bilgilerini al (WhatsApp bildirimi iÃƒÂƒÃ‚Â§in)
       const talep = await dbGet(`
         SELECT 
           st.*,
@@ -2905,47 +2922,47 @@ app.post('/kurum/talep-yanitla', requireAuth, async (req, res) => {
         WHERE st.id = ?
       `, [talep_id]);
       
-      // WhatsApp bildirimi gönder (arka planda)
+      // WhatsApp bildirimi gÃƒÂƒÃ‚Â¶nder (arka planda)
       if (talep && talep.veli_telefon) {
         const mesaj = durum === 'onaylandi' 
-          ? `✅ TALEBİNİZ ONAYLANDI!\n\n` +
-            `Merhaba ${talep.veli_ad_soyad || 'Değerli Velimiz'},\n\n` +
-            `📚 Sınav: ${talep.sinav_adi}\n` +
-            `✅ Durum: Onaylandı\n\n` +
-            (yanit ? `💬 Kurum Yanıtı: ${yanit}\n\n` : '') +
-            `Sınav erişiminiz aktif hale getirilmiştir. İyi sınavlar dileriz! 🎓`
-          : `❌ TALEBİNİZ REDDEDİLDİ\n\n` +
-            `Merhaba ${talep.veli_ad_soyad || 'Değerli Velimiz'},\n\n` +
-            `📚 Sınav: ${talep.sinav_adi}\n` +
-            `❌ Durum: Reddedildi\n\n` +
-            (yanit ? `💬 Kurum Yanıtı: ${yanit}\n\n` : '') +
-            `Daha fazla bilgi için lütfen bizimle iletişime geçiniz.`;
+          ? `ÃƒÂ¢Ã‚ÂœÃ‚Â… TALEBÃƒÂ„Ã‚Â°NÃƒÂ„Ã‚Â°Z ONAYLANDI!\n\n` +
+            `Merhaba ${talep.veli_ad_soyad || 'DeÃƒÂ„Ã‚ÂŸerli Velimiz'},\n\n` +
+            `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Âš Sınav: ${talep.sinav_adi}\n` +
+            `ÃƒÂ¢Ã‚ÂœÃ‚Â… Durum: OnaylandÃƒÂ„Ã‚Â±\n\n` +
+            (yanit ? `ÃƒÂ°Ã‚ÂŸÃ‚Â’Ã‚Â¬ Kurum YanÃƒÂ„Ã‚Â±tÃƒÂ„Ã‚Â±: ${yanit}\n\n` : '') +
+            `Sınav erişiminiz aktif hale getirilmiÃƒÂ…Ã‚ÂŸtir. ÃƒÂ„Ã‚Â°yi sınavlar dileriz! ÃƒÂ°Ã‚ÂŸÃ‚ÂÃ‚Â“`
+          : `ÃƒÂ¢Ã‚ÂÃ‚ÂŒ TALEBÃƒÂ„Ã‚Â°NÃƒÂ„Ã‚Â°Z REDDEDÃƒÂ„Ã‚Â°LDÃƒÂ„Ã‚Â°\n\n` +
+            `Merhaba ${talep.veli_ad_soyad || 'DeÃƒÂ„Ã‚ÂŸerli Velimiz'},\n\n` +
+            `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Âš Sınav: ${talep.sinav_adi}\n` +
+            `ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Durum: Reddedildi\n\n` +
+            (yanit ? `ÃƒÂ°Ã‚ÂŸÃ‚Â’Ã‚Â¬ Kurum YanÃƒÂ„Ã‚Â±tÃƒÂ„Ã‚Â±: ${yanit}\n\n` : '') +
+            `Daha fazla bilgi iÃƒÂƒÃ‚Â§in lÃƒÂƒÃ‚Â¼tfen bizimle iletiÃƒÂ…Ã‚ÂŸime geÃƒÂƒÃ‚Â§iniz.`;
         
         whatsappBildirimGonder(talep.veli_telefon, mesaj, `talep_${durum}`)
-          .then(result => console.log('✅ WhatsApp bildirimi gönderildi:', result))
-          .catch(error => console.error('❌ WhatsApp bildirimi hatası:', error));
+          .then(result => console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… WhatsApp bildirimi gÃƒÂƒÃ‚Â¶nderildi:', result))
+          .catch(error => console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ WhatsApp bildirimi hatasÃƒÂ„Ã‚Â±:', error));
       }
     }
     
     res.json({ 
       success: true, 
-      message: durum === 'onaylandi' ? 'Talep başarıyla onaylandı!' : 'Talep reddedildi.' 
+      message: durum === 'onaylandi' ? 'Talep başarıyla onaylandÃƒÂ„Ã‚Â±!' : 'Talep reddedildi.' 
     });
     
   } catch (error) {
-    console.error('Talep yanıtlama hatası:', error);
-    res.json({ success: false, message: 'Talep işlenirken bir hata oluştu!' });
+    console.error('Talep yanÃƒÂ„Ã‚Â±tlama hatasÃƒÂ„Ã‚Â±:', error);
+    res.json({ success: false, message: 'Talep iÃƒÂ…Ã‚ÂŸlenirken bir hata oluştu!' });
   }
 });
 
-// Kurum - Veli Listesi API (Rehber Talep için)
+// Kurum - Veli Listesi API (Rehber Talep iÃƒÂƒÃ‚Â§in)
 app.get('/kurum/veliler-api', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
   }
   
   try {
-    console.log('📡 Veli listesi API çağrıldı');
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â¡ Veli listesi API ÃƒÂƒÃ‚Â§aÃƒÂ„Ã‚ÂŸrÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â±');
     const veliler = await dbAll(`
       SELECT 
         id,
@@ -2958,15 +2975,15 @@ app.get('/kurum/veliler-api', requireAuth, async (req, res) => {
       ORDER BY ad_soyad ASC, username ASC
     `);
     
-    console.log(`✅ ${veliler.length} veli bulundu`);
+    console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… ${veliler.length} veli bulundu`);
     res.json(veliler);
   } catch (error) {
-    console.error('❌ Veli listesi hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Veli listesi hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
 
-// Kurum - Rehber Öğretmen Listesi API
+// Kurum - Rehber ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸretmen Listesi API
 app.get('/kurum/rehberler-api', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
@@ -2988,21 +3005,21 @@ app.get('/kurum/rehberler-api', requireAuth, async (req, res) => {
     
     res.json(rehberler);
   } catch (error) {
-    console.error('Rehber listesi hatası:', error);
+    console.error('Rehber listesi hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
 
-// Kurum - Tüm Öğrenciler API (Kurum + Veli öğrencileri)
+// Kurum - TÃƒÂƒÃ‚Â¼m Öğrenciler API (Kurum + Veli ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri)
 app.get('/kurum/tum-ogrenciler-api', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
   }
   
   try {
-    console.log('📡 Tüm öğrenciler API çağrıldı');
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â¡ TÃƒÂƒÃ‚Â¼m ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenciler API ÃƒÂƒÃ‚Â§aÃƒÂ„Ã‚ÂŸrÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â±');
     
-    // Veli öğrencileri
+    // Veli ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri
     let veliOgrencileri = [];
     try {
       veliOgrencileri = await dbAll(`
@@ -3020,12 +3037,12 @@ app.get('/kurum/tum-ogrenciler-api', requireAuth, async (req, res) => {
         WHERE o.veli_id IS NOT NULL
         ORDER BY o.ad_soyad ASC
       `);
-      console.log(`✅ ${veliOgrencileri.length} veli öğrencisi bulundu`);
+      console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… ${veliOgrencileri.length} veli ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencisi bulundu`);
     } catch (error) {
-      console.error('❌ Veli öğrencileri yükleme hatası:', error);
+      console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Veli ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri yÃƒÂƒÃ‚Â¼kleme hatasÃƒÂ„Ã‚Â±:', error);
     }
     
-    // Kurum öğrencileri
+    // Kurum ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri
     let kurumOgrencileri = [];
     try {
       kurumOgrencileri = await dbAll(`
@@ -3044,19 +3061,19 @@ app.get('/kurum/tum-ogrenciler-api', requireAuth, async (req, res) => {
         FROM ogrenci_kayitlari ok
         ORDER BY ok.ogrenci_adi_soyadi ASC
       `);
-      console.log(`✅ ${kurumOgrencileri.length} kurum öğrencisi bulundu`);
+      console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… ${kurumOgrencileri.length} kurum ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencisi bulundu`);
     } catch (error) {
-      console.error('❌ Kurum öğrencileri yükleme hatası:', error);
+      console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Kurum ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri yÃƒÂƒÃ‚Â¼kleme hatasÃƒÂ„Ã‚Â±:', error);
     }
     
-    // TC bazlı tekrarları temizle
+    // TC bazlÃƒÂ„Ã‚Â± tekrarlarÃƒÂ„Ã‚Â± temizle
     const tumOgrenciler = temizleOgrenciTekrarlari(veliOgrencileri, kurumOgrencileri);
     
-    console.log(`✅ Toplam ${tumOgrenciler.length} öğrenci döndürülüyor`);
+    console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… Toplam ${tumOgrenciler.length} ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci dÃƒÂƒÃ‚Â¶ndÃƒÂƒÃ‚Â¼rÃƒÂƒÃ‚Â¼lÃƒÂƒÃ‚Â¼yor`);
     
     res.json(tumOgrenciler);
   } catch (error) {
-    console.error('❌ Tüm öğrenci listesi hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ TÃƒÂƒÃ‚Â¼m ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci listesi hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
@@ -3091,7 +3108,7 @@ app.get('/kurum/veli-bilgi-api', requireAuth, async (req, res) => {
     
     res.json(veli);
   } catch (error) {
-    console.error('Veli bilgisi hatası:', error);
+    console.error('Veli bilgisi hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
@@ -3106,17 +3123,17 @@ app.get('/kurum/veli-bul-telefon', requireAuth, async (req, res) => {
     const { telefon } = req.query;
     
     if (!telefon) {
-      return res.status(400).json({ success: false, message: 'Telefon numarası gerekli!' });
+      return res.status(400).json({ success: false, message: 'Telefon numarasÃƒÂ„Ã‚Â± gerekli!' });
     }
     
-    // Telefon numarasını temizle (.0 gibi ekleri kaldır)
+    // Telefon numarasÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± temizle (.0 gibi ekleri kaldÃƒÂ„Ã‚Â±r)
     let temizTelefon = telefon.toString().trim();
     if (temizTelefon.endsWith('.0')) {
       temizTelefon = temizTelefon.replace('.0', '');
     }
     const telefonNokta = temizTelefon + '.0';
     
-    // Telefon numarası ile veli ara - hem temiz hem de .0 formatında ara
+    // Telefon numarasÃƒÂ„Ã‚Â± ile veli ara - hem temiz hem de .0 formatÃƒÂ„Ã‚Â±nda ara
     const veli = await dbGet(`
       SELECT 
         id,
@@ -3136,7 +3153,7 @@ app.get('/kurum/veli-bul-telefon', requireAuth, async (req, res) => {
     
     res.json(veli);
   } catch (error) {
-    console.error('Telefon ile veli arama hatası:', error);
+    console.error('Telefon ile veli arama hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
@@ -3170,12 +3187,12 @@ app.get('/kurum/veli-ogrencileri-api', requireAuth, async (req, res) => {
     
     res.json(ogrenciler);
   } catch (error) {
-    console.error('Öğrenci listesi hatası:', error);
+    console.error('Öğrenci listesi hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
 
-// Kurum - Rehber Öğretmene Talep Gönder
+// Kurum - Rehber ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸretmene Talep GÃƒÂƒÃ‚Â¶nder
 app.post('/kurum/rehber-talep-gonder', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
@@ -3184,16 +3201,16 @@ app.post('/kurum/rehber-talep-gonder', requireAuth, async (req, res) => {
   try {
     const { veli_id, ogrenci_id, rehber_ogretmen_id, ogrenci_no, ad_soyad, sinif, okul, mesaj, ogrenci_kaynak } = req.body;
     
-    console.log('📥 Talep gönderme isteği:', { veli_id, ogrenci_id, rehber_ogretmen_id, ad_soyad, ogrenci_kaynak });
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â¥ Talep gÃƒÂƒÃ‚Â¶nderme isteÃƒÂ„Ã‚ÂŸi:', { veli_id, ogrenci_id, rehber_ogretmen_id, ad_soyad, ogrenci_kaynak });
     
     if (!veli_id || !rehber_ogretmen_id || !ad_soyad) {
       return res.json({ success: false, message: 'Eksik bilgiler! (veli_id, rehber_ogretmen_id, ad_soyad gerekli)' });
     }
     
-    // Kurum öğrencileri için ogrenci_id NULL olabilir
+    // Kurum ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri iÃƒÂƒÃ‚Â§in ogrenci_id NULL olabilir
     const kullanilacakOgrenciId = (ogrenci_kaynak === 'kurum') ? null : ogrenci_id;
     
-    // Aynı talep var mı kontrol et (ogrenci_id varsa) - Beklemede VEYA Onaylı talep kontrolü
+    // AynÃƒÂ„Ã‚Â± talep var mÃƒÂ„Ã‚Â± kontrol et (ogrenci_id varsa) - Beklemede VEYA OnaylÃƒÂ„Ã‚Â± talep kontrolÃƒÂƒÃ‚Â¼
     if (kullanilacakOgrenciId) {
       const mevcutTalep = await dbGet(`
         SELECT id, durum FROM ogrenci_talepleri 
@@ -3202,13 +3219,13 @@ app.post('/kurum/rehber-talep-gonder', requireAuth, async (req, res) => {
       
       if (mevcutTalep) {
         if (mevcutTalep.durum === 'beklemede') {
-          return res.json({ success: false, message: 'Bu öğrenci için bu rehber öğretmene zaten bekleyen bir talep var!' });
+          return res.json({ success: false, message: 'Bu ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci iÃƒÂƒÃ‚Â§in bu rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmene zaten bekleyen bir talep var!' });
         } else {
-          return res.json({ success: false, message: 'Bu öğrenci için bu rehber öğretmene zaten onaylı bir talep var!' });
+          return res.json({ success: false, message: 'Bu ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci iÃƒÂƒÃ‚Â§in bu rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmene zaten onaylÃƒÂ„Ã‚Â± bir talep var!' });
         }
       }
     } else {
-      // Kurum öğrencileri için ad_soyad ve veli_id ile kontrol et
+      // Kurum ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri iÃƒÂƒÃ‚Â§in ad_soyad ve veli_id ile kontrol et
       const mevcutTalep = await dbGet(`
         SELECT id, durum FROM ogrenci_talepleri 
         WHERE ad_soyad = ? AND veli_id = ? AND rehber_ogretmen_id = ? AND durum IN ('beklemede', 'onaylandi') AND ogrenci_id IS NULL
@@ -3216,75 +3233,75 @@ app.post('/kurum/rehber-talep-gonder', requireAuth, async (req, res) => {
       
       if (mevcutTalep) {
         if (mevcutTalep.durum === 'beklemede') {
-          return res.json({ success: false, message: 'Bu öğrenci için bu rehber öğretmene zaten bekleyen bir talep var!' });
+          return res.json({ success: false, message: 'Bu ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci iÃƒÂƒÃ‚Â§in bu rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmene zaten bekleyen bir talep var!' });
         } else {
-          return res.json({ success: false, message: 'Bu öğrenci için bu rehber öğretmene zaten onaylı bir talep var!' });
+          return res.json({ success: false, message: 'Bu ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci iÃƒÂƒÃ‚Â§in bu rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmene zaten onaylÃƒÂ„Ã‚Â± bir talep var!' });
         }
       }
     }
     
     // Talep oluştur
-    // rehber_id ve rehber_ogretmen_id aynı değer (kurum tarafından gönderildiği için)
+    // rehber_id ve rehber_ogretmen_id aynÃƒÂ„Ã‚Â± deÃƒÂ„Ã‚ÂŸer (kurum tarafÃƒÂ„Ã‚Â±ndan gÃƒÂƒÃ‚Â¶nderildiÃƒÂ„Ã‚ÂŸi iÃƒÂƒÃ‚Â§in)
     await dbRun(`
       INSERT INTO ogrenci_talepleri 
       (ogrenci_id, ogrenci_no, ad_soyad, sinif, okul, veli_id, rehber_id, rehber_ogretmen_id, durum, mesaj)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'beklemede', ?)
     `, [kullanilacakOgrenciId, ogrenci_no || '', ad_soyad, sinif || '', okul || '', veli_id, rehber_ogretmen_id, rehber_ogretmen_id, mesaj || '']);
     
-    console.log('✅ Talep başarıyla oluşturuldu');
+    console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… Talep başarıyla oluşturuldu');
     
     // Veli ve rehber bilgilerini al
     const veli = await dbGet('SELECT ad_soyad, telefon FROM users WHERE id = ?', [veli_id]);
     const rehber = await dbGet('SELECT ad_soyad, telefon FROM users WHERE id = ?', [rehber_ogretmen_id]);
     
-    // WhatsApp bildirimi gönder (arka planda)
+    // WhatsApp bildirimi gÃƒÂƒÃ‚Â¶nder (arka planda)
     if (veli && veli.telefon) {
-      const veliMesaj = `📩 YENİ REHBER ÖĞRETMEN TALEBİ\n\n` +
-        `Merhaba ${veli.ad_soyad || 'Değerli Velimiz'},\n\n` +
-        `Kurum tarafından sizin adınıza rehber öğretmen yetki talebi gönderilmiştir.\n\n` +
-        `👤 Öğrenci: ${ad_soyad}\n` +
-        `👨‍🏫 Rehber: ${rehber?.ad_soyad || 'Rehber Öğretmen'}\n\n` +
-        `Talebiniz onaylandığında rehber öğretmen öğrenciniz hakkında bilgilere erişebilecektir.`;
+      const veliMesaj = `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â© YENÃƒÂ„Ã‚Â° REHBER ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂRETMEN TALEBÃƒÂ„Ã‚Â°\n\n` +
+        `Merhaba ${veli.ad_soyad || 'DeÃƒÂ„Ã‚ÂŸerli Velimiz'},\n\n` +
+        `Kurum tarafÃƒÂ„Ã‚Â±ndan sizin adınÃƒÂ„Ã‚Â±za rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmen yetki talebi gÃƒÂƒÃ‚Â¶nderilmiÃƒÂ…Ã‚ÂŸtir.\n\n` +
+        `ÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â¤ Öğrenci: ${ad_soyad}\n` +
+        `ÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â¨ÃƒÂ¢Ã‚Â€Ã‚ÂÃƒÂ°Ã‚ÂŸÃ‚ÂÃ‚Â« Rehber: ${rehber?.ad_soyad || 'Rehber ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸretmen'}\n\n` +
+        `Talebiniz onaylandÃƒÂ„Ã‚Â±ÃƒÂ„Ã‚ÂŸÃƒÂ„Ã‚Â±nda rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmen ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenciniz hakkÃƒÂ„Ã‚Â±nda bilgilere eriÃƒÂ…Ã‚ÂŸebilecektir.`;
       
       whatsappBildirimGonder(veli.telefon, veliMesaj, 'rehber_talep_kurum')
-        .then(result => console.log('✅ Veli WhatsApp bildirimi gönderildi:', result))
-        .catch(error => console.error('❌ Veli WhatsApp bildirimi hatası:', error));
+        .then(result => console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… Veli WhatsApp bildirimi gÃƒÂƒÃ‚Â¶nderildi:', result))
+        .catch(error => console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Veli WhatsApp bildirimi hatasÃƒÂ„Ã‚Â±:', error));
     }
     
     if (rehber && rehber.telefon) {
-      const rehberMesaj = `📩 YENİ ÖĞRENCİ YETKİ TALEBİ\n\n` +
-        `Merhaba ${rehber.ad_soyad || 'Değerli Rehber Öğretmenimiz'},\n\n` +
-        `Kurum tarafından size yeni bir öğrenci yetki talebi gönderilmiştir.\n\n` +
-        `👤 Öğrenci: ${ad_soyad}\n` +
-        `👨‍👩‍👧 Veli: ${veli?.ad_soyad || 'Veli'}\n` +
-        `${sinif ? `📚 Sınıf: ${sinif}\n` : ''}` +
-        `${okul ? `🏫 Okul: ${okul}\n` : ''}` +
-        `${mesaj ? `\n💬 Mesaj: ${mesaj}\n` : ''}\n` +
-        `Lütfen veli panelinden talebi inceleyip onaylayın veya reddedin.`;
+      const rehberMesaj = `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â© YENÃƒÂ„Ã‚Â° ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂRENCÃƒÂ„Ã‚Â° YETKÃƒÂ„Ã‚Â° TALEBÃƒÂ„Ã‚Â°\n\n` +
+        `Merhaba ${rehber.ad_soyad || 'DeÃƒÂ„Ã‚ÂŸerli Rehber ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸretmenimiz'},\n\n` +
+        `Kurum tarafÃƒÂ„Ã‚Â±ndan size yeni bir ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci yetki talebi gÃƒÂƒÃ‚Â¶nderilmiÃƒÂ…Ã‚ÂŸtir.\n\n` +
+        `ÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â¤ Öğrenci: ${ad_soyad}\n` +
+        `ÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â¨ÃƒÂ¢Ã‚Â€Ã‚ÂÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â©ÃƒÂ¢Ã‚Â€Ã‚ÂÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â§ Veli: ${veli?.ad_soyad || 'Veli'}\n` +
+        `${sinif ? `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Âš SÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â±f: ${sinif}\n` : ''}` +
+        `${okul ? `ÃƒÂ°Ã‚ÂŸÃ‚ÂÃ‚Â« Okul: ${okul}\n` : ''}` +
+        `${mesaj ? `\nÃƒÂ°Ã‚ÂŸÃ‚Â’Ã‚Â¬ Mesaj: ${mesaj}\n` : ''}\n` +
+        `LÃƒÂƒÃ‚Â¼tfen veli panelinden talebi inceleyip onaylayÃƒÂ„Ã‚Â±n veya reddedin.`;
       
       whatsappBildirimGonder(rehber.telefon, rehberMesaj, 'rehber_talep_kurum')
-        .then(result => console.log('✅ Rehber WhatsApp bildirimi gönderildi:', result))
-        .catch(error => console.error('❌ Rehber WhatsApp bildirimi hatası:', error));
+        .then(result => console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… Rehber WhatsApp bildirimi gÃƒÂƒÃ‚Â¶nderildi:', result))
+        .catch(error => console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Rehber WhatsApp bildirimi hatasÃƒÂ„Ã‚Â±:', error));
     }
     
     res.json({ 
       success: true, 
-      message: 'Rehber öğretmene talep başarıyla gönderildi!' 
+      message: 'Rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmene talep başarıyla gÃƒÂƒÃ‚Â¶nderildi!' 
     });
     
   } catch (error) {
-    console.error('❌ Rehber talep gönderme hatası:', error);
-    console.error('Hata detayı:', error.message);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Rehber talep gÃƒÂƒÃ‚Â¶nderme hatasÃƒÂ„Ã‚Â±:', error);
+    console.error('Hata detayÃƒÂ„Ã‚Â±:', error.message);
     console.error('Stack trace:', error.stack);
     res.json({ 
       success: false, 
-      message: `Talep gönderilirken bir hata oluştu: ${error.message}` 
+      message: `Talep gÃƒÂƒÃ‚Â¶nderilirken bir hata oluştu: ${error.message}` 
     });
   }
 });
 
-// Kurum - Öğrenci Kayıtları Yönetimi
-// API: Kurum Öğrenci Kayıtları (JSON)
+// Kurum - Öğrenci KayıtlarÃƒÂ„Ã‚Â± YÃƒÂƒÃ‚Â¶netimi
+// API: Kurum Öğrenci KayıtlarÃƒÂ„Ã‚Â± (JSON)
 app.get('/kurum/ogrenci-kayitlari-api', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json([]);
@@ -3294,7 +3311,7 @@ app.get('/kurum/ogrenci-kayitlari-api', requireAuth, async (req, res) => {
     const ogrenciler = await dbAll('SELECT * FROM ogrenci_kayitlari ORDER BY ogrenci_adi_soyadi ASC');
     res.json(ogrenciler);
   } catch (error) {
-    console.error('API öğrenci kayıtları hatası:', error);
+    console.error('API ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci kayıtlarÃƒÂ„Ã‚Â± hatasÃƒÂ„Ã‚Â±:', error);
     res.json([]);
   }
 });
@@ -3309,7 +3326,7 @@ app.get('/kurum/veli-ogrencileri-api', requireAuth, async (req, res) => {
     const ogrenciler = await dbAll('SELECT * FROM ogrenciler ORDER BY ad_soyad ASC');
     res.json(ogrenciler);
   } catch (error) {
-    console.error('API veli öğrencileri hatası:', error);
+    console.error('API veli ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri hatasÃƒÂ„Ã‚Â±:', error);
     res.json([]);
   }
 });
@@ -3322,10 +3339,10 @@ app.get('/kurum/ogrenci-kayitlari', requireAuth, async (req, res) => {
   try {
     const ogrenciler = await dbAll('SELECT * FROM ogrenci_kayitlari ORDER BY created_at DESC');
     
-    // Benzersiz sınıf listesi
+    // Benzersiz sÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â±f listesi
     const siniflar = [...new Set(ogrenciler.map(o => o.sinif).filter(s => s))].sort();
     
-    // Session mesajlarını al ve hemen temizle
+    // Session mesajlarÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± al ve hemen temizle
     const errorMsg = req.session.error;
     const successMsg = req.session.success;
     req.session.error = null;
@@ -3339,7 +3356,7 @@ app.get('/kurum/ogrenci-kayitlari', requireAuth, async (req, res) => {
       success: successMsg
     });
   } catch (error) {
-    console.error('Öğrenci kayıtları listesi hatası:', error);
+    console.error('Öğrenci kayıtlarÃƒÂ„Ã‚Â± listesi hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).send('Bir hata oluştu!');
   }
 });
@@ -3368,17 +3385,17 @@ app.post('/kurum/ogrenci-kayit-ekle', requireAuth, async (req, res) => {
        odeme_turu, edessis_kaydi, taksit]
     );
     
-    res.json({ success: true, message: 'Öğrenci kaydı başarıyla eklendi!' });
+    res.json({ success: true, message: 'Öğrenci kaydÃƒÂ„Ã‚Â± başarıyla eklendi!' });
   } catch (error) {
-    console.error('Öğrenci kayıt ekleme hatası:', error);
+    console.error('Öğrenci kayıt ekleme hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'Kayıt eklenirken bir hata oluştu: ' + error.message });
   }
 });
 
-// Kurum - Hesapsız Velileri Kontrol Et
-// ESKİ TELEFON BAZLI SİSTEM KALDIRILDI - SADECE TC BAZLI SİSTEM KULLANILIYOR
+// Kurum - HesapsÃƒÂ„Ã‚Â±z Velileri Kontrol Et
+// ESKÃƒÂ„Ã‚Â° TELEFON BAZLI SÃƒÂ„Ã‚Â°STEM KALDIRILDI - SADECE TC BAZLI SÃƒÂ„Ã‚Â°STEM KULLANILIYOR
 
-// Kurum - Veli Giriş Bilgisi Getir (ESKİ - KALDIRILDI)
+// Kurum - Veli GiriÃƒÂ…Ã‚ÂŸ Bilgisi Getir (ESKÃƒÂ„Ã‚Â° - KALDIRILDI)
 app.get('/kurum/veli-giris-bilgisi', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, message: 'Yetkisiz erişim!' });
@@ -3388,15 +3405,15 @@ app.get('/kurum/veli-giris-bilgisi', requireAuth, async (req, res) => {
     let { telefon } = req.query;
     
     if (!telefon) {
-      return res.json({ success: false, message: 'Telefon numarası gerekli!' });
+      return res.json({ success: false, message: 'Telefon numarasÃƒÂ„Ã‚Â± gerekli!' });
     }
     
-    // Telefon formatını temizle (.0 ile biten)
+    // Telefon formatÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± temizle (.0 ile biten)
     telefon = telefon.toString().trim();
     const telefonTemiz = telefon.endsWith('.0') ? telefon.replace('.0', '') : telefon;
     const telefonNokta = telefonTemiz + '.0';
     
-    // Veli hesabını bul - hem temiz hem de .0 formatında ara
+    // Veli hesabÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± bul - hem temiz hem de .0 formatÃƒÂ„Ã‚Â±nda ara
     const veli = await dbGet(
       'SELECT username, password_hash, created_at FROM users WHERE (telefon = ? OR telefon = ? OR username = ? OR username = ?) AND user_type = ?',
       [telefonTemiz, telefonNokta, telefonTemiz, telefonNokta, 'veli']
@@ -3409,26 +3426,26 @@ app.get('/kurum/veli-giris-bilgisi', requireAuth, async (req, res) => {
       });
     }
     
-    // İlk şifre hash'i
-    const ilkSifreHash = '$2b$10$';  // bcrypt başlangıcı
+    // ÃƒÂ„Ã‚Â°lk şifre hash'i
+    const ilkSifreHash = '$2b$10$';  // bcrypt baÃƒÂ…Ã‚ÂŸlangÃƒÂ„Ã‚Â±cÃƒÂ„Ã‚Â±
     const defaultPassword = 'Veli2024!';
     
-    // Şifre değiştirilmiş mi kontrol et
-    // (Basit kontrol: created_at ile password_hash hash'i aynı zamanda mı oluşturulmuş)
-    // Daha güvenli: password_hash'i "Veli2024!" ile karşılaştır
+    // ÃƒÂ…Ã‚Âifre deÃƒÂ„Ã‚ÂŸiÃƒÂ…Ã‚ÂŸtirilmiÃƒÂ…Ã‚ÂŸ mi kontrol et
+    // (Basit kontrol: created_at ile password_hash hash'i aynÃƒÂ„Ã‚Â± zamanda mÃƒÂ„Ã‚Â± oluşturulmuÃƒÂ…Ã‚ÂŸ)
+    // Daha gÃƒÂƒÃ‚Â¼venli: password_hash'i "Veli2024!" ile karÃƒÂ…Ã‚ÂŸÃƒÂ„Ã‚Â±laÃƒÂ…Ã‚ÂŸtÃƒÂ„Ã‚Â±r
     const sifreDegismis = !await bcrypt.compare(defaultPassword, veli.password_hash);
     
-    // Username'deki .0 formatını temizle
+    // Username'deki .0 formatÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± temizle
     let usernameTemiz = veli.username.toString();
     if (usernameTemiz.endsWith('.0')) {
       usernameTemiz = usernameTemiz.replace('.0', '');
     }
     
-    console.log(`\n👁️ VELİ BİLGİSİ GÖSTERİLDİ`);
+    console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚ÂÃƒÂ¯Ã‚Â¸Ã‚Â VELÃƒÂ„Ã‚Â° BÃƒÂ„Ã‚Â°LGÃƒÂ„Ã‚Â°SÃƒÂ„Ã‚Â° GÃƒÂƒÃ‚Â–STERÃƒÂ„Ã‚Â°LDÃƒÂ„Ã‚Â°`);
     console.log(`   Telefon: ${telefon}`);
     console.log(`   Username (orijinal): ${veli.username}`);
     console.log(`   Username (temiz): ${usernameTemiz}`);
-    console.log(`   Şifre değişmiş: ${sifreDegismis ? 'Evet' : 'Hayır'}`);
+    console.log(`   ÃƒÂ…Ã‚Âifre deÃƒÂ„Ã‚ÂŸiÃƒÂ…Ã‚ÂŸmiÃƒÂ…Ã‚ÂŸ: ${sifreDegismis ? 'Evet' : 'HayÃƒÂ„Ã‚Â±r'}`);
     
     res.json({
       success: true,
@@ -3438,12 +3455,12 @@ app.get('/kurum/veli-giris-bilgisi', requireAuth, async (req, res) => {
       sifreDegismis: sifreDegismis
     });
   } catch (error) {
-    console.error('Veli bilgi getirme hatası:', error);
+    console.error('Veli bilgi getirme hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
 
-// Kurum - Öğrenci Kayıt Güncelle
+// Kurum - Öğrenci Kayıt GÃƒÂƒÃ‚Â¼ncelle
 app.post('/kurum/ogrenci-kayit-guncelle/:id', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
@@ -3469,10 +3486,10 @@ app.post('/kurum/ogrenci-kayit-guncelle/:id', requireAuth, async (req, res) => {
        odeme_turu, edessis_kaydi, taksit, id]
     );
     
-    res.json({ success: true, message: 'Öğrenci kaydı güncellendi!' });
+    res.json({ success: true, message: 'Öğrenci kaydÃƒÂ„Ã‚Â± güncellendi!' });
   } catch (error) {
-    console.error('Öğrenci kayıt güncelleme hatası:', error);
-    res.json({ success: false, message: 'Güncelleme sırasında bir hata oluştu!' });
+    console.error('Öğrenci kayıt gÃƒÂƒÃ‚Â¼ncelleme hatasÃƒÂ„Ã‚Â±:', error);
+    res.json({ success: false, message: 'GÃƒÂƒÃ‚Â¼ncelleme sırasında bir hata oluştu!' });
   }
 });
 
@@ -3485,14 +3502,14 @@ app.post('/kurum/ogrenci-kayit-sil/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     await dbRun('DELETE FROM ogrenci_kayitlari WHERE id = ?', [id]);
-    res.json({ success: true, message: 'Öğrenci kaydı silindi!' });
+    res.json({ success: true, message: 'Öğrenci kaydÃƒÂ„Ã‚Â± silindi!' });
   } catch (error) {
-    console.error('Öğrenci kayıt silme hatası:', error);
+    console.error('Öğrenci kayıt silme hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'Silme sırasında bir hata oluştu!' });
   }
 });
 
-// Kurum - TÜM Öğrenci Kayıtlarını Sil
+// Kurum - TÃƒÂƒÃ‚ÂœM Öğrenci KayıtlarÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± Sil
 app.post('/kurum/ogrenci-kayitlari-tumunu-sil', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
@@ -3501,28 +3518,28 @@ app.post('/kurum/ogrenci-kayitlari-tumunu-sil', requireAuth, async (req, res) =>
   try {
     const { onayKodu } = req.body;
     
-    // Güvenlik kontrolü: "SİL" yazması gerekiyor
-    if (onayKodu !== 'SİL') {
-      return res.json({ success: false, message: 'Onay kodu hatalı! "SİL" yazmanız gerekiyor.' });
+    // GÃƒÂƒÃ‚Â¼venlik kontrolÃƒÂƒÃ‚Â¼: "SÃƒÂ„Ã‚Â°L" yazmasÃƒÂ„Ã‚Â± gerekiyor
+    if (onayKodu !== 'SÃƒÂ„Ã‚Â°L') {
+      return res.json({ success: false, message: 'Onay kodu hatalÃƒÂ„Ã‚Â±! "SÃƒÂ„Ã‚Â°L" yazmanÃƒÂ„Ã‚Â±z gerekiyor.' });
     }
     
-    // Kaç kayıt var?
+    // KaÃƒÂƒÃ‚Â§ kayıt var?
     const kayitSayisi = await dbGet('SELECT COUNT(*) as sayi FROM ogrenci_kayitlari');
     
-    // Tüm kayıtları sil
+    // TÃƒÂƒÃ‚Â¼m kayıtlarÃƒÂ„Ã‚Â± sil
     await dbRun('DELETE FROM ogrenci_kayitlari');
     
-    console.log(`\n⚠️  TÜM ÖĞRENCİ KAYITLARI SİLİNDİ!`);
-    console.log(`   Silinen kayıt sayısı: ${kayitSayisi.sayi}`);
+    console.log(`\nÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â  TÃƒÂƒÃ‚ÂœM ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂRENCÃƒÂ„Ã‚Â° KAYITLARI SÃƒÂ„Ã‚Â°LÃƒÂ„Ã‚Â°NDÃƒÂ„Ã‚Â°!`);
+    console.log(`   Silinen kayıt sayÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±: ${kayitSayisi.sayi}`);
     console.log(`   Yapan kullanıcı: ${req.session.username}\n`);
     
     res.json({ 
       success: true, 
-      message: `${kayitSayisi.sayi} öğrenci kaydı başarıyla silindi!` 
+      message: `${kayitSayisi.sayi} ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci kaydÃƒÂ„Ã‚Â± başarıyla silindi!` 
     });
   } catch (error) {
-    console.error('Toplu silme hatası:', error);
-    res.json({ success: false, message: 'Silme işlemi sırasında bir hata oluştu!' });
+    console.error('Toplu silme hatasÃƒÂ„Ã‚Â±:', error);
+    res.json({ success: false, message: 'Silme iÃƒÂ…Ã‚ÂŸlemi sırasında bir hata oluştu!' });
   }
 });
 
@@ -3533,1241 +3550,25 @@ app.post('/kurum/ogrenci-import-excel', requireAuth, upload.single('excelFile'),
   }
   
   try {
-    if (!req.file) {
-      return res.json({ success: false, message: 'Excel dosyası seçilmedi!' });
-    }
-    
-    const xlsx = require('xlsx');
-    const workbook = xlsx.readFile(req.file.path);
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const data = xlsx.utils.sheet_to_json(sheet);
-    
-    console.log('\n📥 EXCEL IMPORT BAŞLADI');
-    console.log(`📊 Toplam satır: ${data.length}`);
-    
-    if (data.length > 0) {
-      console.log('📋 Excel başlıkları:', Object.keys(data[0]));
-      console.log('🔍 İlk satır örneği:', data[0]);
-    }
-    
-    let eklenenSayisi = 0;
-    let hataliSayisi = 0;
-    
-    for (const row of data) {
-      try {
-        // Tüm olası başlık varyasyonlarını dene (boşluklar, büyük/küçük harf)
-        const keys = Object.keys(row);
-        
-        // Sınıf bilgisini bul
-        const sinifKey = keys.find(k => 
-          k.includes('SINIF') || k.includes('Sınıf') || k.includes('sınıf') || k === 'sinif'
-        );
-        const sinif = sinifKey ? row[sinifKey] : '';
-        
-        // Öğrenci adını bul
-        const isimKey = keys.find(k => 
-          k.includes('ADI') || k.includes('SOYADI') || k.includes('Adı') || k.includes('Soyadı') || k === 'ogrenci_adi_soyadi'
-        );
-        const ogrenciAdi = isimKey ? row[isimKey] : '';
-        
-        if (!ogrenciAdi || !sinif) {
-          console.log(`⚠️ Eksik veri: Sınıf="${sinif}" (key: ${sinifKey}), İsim="${ogrenciAdi}" (key: ${isimKey})`);
-          console.log(`   Satır:`, row);
-          hataliSayisi++;
-          continue;
-        }
-        
-        // Diğer alanları da dinamik bul
-        const telefonKey = keys.find(k => k.includes('TELEFON') && !k.includes('VELİ'));
-        const tcKey = keys.find(k => k.includes('T.C') || k.includes('TC') || k.includes('KİMLİK'));
-        const veliAdiKey = keys.find(k => k.includes('VELİ') && (k.includes('ADI') || k === 'ÖĞRENCİ VELİ'));
-        const veliTelKey = keys.find(k => k.includes('VELİ') && k.includes('TELEFON'));
-        const tutarKey = keys.find(k => k.includes('TUTAR'));
-        const odemeDurumKey = keys.find(k => k.includes('ÖDEME') && k.includes('DURUM'));
-        const odemeTurKey = keys.find(k => k.includes('ÖDEME') && k.includes('TÜR'));
-        const edesisKey = keys.find(k => k.includes('EDESIS') || k.includes('EDEŞİS') || k.includes('KAYDI'));
-        const taksitKey = keys.find(k => k.includes('TAKSİT') || k.includes('TAKSIT'));
-        
-        await dbRun(
-          `INSERT INTO ogrenci_kayitlari (
-            sinif, ogrenci_adi_soyadi, telefon, tc_kimlik_no,
-            veli_adi, veli_telefon, tutar, odeme_durumu,
-            odeme_turu, edessis_kaydi, taksit
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            sinif,
-            ogrenciAdi,
-            telefonKey ? row[telefonKey] : '',
-            tcKey ? row[tcKey] : '',
-            veliAdiKey ? row[veliAdiKey] : '',
-            veliTelKey ? row[veliTelKey] : '',
-            tutarKey ? row[tutarKey] : '',
-            odemeDurumKey ? row[odemeDurumKey] : 'BEKLİYOR',
-            odemeTurKey ? row[odemeTurKey] : '',
-            edesisKey ? row[edesisKey] : '',
-            taksitKey ? row[taksitKey] : ''
-          ]
-        );
-        eklenenSayisi++;
-      } catch (error) {
-        console.error('❌ Satır ekleme hatası:', error.message);
-        hataliSayisi++;
-      }
-    }
-    
-    console.log(`\n✅ Excel import tamamlandı: ${eklenenSayisi} eklendi, ${hataliSayisi} hata\n`);
-    
-    // Yüklenen dosyayı sil
-    fs.unlinkSync(req.file.path);
-    
-    res.json({ 
-      success: true, 
-      message: `${eklenenSayisi} kayıt eklendi. ${hataliSayisi > 0 ? hataliSayisi + ' kayıt hatası.' : ''}` 
-    });
-  } catch (error) {
-    console.error('Excel import hatası:', error);
-    res.json({ success: false, message: 'Excel içeri aktarılırken bir hata oluştu: ' + error.message });
-  }
-});
-
-// Kurum - Excel Şablon İndir
-app.get('/kurum/ogrenci-sablon-indir', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).send('Yetkiniz yok!');
-  }
-  
-  try {
-    const xlsx = require('xlsx');
-    
-    // Şablon veri: Başlıklar + Gerçek veri örneği
-    const sablonData = [
-      {
-        'ÖĞRENCI SINIF BİLGİSİ': '5',
-        'ÖĞRENCI ADI SOYADI': 'Onur Kapıcıoğlu',
-        'TELEFON KAYDI': 'Yapıldı',
-        'T.C KİMLİK NO': '14983254220',
-        'ÖĞRENCİ VELİ': 'Edip Kapıcıoğlu',
-        'VELİ TELEFON': '05365052512',
-        'TUTAR': '5000',
-        'ÖDEME DURUMU': 'Yapıldı',
-        'ÖDEME TÜRÜ': 'Nakit',
-        'EDESIS KAYDI': '',
-        'TAKSİT': ''
-      },
-      {
-        'ÖĞRENCI SINIF BİLGİSİ': '3',
-        'ÖĞRENCI ADI SOYADI': 'Örnek Öğrenci 2',
-        'TELEFON KAYDI': '',
-        'T.C KİMLİK NO': '12345678901',
-        'ÖĞRENCİ VELİ': 'Örnek Veli 2',
-        'VELİ TELEFON': '05321234567',
-        'TUTAR': '4000',
-        'ÖDEME DURUMU': 'Bekliyor',
-        'ÖDEME TÜRÜ': '',
-        'EDESIS KAYDI': '',
-        'TAKSİT': '2'
-      }
-    ];
-    
-    const worksheet = xlsx.utils.json_to_sheet(sablonData);
-    
-    // Sütun genişliklerini ayarla
-    worksheet['!cols'] = [
-      { wch: 22 }, // ÖĞRENCI SINIF BİLGİSİ
-      { wch: 25 }, // ÖĞRENCI ADI SOYADI
-      { wch: 15 }, // TELEFON KAYDI
-      { wch: 15 }, // T.C KİMLİK NO
-      { wch: 20 }, // ÖĞRENCİ VELİ
-      { wch: 15 }, // VELİ TELEFON
-      { wch: 12 }, // TUTAR
-      { wch: 15 }, // ÖDEME DURUMU
-      { wch: 12 }, // ÖDEME TÜRÜ
-      { wch: 15 }, // EDESIS KAYDI
-      { wch: 10 }  // TAKSİT
-    ];
-    
-    const workbook = xlsx.utils.book_new();
-    xlsx.utils.book_append_sheet(workbook, worksheet, 'Öğrenci Kayıt Şablonu');
-    
-    const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-    
-    res.setHeader('Content-Disposition', 'attachment; filename=ogrenci-kayit-sablonu.xlsx');
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.send(buffer);
-  } catch (error) {
-    console.error('Excel şablon oluşturma hatası:', error);
-    res.status(500).send('Şablon oluşturulurken bir hata oluştu!');
-  }
-});
-
-// Kurum - Excel Export
-app.get('/kurum/ogrenci-export-excel', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).send('Yetkiniz yok!');
-  }
-  
-  try {
-    const xlsx = require('xlsx');
-    const ogrenciler = await dbAll('SELECT * FROM ogrenci_kayitlari ORDER BY sinif, ogrenci_adi_soyadi');
-    
-    // Excel için veri formatla
-    const excelData = ogrenciler.map(o => ({
-      'ÖĞRENCI SINIF BİLGİSİ': o.sinif,
-      'ÖĞRENCI ADI SOYADI': o.ogrenci_adi_soyadi,
-      'TELEFON KAYDI': o.telefon || '',
-      'T.C KİMLİK NO': o.tc_kimlik_no || '',
-      'ÖĞRENCİ VELİ': o.veli_adi || '',
-      'VELİ TELEFON': o.veli_telefon || '',
-      'TUTAR': o.tutar || '',
-      'ÖDEME DURUMU': o.odeme_durumu || '',
-      'ÖDEME TÜRÜ': o.odeme_turu || '',
-      'EDESIS KAYDI': o.edessis_kaydi || '',
-      'TAKSİT': o.taksit || ''
-    }));
-    
-    const worksheet = xlsx.utils.json_to_sheet(excelData);
-    const workbook = xlsx.utils.book_new();
-    xlsx.utils.book_append_sheet(workbook, worksheet, 'Öğrenci Kayıtları');
-    
-    const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-    
-    res.setHeader('Content-Disposition', 'attachment; filename=ogrenci-kayitlari.xlsx');
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.send(buffer);
-  } catch (error) {
-    console.error('Excel export hatası:', error);
-    res.status(500).send('Excel dışarı aktarılırken bir hata oluştu!');
-  }
-});
-
-// Kurum - Sınav Yönetimi
-app.get('/kurum/sinavlar', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
-  }
-  
-  try {
-    const sinavlar = await dbAll('SELECT * FROM sinavlar ORDER BY tarih DESC');
-    
-    res.render('kurum/sinavlar', {
-      sinavlar: sinavlar,
-      user: { username: req.session.username, type: req.session.userType },
-      error: req.session.error,
-      success: req.session.success
-    });
-    
-    req.session.error = null;
-    req.session.success = null;
-  } catch (error) {
-    console.error('Sınav listesi hatası:', error);
-    res.status(500).send('Bir hata oluştu!');
-  }
-});
-
-// ============ SINAV PAKETLERİ YÖNETİMİ ============
-
-// Kurum - Sınav Paketleri Listesi
-app.get('/kurum/sinav-paketleri', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
-  }
-  
-  try {
-    // Paketleri ve ilgili istatistikleri çek (sadece aktif olanlar)
-    const paketler = await dbAll(`
-      SELECT 
-        sp.*,
-        COUNT(DISTINCT ps.sinav_id) as sinav_sayisi,
-        COUNT(DISTINCT pa.ogrenci_id) as ogrenci_sayisi
-      FROM sinav_paketleri sp
-      LEFT JOIN paket_sinavlari ps ON sp.id = ps.paket_id
-      LEFT JOIN paket_atamalari pa ON sp.id = pa.paket_id AND pa.durum = 'aktif'
-      WHERE sp.aktif = 1
-      GROUP BY sp.id
-      ORDER BY sp.olusturulma_tarihi DESC
-    `);
-    
-    res.render('kurum/sinav-paketleri', {
-      paketler: paketler,
-      user: { username: req.session.username, type: req.session.userType },
-      error: req.session.error,
-      success: req.session.success
-    });
-    
-    req.session.error = null;
-    req.session.success = null;
-  } catch (error) {
-    console.error('Sınav paketleri listesi hatası:', error);
-    res.status(500).send('Bir hata oluştu!');
-  }
-});
-
-// Kurum - Yeni Paket Oluştur (GET - Form)
-app.get('/kurum/sinav-paketi-olustur', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
-  }
-  
-  try {
-    // Mevcut sınavları çek
-    const sinavlar = await dbAll('SELECT * FROM sinavlar ORDER BY tarih DESC');
-    const siniflar = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', 'Mezun'];
-    
-    res.render('kurum/sinav-paketi-olustur', {
-      sinavlar: sinavlar,
-      siniflar: siniflar,
-      user: { username: req.session.username, type: req.session.userType },
-      error: req.session.error,
-      success: req.session.success
-    });
-    
-    req.session.error = null;
-    req.session.success = null;
-  } catch (error) {
-    console.error('Paket oluşturma sayfası hatası:', error);
-    res.status(500).send('Bir hata oluştu!');
-  }
-});
-
-// Kurum - Yeni Paket Kaydet (POST)
-app.post('/kurum/sinav-paketi-kaydet', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).json({ success: false, message: 'Yetkisiz erişim!' });
-  }
-  
-  try {
-    const { ad, aciklama, sinif, sinav_ids, fiyat } = req.body;
-    
-    if (!ad || !sinif) {
-      return res.json({ success: false, message: 'Paket adı ve sınıf zorunludur!' });
-    }
-    
-    // Paket oluştur
-    const result = await dbRun(
-      'INSERT INTO sinav_paketleri (ad, aciklama, sinif, toplam_sinav_sayisi, fiyat, kurum_id) VALUES (?, ?, ?, ?, ?, ?)',
-      [ad, aciklama, sinif, 0, fiyat || 0, req.session.userId]
-    );
-    
-    const paketId = result.lastID;
-    
-    // Sınavları pakete ekle
-    if (sinav_ids && Array.isArray(sinav_ids) && sinav_ids.length > 0) {
-      for (let i = 0; i < sinav_ids.length; i++) {
-        await dbRun(
-          'INSERT INTO paket_sinavlari (paket_id, sinav_id, sira) VALUES (?, ?, ?)',
-          [paketId, sinav_ids[i], i + 1]
-        );
-      }
-      
-      // Toplam sınav sayısını güncelle
-      await dbRun(
-        'UPDATE sinav_paketleri SET toplam_sinav_sayisi = ? WHERE id = ?',
-        [sinav_ids.length, paketId]
-      );
-    }
-    
-    console.log(`\n✅ YENİ PAKET OLUŞTURULDU`);
-    console.log(`   Paket ID: ${paketId}`);
-    console.log(`   Ad: ${ad}`);
-    console.log(`   Sınıf: ${sinif}`);
-    console.log(`   Fiyat: ${fiyat || 0} ₺`);
-    console.log(`   Sınav Sayısı: ${sinav_ids ? sinav_ids.length : 0}`);
-    
-    res.json({ success: true, paketId: paketId, message: 'Paket başarıyla oluşturuldu!' });
-  } catch (error) {
-    console.error('Paket kaydetme hatası:', error);
-    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
-  }
-});
-
-// Kurum - Paket Düzenle (Form)
-app.get('/kurum/sinav-paketi-duzenle/:id', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
-  }
-  
-  try {
-    const paketId = req.params.id;
-    
-    // Paket bilgilerini al
-    const paket = await dbGet('SELECT * FROM sinav_paketleri WHERE id = ?', [paketId]);
-    
-    if (!paket) {
-      return res.status(404).send('Paket bulunamadı!');
-    }
-    
-    // Tüm sınavları al
-    const tumSinavlar = await dbAll('SELECT * FROM sinavlar ORDER BY tarih DESC');
-    
-    // Paketteki sınav ID'lerini al
-    const paketSinavlari = await dbAll(
-      'SELECT sinav_id FROM paket_sinavlari WHERE paket_id = ?',
-      [paketId]
-    );
-    const secilenSinavIds = paketSinavlari.map(ps => ps.sinav_id);
-    
-    // Sınıf listesi
-    const siniflar = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-    
-    res.render('kurum/sinav-paketi-duzenle', {
-      paket: paket,
-      sinavlar: tumSinavlar,
-      secilenSinavIds: secilenSinavIds,
-      siniflar: siniflar,
-      user: { username: req.session.username, type: req.session.userType },
-      error: req.session.error,
-      success: req.session.success
-    });
-    
-    req.session.error = null;
-    req.session.success = null;
-  } catch (error) {
-    console.error('Paket düzenleme formu hatası:', error);
-    res.status(500).send('Bir hata oluştu!');
-  }
-});
-
-// Kurum - Paket Güncelle
-app.post('/kurum/sinav-paketi-guncelle/:id', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).json({ success: false, message: 'Yetkisiz erişim!' });
-  }
-  
-  try {
-    const paketId = req.params.id;
-    const { ad, aciklama, sinif, sinav_ids, fiyat } = req.body;
-    
-    if (!ad || !sinif) {
-      return res.json({ success: false, message: 'Paket adı ve sınıf zorunludur!' });
-    }
-    
-    // Paket bilgilerini güncelle
-    await dbRun(
-      'UPDATE sinav_paketleri SET ad = ?, aciklama = ?, sinif = ?, fiyat = ?, toplam_sinav_sayisi = ? WHERE id = ?',
-      [ad, aciklama, sinif, fiyat || 0, sinav_ids ? sinav_ids.length : 0, paketId]
-    );
-    
-    // Mevcut sınav ilişkilerini sil
-    await dbRun('DELETE FROM paket_sinavlari WHERE paket_id = ?', [paketId]);
-    
-    // Yeni sınav ilişkilerini ekle
-    if (sinav_ids && Array.isArray(sinav_ids) && sinav_ids.length > 0) {
-      for (let i = 0; i < sinav_ids.length; i++) {
-        await dbRun(
-          'INSERT INTO paket_sinavlari (paket_id, sinav_id, sira) VALUES (?, ?, ?)',
-          [paketId, sinav_ids[i], i + 1]
-        );
-      }
-    }
-    
-    console.log(`\n✅ PAKET GÜNCELLENDİ`);
-    console.log(`   Paket ID: ${paketId}`);
-    console.log(`   Ad: ${ad}`);
-    console.log(`   Sınıf: ${sinif}`);
-    console.log(`   Fiyat: ${fiyat || 0} ₺`);
-    console.log(`   Sınav Sayısı: ${sinav_ids ? sinav_ids.length : 0}`);
-    
-    res.json({ success: true, message: 'Paket başarıyla güncellendi!' });
-  } catch (error) {
-    console.error('Paket güncelleme hatası:', error);
-    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
-  }
-});
-
-// Kurum - Paket Detay
-app.get('/kurum/sinav-paketi-detay/:id', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
-  }
-  
-  try {
-    const paketId = req.params.id;
-    
-    // Paket bilgilerini al
-    const paket = await dbGet('SELECT * FROM sinav_paketleri WHERE id = ?', [paketId]);
-    
-    if (!paket) {
-      return res.status(404).send('Paket bulunamadı!');
-    }
-    
-    // Paketteki sınavları al
-    const sinavlar = await dbAll(`
-      SELECT s.*, ps.sira
-      FROM sinavlar s
-      INNER JOIN paket_sinavlari ps ON s.id = ps.sinav_id
-      WHERE ps.paket_id = ?
-      ORDER BY ps.sira ASC
-    `, [paketId]);
-    
-    // Atanan öğrencileri al (hem kurum hem veli kayıtları)
-    const ogrenciler = await dbAll(`
-      SELECT 
-        pa.id as atama_id,
-        pa.ogrenci_id,
-        pa.ogrenci_kaynak,
-        pa.atama_tarihi,
-        pa.durum,
-        CASE 
-          WHEN pa.ogrenci_kaynak = 'kurum' THEN ok.ogrenci_adi_soyadi
-          ELSE o.ad_soyad
-        END as ogrenci_adi,
-        CASE 
-          WHEN pa.ogrenci_kaynak = 'kurum' THEN ok.sinif
-          ELSE o.sinif
-        END as sinif
-      FROM paket_atamalari pa
-      LEFT JOIN ogrenci_kayitlari ok ON pa.ogrenci_id = ok.id AND pa.ogrenci_kaynak = 'kurum'
-      LEFT JOIN ogrenciler o ON pa.ogrenci_id = o.id AND pa.ogrenci_kaynak = 'veli'
-      WHERE pa.paket_id = ? AND pa.durum = 'aktif'
-      ORDER BY pa.atama_tarihi DESC
-    `, [paketId]);
-    
-    res.render('kurum/sinav-paketi-detay', {
-      paket: paket,
-      sinavlar: sinavlar,
-      ogrenciler: ogrenciler,
-      user: { username: req.session.username, type: req.session.userType },
-      error: req.session.error,
-      success: req.session.success
-    });
-    
-    req.session.error = null;
-    req.session.success = null;
-  } catch (error) {
-    console.error('Paket detay hatası:', error);
-    res.status(500).send('Bir hata oluştu!');
-  }
-});
-
-// Kurum - Pakete Öğrenci Ata
-app.post('/kurum/paket-ogrenci-ata', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).json({ success: false, message: 'Yetkisiz erişim!' });
-  }
-  
-  try {
-    const { paket_id, ogrenci_ids } = req.body;
-    
-    if (!paket_id || !ogrenci_ids || ogrenci_ids.length === 0) {
-      return res.json({ success: false, message: 'Paket ve öğrenci seçimi zorunludur!' });
-    }
-    
-    // Paketteki sınavları al
-    const paketSinavlari = await dbAll(
-      'SELECT sinav_id FROM paket_sinavlari WHERE paket_id = ?',
-      [paket_id]
-    );
-    
-    let atananSayi = 0;
-    
-    for (const ogrenci of ogrenci_ids) {
-      const [ogrenci_id, kaynak] = ogrenci.split('_');
-      
-      // Paket ataması yap
-      const mevcutAtama = await dbGet(
-        'SELECT id FROM paket_atamalari WHERE paket_id = ? AND ogrenci_id = ? AND ogrenci_kaynak = ?',
-        [paket_id, ogrenci_id, kaynak]
-      );
-      
-      if (!mevcutAtama) {
-        await dbRun(
-          'INSERT INTO paket_atamalari (paket_id, ogrenci_id, ogrenci_kaynak, durum) VALUES (?, ?, ?, ?)',
-          [paket_id, ogrenci_id, kaynak, 'aktif']
-        );
-        
-        // Her sınav için sinav_katilimcilari tablosuna ekle
-        for (const sinav of paketSinavlari) {
-          const mevcutKatilim = await dbGet(
-            'SELECT id FROM sinav_katilimcilari WHERE sinav_id = ? AND ogrenci_id = ? AND ogrenci_kaynak = ?',
-            [sinav.sinav_id, ogrenci_id, kaynak]
-          );
-          
-          if (!mevcutKatilim) {
-            await dbRun(
-              'INSERT INTO sinav_katilimcilari (sinav_id, ogrenci_id, ogrenci_kaynak) VALUES (?, ?, ?)',
-              [sinav.sinav_id, ogrenci_id, kaynak]
-            );
-          }
-        }
-        
-        atananSayi++;
-      }
-    }
-    
-    console.log(`\n✅ PAKET ATAMASI YAPILDI`);
-    console.log(`   Paket ID: ${paket_id}`);
-    console.log(`   Atanan Öğrenci: ${atananSayi}`);
-    
-    res.json({ success: true, message: `${atananSayi} öğrenci pakete atandı ve sınavlara kaydedildi!` });
-  } catch (error) {
-    console.error('Paket atama hatası:', error);
-    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
-  }
-});
-
-// Kurum - Paket Sil
-app.post('/kurum/sinav-paketi-sil/:id', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).json({ success: false, message: 'Yetkisiz erişim!' });
-  }
-  
-  try {
-    const paketId = req.params.id;
-    
-    // Paketi pasif yap (silme yerine)
-    await dbRun('UPDATE sinav_paketleri SET aktif = 0 WHERE id = ?', [paketId]);
-    
-    // Atamaları iptal et
-    await dbRun('UPDATE paket_atamalari SET durum = "iptal" WHERE paket_id = ?', [paketId]);
-    
-    console.log(`\n❌ PAKET SİLİNDİ (Pasif yapıldı)`);
-    console.log(`   Paket ID: ${paketId}`);
-    
-    res.json({ success: true, message: 'Paket başarıyla silindi!' });
-  } catch (error) {
-    console.error('Paket silme hatası:', error);
-    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
-  }
-});
-
-// Kurum - Sınav Ekle
-app.post('/kurum/sinav-ekle', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
-  }
-  
-  try {
-    const { ad, tarih, fiyat, aciklama, sinif, ders } = req.body;
-    
-    await dbRun(
-      `INSERT INTO sinavlar (ad, tarih, fiyat, aciklama, sinif, ders, sinav_durumu) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [ad, tarih, fiyat || 0, aciklama || '', sinif || '', ders || '', 'Başvuru aşamasında']
-    );
-    
-    req.session.success = 'Sınav başarıyla eklendi!';
-    res.redirect('/kurum/sinavlar');
-  } catch (error) {
-    console.error('Sınav ekleme hatası:', error);
-    req.session.error = 'Sınav eklenirken bir hata oluştu!';
-    res.redirect('/kurum/sinavlar');
-  }
-});
-
-// Kurum - Sınav Sil
-app.post('/kurum/sinav-sil/:id', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
-  }
-  
-  try {
-    await dbRun('DELETE FROM sinavlar WHERE id = ?', [req.params.id]);
-    
-    req.session.success = 'Sınav başarıyla silindi!';
-    res.redirect('/kurum/sinavlar');
-  } catch (error) {
-    console.error('Sınav silme hatası:', error);
-    req.session.error = 'Sınav silinirken bir hata oluştu!';
-    res.redirect('/kurum/sinavlar');
-  }
-});
-
-// Kurum - Sınav Detay (Katılımcı Yönetimi)
-app.get('/kurum/sinav-detay/:id', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
-  }
-  
-  // ✅ Cache'i devre dışı bırak - her zaman güncel veri çek
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-  
-  try {
-    const sinavId = req.params.id;
-    
-    // Sınav bilgilerini al
-    const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinavId]);
-    
-    if (!sinav) {
-      req.session.error = 'Sınav bulunamadı!';
-      return res.redirect('/kurum/sinavlar');
-    }
-    
-    // Katılımcıları al (hem kurum hem veli kayıtlarından)
-    const kurumKatilimcilari = await dbAll(`
-      SELECT 
-        sk.*,
-        'kurum' as kaynak,
-        ok.ogrenci_adi_soyadi as ad_soyad,
-        ok.sinif,
-        ok.telefon,
-        ok.veli_adi,
-        ok.veli_telefon
-      FROM sinav_katilimcilari sk
-      INNER JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id AND sk.ogrenci_kaynak = 'kurum'
-      WHERE sk.sinav_id = ?
-      ORDER BY ok.sinif, ok.ogrenci_adi_soyadi
-    `, [sinavId]);
-    
-    const veliKatilimcilari = await dbAll(`
-      SELECT 
-        sk.*,
-        'veli' as kaynak,
-        o.ad_soyad,
-        o.sinif,
-        o.telefon,
-        u.username as veli_adi,
-        o.telefon as veli_telefon
-      FROM sinav_katilimcilari sk
-      INNER JOIN ogrenciler o ON sk.ogrenci_id = o.id AND sk.ogrenci_kaynak = 'veli'
-      LEFT JOIN users u ON o.veli_id = u.id
-      WHERE sk.sinav_id = ?
-      ORDER BY o.sinif, o.ad_soyad
-    `, [sinavId]);
-    
-    const katilimcilar = [...kurumKatilimcilari, ...veliKatilimcilari];
-    
-    // Tüm öğrencileri al (hem kurum kayıtları hem veli öğrencileri)
-    const kurumOgrencileri = await dbAll(`
-      SELECT 
-        'kurum_' || id as unique_id,
-        id as original_id,
-        'kurum' as kaynak,
-        ogrenci_adi_soyadi as ad_soyad,
-        sinif,
-        telefon,
-        tc_kimlik_no as tc_no,
-        veli_adi,
-        veli_telefon
-      FROM ogrenci_kayitlari
-      ORDER BY sinif, ogrenci_adi_soyadi
-    `);
-    
-    const veliOgrencileri = await dbAll(`
-      SELECT 
-        'veli_' || o.id as unique_id,
-        o.id as original_id,
-        'veli' as kaynak,
-        o.ad_soyad,
-        o.sinif,
-        o.telefon,
-        o.tc_no,
-        u.username as veli_adi,
-        o.telefon as veli_telefon
-      FROM ogrenciler o
-      LEFT JOIN users u ON o.veli_id = u.id
-      ORDER BY o.sinif, o.ad_soyad
-    `);
-    
-    // TC bazlı tekrarları temizle (Kurum kaydı öncelikli)
-    const tumOgrenciler = temizleOgrenciTekrarlari(veliOgrencileri, kurumOgrencileri);
-    
-    console.log(`\n📊 Öğrenci Listesi (${tumOgrenciler.length} öğrenci):`);
-    console.log(`  - Kurum kayıtları: ${kurumOgrencileri.length}`);
-    console.log(`  - Veli öğrencileri: ${veliOgrencileri.length}`);
-    if (tumOgrenciler.length > 0) {
-      console.log('İlk 3 öğrenci örneği:');
-      tumOgrenciler.slice(0, 3).forEach(o => {
-        console.log(`  - [${o.kaynak}] ID: ${o.original_id}, İsim: "${o.ad_soyad}", Sınıf: "${o.sinif}"`);
-      });
-    } else {
-      console.log('❌ Hiç öğrenci bulunamadı!');
-    }
-    
-    // Benzersiz sınıf listesi
-    const siniflar = [...new Set(tumOgrenciler.map(o => o.sinif).filter(s => s))].sort();
-    
-    // Eşleşme istatistiklerini hesapla
-    // pdf_path varsa eşleşmiştir (sonuc_durumu 'yuklendi', 'tamamlandi', 'bildirildi' olabilir)
-    const eslesmisKatilimcilar = katilimcilar.filter(k => k.pdf_path && k.pdf_path.trim() !== '');
-    const eslesmemisKatilimcilar = katilimcilar.filter(k => !k.pdf_path || k.pdf_path.trim() === '');
-    
-    const istatistikler = {
-      toplam: katilimcilar.length,
-      eslesmis: eslesmisKatilimcilar.length,
-      eslesmemis: eslesmemisKatilimcilar.length,
-      oran: katilimcilar.length > 0 ? Math.round((eslesmisKatilimcilar.length / katilimcilar.length) * 100) : 0
-    };
-    
-    console.log(`\n📊 İSTATİSTİKLER (Sınav ID: ${sinavId})`);
-    console.log(`   Toplam Katılımcı: ${istatistikler.toplam}`);
-    console.log(`   ✅ Eşleşen: ${istatistikler.eslesmis}`);
-    console.log(`   ⚠️ Eşleşmeyen: ${istatistikler.eslesmemis}`);
-    console.log(`   📊 Başarı Oranı: %${istatistikler.oran}`);
-    
-    // Session mesajlarını al ve hemen temizle
-    const errorMsg = req.session.error;
-    const successMsg = req.session.success;
-    req.session.error = null;
-    req.session.success = null;
-    
-    res.render('kurum/sinav-detay', {
-      sinav: sinav,
-      katilimcilar: katilimcilar,
-      eslesmisKatilimcilar: eslesmisKatilimcilar,
-      eslesmemisKatilimcilar: eslesmemisKatilimcilar,
-      istatistikler: istatistikler,
-      tumOgrenciler: tumOgrenciler,
-      siniflar: siniflar,
-      user: { username: req.session.username, type: req.session.userType },
-      error: errorMsg,
-      success: successMsg
-    });
-  } catch (error) {
-    console.error('Sınav detay hatası:', error);
-    res.status(500).send('Bir hata oluştu!');
-  }
-});
-
-// 🆕 Kurum - Sınav Sonuçlarını Listele (Yüklenmiş PDF sonuçlarını göster)
-app.get('/kurum/sinav-sonuclari-listele/:id', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).json({ success: false, error: 'Yetkiniz yok!' });
-  }
-  
-  try {
-    const sinavId = req.params.id;
-    
-    console.log('\n📊 SINAV SONUÇLARI LİSTELENİYOR:', sinavId);
-    
-    // Sınav katılımcılarını ve sonuçlarını al
-    const sonuclar = await dbAll(`
-      SELECT 
-        sk.ogrenci_id,
-        sk.ogrenci_kaynak as kaynak,
-        sk.pdf_path,
-        sk.sonuc_durumu,
-        CASE 
-          WHEN sk.ogrenci_kaynak = 'kurum' THEN ok.ogrenci_adi_soyadi
-          WHEN sk.ogrenci_kaynak = 'veli' THEN o.ad_soyad
-        END as ad_soyad
-      FROM sinav_katilimcilari sk
-      LEFT JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id AND sk.ogrenci_kaynak = 'kurum'
-      LEFT JOIN ogrenciler o ON sk.ogrenci_id = o.id AND sk.ogrenci_kaynak = 'veli'
-      WHERE sk.sinav_id = ?
-      ORDER BY sk.id
-    `, [sinavId]);
-    
-    console.log(`   Toplam katılımcı: ${sonuclar.length}`);
-    
-    // Sonuçları grupla
-    let matchedCount = 0;
-    let unmatchedCount = 0;
-    
-    const results = sonuclar.map((s, index) => {
-      const eslesti = !!(s.pdf_path && s.sonuc_durumu === 'yuklendi');
-      
-      if (eslesti) matchedCount++;
-      else unmatchedCount++;
-      
-      return {
-        sayfaNo: index + 1,
-        ogrenciId: s.ogrenci_id,
-        ogrenciAdi: s.ad_soyad || 'BİLİNMEYEN',
-        pdfYolu: s.pdf_path,
-        eslesti: eslesti,
-        kaynak: s.kaynak,
-        sonucDurumu: s.sonuc_durumu
-      };
-    });
-    
-    console.log(`   ✅ Eşleşen: ${matchedCount}`);
-    console.log(`   ⚠️  Eşleşmeyen: ${unmatchedCount}`);
-    
-    res.json({
-      success: true,
-      data: {
-        totalCount: sonuclar.length,
-        matchedCount: matchedCount,
-        unmatchedCount: unmatchedCount,
-        results: results
-      }
-    });
-    
-  } catch (error) {
-    console.error('❌ Sonuç listeleme hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Sonuçlar listelenemedi: ' + error.message
-    });
-  }
-});
-
-// 🆕 Kurum - Sınav Sonuçlarını Yayınla/Kaldır
-app.post('/kurum/sinav-yayinla/:id', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
-  }
-
-  try {
-    const sinavId = req.params.id;
-    const { yayinla } = req.body; // true = yayınla, false = yayından kaldır
-    
-    const yeniDurum = yayinla ? 1 : 0;
-    
-    await dbRun('UPDATE sinavlar SET sonuclar_aciklandi = ? WHERE id = ?', [yeniDurum, sinavId]);
-    
-    // Ayrıca sınav durumunu da güncelle (görsel uyumluluk için)
-    const sinavDurumu = yayinla ? 'Sonuç açıklandı' : 'Sonuç yükleniyor';
-    await dbRun('UPDATE sinavlar SET sinav_durumu = ? WHERE id = ?', [sinavDurumu, sinavId]);
-    
-    console.log(`\n📢 Sınav ${sinavId} durumu güncellendi: ${yayinla ? 'YAYINLANDI' : 'TASLAK'}`);
-    
-    res.json({ 
-      success: true, 
-      message: yayinla ? 'Sınav sonuçları başarıyla yayınlandı! Veliler artık görebilir.' : 'Sınav sonuçları yayından kaldırıldı (Taslak).' 
-    });
-    
-  } catch (error) {
-    console.error('Sınav yayınlama hatası:', error);
-    res.status(500).json({ success: false, message: 'Bir hata oluştu: ' + error.message });
-  }
-});
-
-// Kurum - Katılımcı Ekle
-app.post('/kurum/sinav-katilimci-ekle', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
-  }
-  
-  try {
-    const { sinav_id, ogrenci_ids } = req.body;
-    
-    if (!sinav_id || !ogrenci_ids || ogrenci_ids.length === 0) {
-      return res.json({ success: false, message: 'Sınav ID veya öğrenci seçimi eksik!' });
-    }
-    
-    let eklenenSayisi = 0;
-    let mevcutSayisi = 0;
-    
-    for (const uniqueId of ogrenci_ids) {
-      // unique_id'yi parse et (örn: "kurum_123" veya "veli_456")
-      const parts = uniqueId.split('_');
-      const kaynak = parts[0]; // 'kurum' veya 'veli'
-      const ogrenciId = parts[1]; // gerçek ID
-      
-      // Zaten katılımcı mı kontrol et
-      const mevcut = await dbGet(
-        'SELECT * FROM sinav_katilimcilari WHERE sinav_id = ? AND ogrenci_id = ? AND ogrenci_kaynak = ?',
-        [sinav_id, ogrenciId, kaynak]
-      );
-      
-      if (mevcut) {
-        mevcutSayisi++;
-      } else {
-        await dbRun(
-          'INSERT INTO sinav_katilimcilari (sinav_id, ogrenci_id, ogrenci_kaynak) VALUES (?, ?, ?)',
-          [sinav_id, ogrenciId, kaynak]
-        );
-        eklenenSayisi++;
-      }
-    }
-    
-    // Katılımcı sayısını güncelle
-    const yeniSayi = await dbGet(
-      'SELECT COUNT(*) as sayi FROM sinav_katilimcilari WHERE sinav_id = ?',
-      [sinav_id]
-    );
-    await dbRun(
-      'UPDATE sinavlar SET katilimci_sayisi = ? WHERE id = ?',
-      [yeniSayi.sayi, sinav_id]
-    );
-    
-    // Eğer hiçbir öğrenci eklenemediyse (hepsi zaten ekliyse), uyarı ver
-    if (eklenenSayisi === 0 && mevcutSayisi > 0) {
-      return res.json({ 
-        success: false, 
-        message: `⚠️ Seçtiğiniz ${mevcutSayisi} öğrenci zaten bu sınava ekli! Tekrar ekleme yapılamaz.` 
-      });
-    }
-    
-    // Bazıları eklendi, bazıları mevcuttu
-    res.json({ 
-      success: true, 
-      message: `✅ ${eklenenSayisi} öğrenci eklendi${mevcutSayisi > 0 ? `\n⚠️ ${mevcutSayisi} öğrenci zaten ekli olduğu için atlandı` : ''}!` 
-    });
-  } catch (error) {
-    console.error('Katılımcı ekleme hatası:', error);
-    res.json({ success: false, message: 'Bir hata oluştu!' });
-  }
-});
-
-// Kurum - Katılımcı Sil
-app.post('/kurum/sinav-katilimci-sil/:id', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
-  }
-  
-  try {
-    const katilimciId = req.params.id;
-    
-    // Sınav ID'sini al (katılımcı sayısını güncellemek için)
-    const katilimci = await dbGet('SELECT sinav_id FROM sinav_katilimcilari WHERE id = ?', [katilimciId]);
-    
-    if (!katilimci) {
-      return res.json({ success: false, message: 'Katılımcı bulunamadı!' });
-    }
-    
-    // Katılımcıyı sil
-    await dbRun('DELETE FROM sinav_katilimcilari WHERE id = ?', [katilimciId]);
-    
-    // Katılımcı sayısını güncelle
-    const yeniSayi = await dbGet(
-      'SELECT COUNT(*) as sayi FROM sinav_katilimcilari WHERE sinav_id = ?',
-      [katilimci.sinav_id]
-    );
-    await dbRun(
-      'UPDATE sinavlar SET katilimci_sayisi = ? WHERE id = ?',
-      [yeniSayi.sayi, katilimci.sinav_id]
-    );
-    
-    res.json({ success: true, message: 'Katılımcı başarıyla çıkarıldı!' });
-  } catch (error) {
-    console.error('Katılımcı silme hatası:', error);
-    res.json({ success: false, message: 'Bir hata oluştu!' });
-  }
-});
-
-// Cevap Anahtarı Yükleme
-app.post('/kurum/cevap-anahtari-yukle/:id', requireAuth, pdfUpload.single('cevapAnahtari'), async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
-  }
-  
-  try {
-    const sinavId = req.params.id;
-    
-    if (!req.file) {
-      return res.json({ success: false, message: 'PDF dosyası yüklenmedi!' });
-    }
-    
-    const pdfPath = req.file.path;
-    
-    // Sınav bilgilerini güncelle
-    await dbRun(
-      'UPDATE sinavlar SET cevap_anahtari_pdf = ? WHERE id = ?',
-      [pdfPath, sinavId]
-    );
-    
-    console.log(`✅ Cevap anahtarı yüklendi: ${pdfPath}`);
-    
-    res.json({ success: true, message: 'Cevap anahtarı başarıyla yüklendi!' });
-  } catch (error) {
-    console.error('Cevap anahtarı yükleme hatası:', error);
-    res.json({ success: false, message: 'Bir hata oluştu!' });
-  }
-});
-
-// Sınav Durumu Güncelleme
-app.post('/kurum/sinav-durumu-guncelle/:id', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
-  }
-  
-  try {
-    const sinavId = req.params.id;
-    const { sinav_durumu } = req.body;
-    
-    if (!sinav_durumu) {
-      return res.json({ success: false, message: 'Sınav durumu seçilmedi!' });
-    }
-    
-    // Sınav durumunu güncelle
-    await dbRun(
-      'UPDATE sinavlar SET sinav_durumu = ? WHERE id = ?',
-      [sinav_durumu, sinavId]
-    );
-    
-    console.log(`✅ Sınav durumu güncellendi: ${sinav_durumu}`);
-    
-    res.json({ success: true, message: 'Sınav durumu başarıyla güncellendi!' });
-  } catch (error) {
-    console.error('Sınav durumu güncelleme hatası:', error);
-    res.json({ success: false, message: 'Bir hata oluştu!' });
-  }
-});
-
-// API - Öğrenci Ara (Autocomplete için - Sonuç yüklerken manuel eşleştirmede kullanılacak)
-app.get('/api/ogrenci-ara', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
-  }
-  
-  try {
-    const { q, sinav_id } = req.query;
-    
-    if (!q || q.length < 2) {
-      return res.json([]);
-    }
-    
-    // Sınıfa kayıtlı öğrencileri ara
-    let query = `
-      SELECT 
-        ok.id,
-        ok.ogrenci_adi_soyadi,
-        ok.sinif,
-        ok.telefon,
-        ok.veli_adi,
-        ok.veli_telefon
-      FROM ogrenci_kayitlari ok
-      WHERE ok.ogrenci_adi_soyadi LIKE ?
-    `;
-    
-    const params = [`%${q}%`];
-    
-    // Eğer sinav_id verilmişse, sınava katılımcı olarak eklenenlerden filtrele
-    if (sinav_id) {
-      query += ` AND ok.id IN (SELECT ogrenci_id FROM sinav_katilimcilari WHERE sinav_id = ?)`;
-      params.push(sinav_id);
-    }
-    
-    query += ` ORDER BY ok.ogrenci_adi_soyadi LIMIT 10`;
-    
-    const sonuclar = await dbAll(query, params);
-    
-    res.json(sonuclar);
-  } catch (error) {
-    console.error('Öğrenci arama hatası:', error);
-    res.json([]);
-  }
-});
-
-// 🆕 YENİ SİSTEM: Basit Sonuç Yükleme Sayfası
-app.get('/kurum/sinav-sonuc-yukle-yeni/:id', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).send('Yetkiniz yok!');
-  }
-  
-  try {
-    const sinavId = req.params.id;
-    
-    const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinavId]);
-    if (!sinav) {
-      return res.status(404).send('Sınav bulunamadı!');
-    }
-    
-    const katilimciSayisi = await dbGet(
-      'SELECT COUNT(*) as count FROM sinav_katilimcilari WHERE sinav_id = ?',
-      [sinavId]
-    );
-    
-    res.render('kurum/sinav-sonuc-yukle-yeni', {
-      user: req.session,
-      sinav: sinav,
-      katilimciSayisi: katilimciSayisi.count,
-      error: req.query.error || null
-    });
-    
-  } catch (error) {
-    console.error('Sonuç yükleme sayfası hatası:', error);
-    res.status(500).send('Bir hata oluştu!');
-  }
-});
-
-// ESKİ SİSTEM: Sonuç Yükleme Sayfası (Akıllı Eşleştirme ile)
-app.get('/kurum/sinav-sonuc-yukle/:id', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
-  }
-  
-  try {
-    const sinavId = req.params.id;
-    
-    // Sınav bilgilerini al
-    const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinavId]);
-    
-    if (!sinav) {
-      req.session.error = 'Sınav bulunamadı!';
-      return res.redirect('/kurum/sinavlar');
-    }
-    
-    // Katılımcıları al (hem kurum hem veli kayıtlarından)
-    const kurumKatilimcilari = await dbAll(`
-      SELECT 
-        sk.*,
-        'kurum' as kaynak,
-        ok.ogrenci_adi_soyadi as ad_soyad,
-        ok.sinif,
-        ok.telefon,
-        ok.veli_adi,
-        ok.veli_telefon
-      FROM sinav_katilimcilari sk
-      INNER JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id AND sk.ogrenci_kaynak = 'kurum'
-      WHERE sk.sinav_id = ?
-      ORDER BY ok.sinif, ok.ogrenci_adi_soyadi
-    `, [sinavId]);
-    
-    const veliKatilimcilari = await dbAll(`
-      SELECT 
-        sk.*,
-        'veli' as kaynak,
-        o.ad_soyad,
-        o.sinif,
-        o.telefon,
-        u.username as veli_adi,
-        o.telefon as veli_telefon
-      FROM sinav_katilimcilari sk
-      INNER JOIN ogrenciler o ON sk.ogrenci_id = o.id AND sk.ogrenci_kaynak = 'veli'
-      LEFT JOIN users u ON o.veli_id = u.id
-      WHERE sk.sinav_id = ?
-      ORDER BY o.sinif, o.ad_soyad
-    `, [sinavId]);
-    
-    const katilimcilar = [...kurumKatilimcilari, ...veliKatilimcilari];
-    
-    if (katilimcilar.length === 0) {
-      req.session.error = 'Bu sınava henüz katılımcı eklenmemiş! Önce öğrenci ekleyin.';
-      return res.redirect(`/kurum/sinav-detay/${sinavId}`);
-    }
-    
-    res.render('kurum/sinav-sonuc-yukle', {
-      sinav: sinav,
-      katilimcilar: katilimcilar,
-      katilimciSayisi: katilimcilar.length,
-      user: { username: req.session.username, type: req.session.userType },
-      error: req.session.error,
-      success: req.session.success
-    });
-    
-    req.session.error = null;
-    req.session.success = null;
-  } catch (error) {
-    console.error('Sonuç yükleme sayfası hatası:', error);
-    res.status(500).send('Bir hata oluştu!');
-  }
-});
-
-// Kurum - Sonuç PDF Analiz (İlk sayfayı analiz et, isim pattern'i bul)
-// 🆕 YENİ SİSTEM: PDF'i Sayfalara Ayır (Otomatik Eşleştirme YOK)
-app.post('/kurum/sinav-sonuc-yukle-sayfalara-ayir', requireAuth, uploadLimiter, pdfUpload.single('pdfFile'), async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).json({ success: false, error: 'Yetkiniz yok!' });
-  }
-  
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, error: 'PDF dosyası seçilmedi!' });
-    }
-    
-    const { sinav_id } = req.body;
-    
+    const { sinav_id, pdfPath } = req.body;
+    const isUploaded = !!req.file;
+    const sourcePath = isUploaded ? req.file.path : pdfPath;
     if (!sinav_id) {
-      return res.status(400).json({ success: false, error: 'Sınav ID eksik!' });
+      return res.status(400).json({ success: false, error: 'Sinav ID eksik!' });
     }
-    
-    console.log('\n📄 PDF SAYFALARA AYRILIYOR:', req.file.originalname);
-    console.log('📚 Sınav ID:', sinav_id);
-    
-    // PDF'i yükle
-    const pdfBytes = fs.readFileSync(req.file.path);
+    if (!sourcePath || !fs.existsSync(sourcePath)) {
+      return res.status(400).json({ success: false, error: 'PDF dosyasi bulunamadi!' });
+    }
+    console.log('SINAV SONUCU ANALIZ EDILIYOR:', isUploaded && req.file ? req.file.originalname : path.basename(sourcePath));
+    console.log('Sinav ID:', sinav_id);
+    // PDF\'i yukle
+    const pdfBytes = fs.readFileSync(sourcePath);
     const pdfDoc = await PDFDocument.load(pdfBytes);
     const totalPages = pdfDoc.getPageCount();
     
-    console.log(`📊 Toplam sayfa: ${totalPages}`);
+    console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚ÂŠ Toplam sayfa: ${totalPages}`);
     
-    // Her sayfayı ayrı PDF olarak kaydet
+    // Her sayfayÃƒÂ„Ã‚Â± ayrÃƒÂ„Ã‚Â± PDF olarak kaydet
     const sayfaYollari = [];
     
     for (let i = 0; i < totalPages; i++) {
@@ -4780,7 +3581,7 @@ app.post('/kurum/sinav-sonuc-yukle-sayfalara-ayir', requireAuth, uploadLimiter, 
       const sayfaFileName = `sinav_${sinav_id}_sayfa_${i + 1}_${Date.now()}.pdf`;
       const sayfaYolu = path.join('uploads', 'sinav-sonuclari', sayfaFileName);
       
-      // Klasör yoksa oluştur
+      // KlasÃƒÂƒÃ‚Â¶r yoksa oluştur
       const dir = path.dirname(sayfaYolu);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
@@ -4789,7 +3590,7 @@ app.post('/kurum/sinav-sonuc-yukle-sayfalara-ayir', requireAuth, uploadLimiter, 
       fs.writeFileSync(sayfaYolu, singlePageBytes);
       sayfaYollari.push(sayfaYolu);
       
-      console.log(`   ✓ Sayfa ${i + 1}/${totalPages} kaydedildi`);
+      console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â“ Sayfa ${i + 1}/${totalPages} kaydedildi`);
     }
     
     // Orijinal PDF'i de kaydet
@@ -4797,110 +3598,110 @@ app.post('/kurum/sinav-sonuc-yukle-sayfalara-ayir', requireAuth, uploadLimiter, 
     const orijinalYol = path.join('uploads', 'sinav-sonuclari', orijinalFileName);
     fs.copyFileSync(req.file.path, orijinalYol);
     
-    // Veritabanına kaydet - sinavlar tablosuna orijinal PDF yolunu ekle
+    // VeritabanÃƒÂ„Ã‚Â±na kaydet - sinavlar tablosuna orijinal PDF yolunu ekle
     await dbRun(
       'UPDATE sinavlar SET dosya_yolu = ?, sonuc_yuklendi = 1 WHERE id = ?',
       [orijinalYol, sinav_id]
     );
     
-    // Geçici dosyayı sil
+    // GeÃƒÂƒÃ‚Â§ici dosyayÃƒÂ„Ã‚Â± sil
     fs.unlinkSync(req.file.path);
     
-    console.log(`✅ PDF başarıyla ${totalPages} sayfaya ayrıldı!`);
+    console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… PDF başarıyla ${totalPages} sayfaya ayrÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â±!`);
     
     res.json({
       success: true,
       data: {
         sayfaSayisi: totalPages,
         sayfaYollari: sayfaYollari,
-        orijinalYol: orijinalYol
+        orijinalYol: orijinalYol,
+        // AkÃƒÂ„Ã‚Â±llÃƒÂ„Ã‚Â± eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme (analiz/pattern seÃƒÂƒÃ‚Â§imi) ekranÃƒÂ„Ã‚Â±na yÃƒÂƒÃ‚Â¶nlendir
+        redirectTo: `/kurum/sinav-sonuc-yukle/${sinav_id}`
       }
     });
     
   } catch (error) {
-    console.error('❌ PDF ayırma hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ PDF ayÃƒÂ„Ã‚Â±rma hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// ESKİ SİSTEM (Yedek olarak kalıyor)
+// ESKÃƒÂ„Ã‚Â° SÃƒÂ„Ã‚Â°STEM (Yedek olarak kalÃƒÂ„Ã‚Â±yor)
 app.post('/kurum/sinav-sonuc-yukle-analiz', requireAuth, uploadLimiter, pdfUpload.single('pdfFile'), async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, error: 'Yetkiniz yok!' });
   }
   
   try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, error: 'PDF dosyası seçilmedi!' });
-    }
-    
-    const { sinav_id } = req.body;
-    
+    const { sinav_id, pdfPath } = req.body;
+    const isUploaded = !!req.file;
+    const sourcePath = isUploaded ? req.file.path : pdfPath;
     if (!sinav_id) {
-      return res.status(400).json({ success: false, error: 'Sınav ID eksik!' });
+      return res.status(400).json({ success: false, error: 'Sinav ID eksik!' });
     }
-    
-    console.log('\n🔍 SINAV SONUCU ANALİZ EDİLİYOR:', req.file.originalname);
-    console.log('📚 Sınav ID:', sinav_id);
-    
-    // PDF'i yükle
-    const pdfBytes = fs.readFileSync(req.file.path);
+    if (!sourcePath || !fs.existsSync(sourcePath)) {
+      return res.status(400).json({ success: false, error: 'PDF dosyasi bulunamadi!' });
+    }
+    console.log('SINAV SONUCU ANALIZ EDILIYOR:', isUploaded && req.file ? req.file.originalname : path.basename(sourcePath));
+    console.log('Sinav ID:', sinav_id);
+    // PDF\'i yukle
+    const pdfBytes = fs.readFileSync(sourcePath);
     const pdfDoc = await PDFDocument.load(pdfBytes);
     const totalPages = pdfDoc.getPageCount();
     
-    console.log(`📊 Toplam sayfa: ${totalPages}`);
+    console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚ÂŠ Toplam sayfa: ${totalPages}`);
     
-    // Sadece ilk sayfayı analiz et
+    // Sadece ilk sayfayÃƒÂ„Ã‚Â± analiz et
     const singlePagePdf = await PDFDocument.create();
     const [copiedPage] = await singlePagePdf.copyPages(pdfDoc, [0]);
     singlePagePdf.addPage(copiedPage);
     const singlePageBytes = await singlePagePdf.save();
     
-    // Geçici dosya oluştur
+    // GeÃƒÂƒÃ‚Â§ici dosya oluştur
     const tempFileName = `temp_analyze_sinav_${Date.now()}.pdf`;
     const tempFilePath = path.join('uploads', tempFileName);
     fs.writeFileSync(tempFilePath, singlePageBytes);
     
-    // Text çıkar - HİBRİT YÖNTEM
+    // Text ÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â±kar - HÃƒÂ„Ã‚Â°BRÃƒÂ„Ã‚Â°T YÃƒÂƒÃ‚Â–NTEM
     const extractionResult = await extractTextHybrid(tempFilePath);
     const text = extractionResult.text;
     
-    console.log(`📄 İlk sayfa text uzunluğu: ${text.length} (Yöntem: ${extractionResult.method})`);
+    console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â„ ÃƒÂ„Ã‚Â°lk sayfa text uzunluÃƒÂ„Ã‚ÂŸu: ${text.length} (YÃƒÂƒÃ‚Â¶ntem: ${extractionResult.method})`);
     
     if (extractionResult.garbled) {
-      console.log('⚠️ İlk sayfada encoding sorunu tespit edildi!');
-      console.log('💡 Manuel giriş önerilir.');
+      console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â ÃƒÂ„Ã‚Â°lk sayfada encoding sorunu tespit edildi!');
+      console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â’Ã‚Â¡ Manuel giriÃƒÂ…Ã‚ÂŸ ÃƒÂƒÃ‚Â¶nerilir.');
     }
     
-    // Potansiyel isim adaylarını bul - YENİ GELİŞMİŞ SİSTEM
+    // Potansiyel isim adaylarÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± bul - YENÃƒÂ„Ã‚Â° GELÃƒÂ„Ã‚Â°ÃƒÂ…Ã‚ÂMÃƒÂ„Ã‚Â°ÃƒÂ…Ã‚Â SÃƒÂ„Ã‚Â°STEM
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     const potansiyelIsimler = [];
     
-    console.log(`📋 Analiz: ${lines.length} satır bulundu`);
+    console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â‹ Analiz: ${lines.length} satÃƒÂ„Ã‚Â±r bulundu`);
     
-    // 1. GELİŞMİŞ FİLTRELEME: Yeni looksLikeName fonksiyonunu kullan
-    for (let i = 0; i < Math.min(lines.length, 80); i++) { // 80 satıra çıkardık
+    // 1. GELÃƒÂ„Ã‚Â°ÃƒÂ…Ã‚ÂMÃƒÂ„Ã‚Â°ÃƒÂ…Ã‚Â FÃƒÂ„Ã‚Â°LTRELEME: Yeni looksLikeName fonksiyonunu kullan
+    for (let i = 0; i < Math.min(lines.length, 80); i++) { // 80 satÃƒÂ„Ã‚Â±ra ÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â±kardÃƒÂ„Ã‚Â±k
       const line = lines[i];
       
-      // İsim gibi mi kontrol et (yeni fonksiyon)
+      // ÃƒÂ„Ã‚Â°sim gibi mi kontrol et (yeni fonksiyon)
       if (!looksLikeName(line)) continue;
       
-      // İsmi temizle (yeni fonksiyon)
+      // ÃƒÂ„Ã‚Â°smi temizle (yeni fonksiyon)
       const cleanLine = cleanExtractedName(line);
       if (!cleanLine || cleanLine.length < 5) continue;
       
-      // Kelime sayısı kontrolü
+      // Kelime sayÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â± kontrolÃƒÂƒÃ‚Â¼
       const words = cleanLine.split(/\s+/);
       const wordCount = words.length;
       
-      // Güven seviyesi hesapla
+      // GÃƒÂƒÃ‚Â¼ven seviyesi hesapla
       let confidence = 'medium';
       
-      // Sadece harf ve boşluk + 2-3 kelime = yüksek güven
+      // Sadece harf ve boÃƒÂ…Ã‚ÂŸluk + 2-3 kelime = yÃƒÂƒÃ‚Â¼ksek gÃƒÂƒÃ‚Â¼ven
       if (wordCount === 2 || wordCount === 3) {
         confidence = 'high';
       }
-      // 4-6 kelime = düşük güven
+      // 4-6 kelime = dÃƒÂƒÃ‚Â¼ÃƒÂ…Ã‚ÂŸÃƒÂƒÃ‚Â¼k gÃƒÂƒÃ‚Â¼ven
       else if (wordCount > 3) {
         confidence = 'low';
       }
@@ -4909,15 +3710,15 @@ app.post('/kurum/sinav-sonuc-yukle-analiz', requireAuth, uploadLimiter, pdfUploa
         text: cleanLine,
         lineNumber: i,
         confidence: confidence,
-        originalLine: line // Orijinal satırı da sakla
+        originalLine: line // Orijinal satÃƒÂ„Ã‚Â±rÃƒÂ„Ã‚Â± da sakla
       });
       
-      console.log(`   ✓ Aday ${potansiyelIsimler.length}: "${cleanLine}" (Satır: ${i}, Güven: ${confidence})`);
+      console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â“ Aday ${potansiyelIsimler.length}: "${cleanLine}" (SatÃƒÂ„Ã‚Â±r: ${i}, GÃƒÂƒÃ‚Â¼ven: ${confidence})`);
     }
     
-    // 2. Hiç isim bulunamadıysa, en uzun satırları göster (fallback)
+    // 2. HiÃƒÂƒÃ‚Â§ isim bulunamadıysa, en uzun satÃƒÂ„Ã‚Â±rlarÃƒÂ„Ã‚Â± gÃƒÂƒÃ‚Â¶ster (fallback)
     if (potansiyelIsimler.length === 0) {
-      console.log('⚠️ Hiç isim adayı bulunamadı, en uzun satırlar gösteriliyor...');
+      console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â HiÃƒÂƒÃ‚Â§ isim adayÃƒÂ„Ã‚Â± bulunamadı, en uzun satÃƒÂ„Ã‚Â±rlar gÃƒÂƒÃ‚Â¶steriliyor...');
       
       const longLines = lines
         .map((line, i) => ({ line, index: i, length: line.length }))
@@ -4934,11 +3735,11 @@ app.post('/kurum/sinav-sonuc-yukle-analiz', requireAuth, uploadLimiter, pdfUploa
         });
       });
       
-      console.log(`   → ${potansiyelIsimler.length} uzun satır eklendi (fallback)`);
+      console.log(`   ÃƒÂ¢Ã‚Â†Ã‚Â’ ${potansiyelIsimler.length} uzun satÃƒÂ„Ã‚Â±r eklendi (fallback)`);
     }
     
-    // 🧠 Akıllı sistem ile ilk sayfayı test et
-    console.log('\n🧠 Akıllı sistem ile ilk sayfa test ediliyor...');
+    // ÃƒÂ°Ã‚ÂŸÃ‚Â§Ã‚Â  AkÃƒÂ„Ã‚Â±llÃƒÂ„Ã‚Â± sistem ile ilk sayfayÃƒÂ„Ã‚Â± test et
+    console.log('\nÃƒÂ°Ã‚ÂŸÃ‚Â§Ã‚Â  AkÃƒÂ„Ã‚Â±llÃƒÂ„Ã‚Â± sistem ile ilk sayfa test ediliyor...');
     const testMatch = await intelligentCascadeMatching(
       text, 
       sinav_id, 
@@ -4958,16 +3759,16 @@ app.post('/kurum/sinav-sonuc-yukle-analiz', requireAuth, uploadLimiter, pdfUploa
         matchedStudent: testMatch.ogrenciAd
       };
       autoConfidence = testMatch.confidence;
-      console.log(`✅ Otomatik pattern bulundu: "${testMatch.extractedName}" (Güven: ${(autoConfidence * 100).toFixed(0)}%)`);
+      console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… Otomatik pattern bulundu: "${testMatch.extractedName}" (GÃƒÂƒÃ‚Â¼ven: ${(autoConfidence * 100).toFixed(0)}%)`);
     } else {
-      console.log('⚠️ Otomatik pattern bulunamadı, manuel seçim gerekli');
+      console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Otomatik pattern bulunamadı, manuel seÃƒÂƒÃ‚Â§im gerekli');
     }
     
-    // Geçici dosyaları temizle
+    // GeÃƒÂƒÃ‚Â§ici dosyalarÃƒÂ„Ã‚Â± temizle
     fs.unlinkSync(tempFilePath);
     
-    console.log(`✅ ${potansiyelIsimler.length} potansiyel isim bulundu`);
-    potansiyelIsimler.forEach(p => console.log(`   - ${p.text} (satır ${p.lineNumber}, güven: ${p.confidence})`));
+    console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… ${potansiyelIsimler.length} potansiyel isim bulundu`);
+    potansiyelIsimler.forEach(p => console.log(`   - ${p.text} (satÃƒÂ„Ã‚Â±r ${p.lineNumber}, gÃƒÂƒÃ‚Â¼ven: ${p.confidence})`));
     
     res.json({
       success: true,
@@ -4976,18 +3777,18 @@ app.post('/kurum/sinav-sonuc-yukle-analiz', requireAuth, uploadLimiter, pdfUploa
         uploadPath: req.file.path,
         originalName: req.file.originalname,
         sinavId: sinav_id,
-        potansiyelIsimler: potansiyelIsimler.slice(0, 15), // İlk 15 aday
-        ornekText: text.substring(0, 500), // Kullanıcıya göster
-        allLines: lines, // Tüm satırları da gönder (frontend için)
-        autoSelectedPattern: autoSelectedPattern, // 🎯 Otomatik seçilen pattern
-        useAutoMode: autoConfidence >= 0.85 // %85+ güven varsa direkt kullan
+        potansiyelIsimler: potansiyelIsimler.slice(0, 15), // ÃƒÂ„Ã‚Â°lk 15 aday
+        ornekText: text.substring(0, 500), // Kullanıcıya gÃƒÂƒÃ‚Â¶ster
+        allLines: lines, // TÃƒÂƒÃ‚Â¼m satÃƒÂ„Ã‚Â±rlarÃƒÂ„Ã‚Â± da gÃƒÂƒÃ‚Â¶nder (frontend iÃƒÂƒÃ‚Â§in)
+        autoSelectedPattern: autoSelectedPattern, // ÃƒÂ°Ã‚ÂŸÃ‚ÂÃ‚Â¯ Otomatik seÃƒÂƒÃ‚Â§ilen pattern
+        useAutoMode: autoConfidence >= 0.85 // %85+ gÃƒÂƒÃ‚Â¼ven varsa direkt kullan
       }
     });
     
   } catch (error) {
-    console.error('Sonuç analiz hatası:', error);
+    console.error('SonuÃƒÂƒÃ‚Â§ analiz hatasÃƒÂ„Ã‚Â±:', error);
     
-    // Dosyayı temizle
+    // DosyayÃƒÂ„Ã‚Â± temizle
     if (req.file && req.file.path) {
       try { fs.unlinkSync(req.file.path); } catch (e) {}
     }
@@ -4999,7 +3800,7 @@ app.post('/kurum/sinav-sonuc-yukle-analiz', requireAuth, uploadLimiter, pdfUploa
   }
 });
 
-// Kurum - Sonuç PDF Kaydet (Tüm sayfaları işle, eşleştir, kaydet)
+// Kurum - SonuÃƒÂƒÃ‚Â§ PDF Kaydet (TÃƒÂƒÃ‚Â¼m sayfalarÃƒÂ„Ã‚Â± iÃƒÂ…Ã‚ÂŸle, eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtir, kaydet)
 app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, error: 'Yetkiniz yok!' });
@@ -5012,10 +3813,10 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Sınav ID veya PDF dosya yolu eksik!' });
     }
     
-    console.log('\n🧠 AKILLI SINAV SONUÇLARI YÜKLENİYOR');
-    console.log('✅ Sınav ID:', sinav_id);
-    console.log('✅ PDF Path:', pdfPath);
-    console.log('🎯 Mod: Akıllı Cascade Matching (5 strateji)');
+    console.log('\nÃƒÂ°Ã‚ÂŸÃ‚Â§Ã‚Â  AKILLI SINAV SONUÃƒÂƒÃ‚Â‡LARI YÃƒÂƒÃ‚ÂœKLENÃƒÂ„Ã‚Â°YOR');
+    console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… Sınav ID:', sinav_id);
+    console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… PDF Path:', pdfPath);
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚ÂÃ‚Â¯ Mod: AkÃƒÂ„Ã‚Â±llÃƒÂ„Ã‚Â± Cascade Matching (5 strateji)');
     
     const results = [];
     let matchedCount = 0;
@@ -5030,25 +3831,25 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Sınav bulunamadı!' });
     }
     
-    // Sonuç klasörünü oluştur
+    // SonuÃƒÂƒÃ‚Â§ klasÃƒÂƒÃ‚Â¶rÃƒÂƒÃ‚Â¼nÃƒÂƒÃ‚Â¼ oluştur
     const sonucKlasoru = path.join('uploads', 'sinav-sonuclari', `sinav_${sinav_id}`);
     if (!fs.existsSync(sonucKlasoru)) {
       fs.mkdirSync(sonucKlasoru, { recursive: true });
     }
     
-    // PDF'i yükle
+    // PDF'i yÃƒÂƒÃ‚Â¼kle
     if (!fs.existsSync(pdfPath)) {
-      return res.status(400).json({ success: false, error: 'PDF dosyası bulunamadı!' });
+      return res.status(400).json({ success: false, error: 'PDF dosyasÃƒÂ„Ã‚Â± bulunamadı!' });
     }
     
     const pdfBytes = fs.readFileSync(pdfPath);
     const pdfDoc = await PDFDocument.load(pdfBytes);
     const totalPages = pdfDoc.getPageCount();
     
-    console.log(`📊 Toplam sayfa: ${totalPages}`);
-    console.log(`📂 Sonuç klasörü: ${sonucKlasoru}`);
+    console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚ÂŠ Toplam sayfa: ${totalPages}`);
+    console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â‚ SonuÃƒÂƒÃ‚Â§ klasÃƒÂƒÃ‚Â¶rÃƒÂƒÃ‚Â¼: ${sonucKlasoru}`);
     
-    // Manuel eşleşmeleri map'e çevir (sayfa numarası → öğrenci ID)
+    // Manuel eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmeleri map'e ÃƒÂƒÃ‚Â§evir (sayfa numarasÃƒÂ„Ã‚Â± ÃƒÂ¢Ã‚Â†Ã‚Â’ ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci ID)
     const manuelMap = {};
     if (manuelEslesmeler && Array.isArray(manuelEslesmeler)) {
       manuelEslesmeler.forEach(m => {
@@ -5056,55 +3857,55 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
           manuelMap[m.sayfaNo] = m.ogrenciId;
         }
       });
-      console.log(`📝 ${Object.keys(manuelMap).length} manuel eşleşme alındı`);
+      console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â ${Object.keys(manuelMap).length} manuel eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme alÃƒÂ„Ã‚Â±ndÃƒÂ„Ã‚Â±`);
     }
     
-    // Her sayfayı işle
+    // Her sayfayÃƒÂ„Ã‚Â± iÃƒÂ…Ã‚ÂŸle
     for (let i = 0; i < totalPages; i++) {
       try {
         const sayfaNo = i + 1;
-        console.log(`\n📄 Sayfa ${sayfaNo}/${totalPages} işleniyor...`);
+        console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â„ Sayfa ${sayfaNo}/${totalPages} iÃƒÂ…Ã‚ÂŸleniyor...`);
         
-        // Bu sayfayı ayrı bir PDF olarak oluştur
+        // Bu sayfayÃƒÂ„Ã‚Â± ayrÃƒÂ„Ã‚Â± bir PDF olarak oluştur
         const singlePagePdf = await PDFDocument.create();
         const [copiedPage] = await singlePagePdf.copyPages(pdfDoc, [i]);
         singlePagePdf.addPage(copiedPage);
         const singlePageBytes = await singlePagePdf.save();
         
-        // Geçici dosya adı oluştur
+        // GeÃƒÂƒÃ‚Â§ici dosya adı oluştur
         const tempFileName = `temp_sinav_page_${sayfaNo}_${Date.now()}.pdf`;
         const tempFilePath = path.join('uploads', tempFileName);
         fs.writeFileSync(tempFilePath, singlePageBytes);
         
-        // Bu sayfadan text çıkar
+        // Bu sayfadan text ÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â±kar
         const extractionResult = await extractTextHybrid(tempFilePath);
         const text = extractionResult.text;
         const isGarbled = extractionResult.garbled || false;
         
         let ogrenciId = null;
-        let ogrenciAdi = 'BİLİNMEYEN';
+        let ogrenciAdi = 'BÃƒÂ„Ã‚Â°LÃƒÂ„Ã‚Â°NMEYEN';
         let kaynak = 'kurum';
         let usedStrategy = null;
         let confidence = 0;
         let extractedName = '';
         
-        // Manuel eşleşme var mı kontrol et
+        // Manuel eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme var mÃƒÂ„Ã‚Â± kontrol et
         if (manuelMap[sayfaNo]) {
-          // Manuel eşleşme var
+          // Manuel eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme var
           ogrenciId = manuelMap[sayfaNo];
           const ogrenci = await dbGet('SELECT * FROM ogrenci_kayitlari WHERE id = ?', [ogrenciId]);
           if (ogrenci) {
             ogrenciAdi = ogrenci.ogrenci_adi_soyadi;
-            console.log(`✅ Manuel eşleşme: ${ogrenciAdi} (ID: ${ogrenciId})`);
+            console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… Manuel eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme: ${ogrenciAdi} (ID: ${ogrenciId})`);
             matchedCount++;
             usedStrategy = 'Manuel';
             confidence = 1.0;
           } else {
-            console.log(`⚠️ Manuel eşleşme geçersiz! Öğrenci ID ${ogrenciId} bulunamadı.`);
+            console.log(`ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Manuel eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme geÃƒÂƒÃ‚Â§ersiz! Öğrenci ID ${ogrenciId} bulunamadı.`);
             unmatchedCount++;
           }
         } else {
-          // 🧠 AKILLI CASCADE MATCHING KULLAN
+          // ÃƒÂ°Ã‚ÂŸÃ‚Â§Ã‚Â  AKILLI CASCADE MATCHING KULLAN
           const matchResult = await intelligentCascadeMatching(
             text, 
             sinav_id, 
@@ -5113,7 +3914,7 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
           );
           
           if (matchResult && matchResult.confidence >= 0.75) {
-            // Başarılı eşleşme
+            // BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â± eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme
             ogrenciId = matchResult.ogrenciId;
             ogrenciAdi = matchResult.ogrenciAd;
             kaynak = matchResult.kaynak;
@@ -5121,20 +3922,20 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
             confidence = matchResult.confidence;
             usedStrategy = matchResult.usedStrategy;
             
-            // Strateji istatistiklerini güncelle
+            // Strateji istatistiklerini gÃƒÂƒÃ‚Â¼ncelle
             strategyStats[usedStrategy] = (strategyStats[usedStrategy] || 0) + 1;
             
-            console.log(`✅ Akıllı eşleşme: ${ogrenciAdi} (Strateji: ${usedStrategy}, Güven: ${(confidence * 100).toFixed(0)}%)`);
+            console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… AkÃƒÂ„Ã‚Â±llÃƒÂ„Ã‚Â± eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme: ${ogrenciAdi} (Strateji: ${usedStrategy}, GÃƒÂƒÃ‚Â¼ven: ${(confidence * 100).toFixed(0)}%)`);
             matchedCount++;
           } else {
-            // Eşleşme başarısız
-            console.log(`❌ Tüm stratejiler başarısız - Manuel gerekli`);
+            // EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme baÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±z
+            console.log(`ÃƒÂ¢Ã‚ÂÃ‚ÂŒ TÃƒÂƒÃ‚Â¼m stratejiler baÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±z - Manuel gerekli`);
             unmatchedCount++;
           }
         }
         
         // PDF'i kaydet
-        const sanitizedName = ogrenciAdi.replace(/[^a-zA-ZçÇğĞıİöÖşŞüÜ\s]/g, '').replace(/\s+/g, '_');
+        const sanitizedName = ogrenciAdi.replace(/[^a-zA-ZÃƒÂƒÃ‚Â§ÃƒÂƒÃ‚Â‡ÃƒÂ„Ã‚ÂŸÃƒÂ„Ã‚ÂÃƒÂ„Ã‚Â±ÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â¶ÃƒÂƒÃ‚Â–ÃƒÂ…Ã‚ÂŸÃƒÂ…Ã‚ÂÃƒÂƒÃ‚Â¼ÃƒÂƒÃ‚Âœ\s]/g, '').replace(/\s+/g, '_');
         const finalFileName = ogrenciId 
           ? `${sayfaNo}_${sanitizedName}_${ogrenciId}.pdf`
           : `${sayfaNo}_BILINMEYEN_${Date.now()}.pdf`;
@@ -5142,12 +3943,12 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
         const finalFilePath = path.join(sonucKlasoru, finalFileName);
         fs.writeFileSync(finalFilePath, singlePageBytes);
         
-        console.log(`💾 PDF kaydedildi: ${finalFileName}`);
+        console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â’Ã‚Â¾ PDF kaydedildi: ${finalFileName}`);
         
-        // Veritabanına kaydet (eğer eşleşme varsa)
+        // VeritabanÃƒÂ„Ã‚Â±na kaydet (eÃƒÂ„Ã‚ÂŸer eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme varsa)
         if (ogrenciId) {
           try {
-            // sinav_katilimcilari tablosunu güncelle
+            // sinav_katilimcilari tablosunu gÃƒÂƒÃ‚Â¼ncelle
             await dbRun(`
               UPDATE sinav_katilimcilari 
               SET pdf_path = ?, sonuc_durumu = 'yuklendi' 
@@ -5155,13 +3956,13 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
             `, [finalFilePath, sinav_id, ogrenciId, kaynak]);
             
             savedCount++;
-            console.log(`✅ Veritabanına kaydedildi`);
+            console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… VeritabanÃƒÂ„Ã‚Â±na kaydedildi`);
           } catch (dbError) {
-            console.error(`❌ Veritabanı kayıt hatası:`, dbError);
+            console.error(`ÃƒÂ¢Ã‚ÂÃ‚ÂŒ VeritabanÃƒÂ„Ã‚Â± kayıt hatasÃƒÂ„Ã‚Â±:`, dbError);
           }
         }
         
-        // Sonuç listesine ekle
+        // SonuÃƒÂƒÃ‚Â§ listesine ekle
         results.push({
           sayfaNo: sayfaNo,
           ogrenciId: ogrenciId,
@@ -5174,11 +3975,11 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
           confidence: confidence
         });
         
-        // Geçici dosyayı temizle
+        // GeÃƒÂƒÃ‚Â§ici dosyayÃƒÂ„Ã‚Â± temizle
         fs.unlinkSync(tempFilePath);
         
       } catch (pageError) {
-        console.error(`❌ Sayfa ${i + 1} işlenirken hata:`, pageError);
+        console.error(`ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Sayfa ${i + 1} iÃƒÂ…Ã‚ÂŸlenirken hata:`, pageError);
         results.push({
           sayfaNo: i + 1,
           ogrenciId: null,
@@ -5191,29 +3992,29 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
       }
     }
     
-    // Sınavı güncelle (sonuc_yuklendi = 1)
+    // SınavÃƒÂ„Ã‚Â± gÃƒÂƒÃ‚Â¼ncelle (sonuc_yuklendi = 1)
     await dbRun('UPDATE sinavlar SET sonuc_yuklendi = 1 WHERE id = ?', [sinav_id]);
     
-    // Yüklenen PDF dosyasını temizle
+    // YÃƒÂƒÃ‚Â¼klenen PDF dosyasÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± temizle
     try {
       fs.unlinkSync(pdfPath);
     } catch (cleanError) {
-      console.error('⚠️ Geçici PDF temizlenemedi:', cleanError);
+      console.error('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â GeÃƒÂƒÃ‚Â§ici PDF temizlenemedi:', cleanError);
     }
     
-    console.log('\n✅ İŞLEM TAMAMLANDI!');
+    console.log('\nÃƒÂ¢Ã‚ÂœÃ‚Â… ÃƒÂ„Ã‚Â°ÃƒÂ…Ã‚ÂLEM TAMAMLANDI!');
     console.log(`   Toplam sayfa: ${totalPages}`);
-    console.log(`   Eşleşen: ${matchedCount}`);
-    console.log(`   Eşleşmeyen: ${unmatchedCount}`);
+    console.log(`   EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸen: ${matchedCount}`);
+    console.log(`   EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmeyen: ${unmatchedCount}`);
     console.log(`   Kaydedilen: ${savedCount}`);
-    console.log(`\n📊 Strateji İstatistikleri:`);
+    console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚ÂŠ Strateji ÃƒÂ„Ã‚Â°statistikleri:`);
     Object.entries(strategyStats).forEach(([strategy, count]) => {
       console.log(`   ${strategy}: ${count} sayfa`);
     });
     
     res.json({
       success: true,
-      message: `${matchedCount}/${totalPages} sayfa otomatik eşleştirildi (Akıllı Sistem)`,
+      message: `${matchedCount}/${totalPages} sayfa otomatik eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirildi (AkÃƒÂ„Ã‚Â±llÃƒÂ„Ã‚Â± Sistem)`,
       data: {
         totalPages: totalPages,
         matchedCount: matchedCount,
@@ -5225,7 +4026,7 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ Sonuç kaydetme hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ SonuÃƒÂƒÃ‚Â§ kaydetme hatasÃƒÂ„Ã‚Â±:', error);
     
     res.status(500).json({ 
       success: false, 
@@ -5234,7 +4035,7 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
   }
 });
 
-// Kurum - Manuel Sınav Sonuç Eşleştirme
+// Kurum - Manuel Sınav SonuÃƒÂƒÃ‚Â§ EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme
 app.post('/kurum/sinav-manuel-eslestir/:id', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
@@ -5245,11 +4046,11 @@ app.post('/kurum/sinav-manuel-eslestir/:id', requireAuth, async (req, res) => {
     const { eslesmeler } = req.body;
     
     if (!eslesmeler || eslesmeler.length === 0) {
-      return res.json({ success: false, message: 'Eşleştirme bilgisi eksik!' });
+      return res.json({ success: false, message: 'EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme bilgisi eksik!' });
     }
     
-    console.log(`\n🔗 MANUEL EŞLEŞTIRME (Sınav ID: ${sinavId})`);
-    console.log(`   ${eslesmeler.length} adet eşleştirme yapılacak`);
+    console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â”Ã‚Â— MANUEL EÃƒÂ…Ã‚ÂLEÃƒÂ…Ã‚ÂTIRME (Sınav ID: ${sinavId})`);
+    console.log(`   ${eslesmeler.length} adet eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme yapÃƒÂ„Ã‚Â±lacak`);
     
     let basarili = 0;
     let hatali = 0;
@@ -5258,13 +4059,13 @@ app.post('/kurum/sinav-manuel-eslestir/:id', requireAuth, async (req, res) => {
       try {
         const { sayfaNo, pdfYolu, ogrenciId, kaynak } = eslesme;
         
-        console.log(`   📄 Sayfa ${sayfaNo}:`);
+        console.log(`   ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â„ Sayfa ${sayfaNo}:`);
         console.log(`      - Öğrenci ID: ${ogrenciId}`);
         console.log(`      - Kaynak: ${kaynak}`);
         console.log(`      - PDF Yolu: ${pdfYolu}`);
-        console.log(`      - Dosya var mı: ${pdfYolu ? fs.existsSync(pdfYolu) : 'PDF yolu boş'}`);
+        console.log(`      - Dosya var mÃƒÂ„Ã‚Â±: ${pdfYolu ? fs.existsSync(pdfYolu) : 'PDF yolu boÃƒÂ…Ã‚ÂŸ'}`);
         
-        // PDF dosyasını yeni isimle kaydet
+        // PDF dosyasÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± yeni isimle kaydet
         if (pdfYolu && fs.existsSync(pdfYolu)) {
           // Öğrenci bilgilerini al
           let ogrenci;
@@ -5282,40 +4083,40 @@ app.post('/kurum/sinav-manuel-eslestir/:id', requireAuth, async (req, res) => {
             }
             
             const timestamp = Date.now();
-            const safeIsim = ogrenci.ad_soyad.replace(/[^a-zA-ZçÇğĞıİöÖşŞüÜ\s]/g, '').replace(/\s+/g, '_');
+            const safeIsim = ogrenci.ad_soyad.replace(/[^a-zA-ZÃƒÂƒÃ‚Â§ÃƒÂƒÃ‚Â‡ÃƒÂ„Ã‚ÂŸÃƒÂ„Ã‚ÂÃƒÂ„Ã‚Â±ÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â¶ÃƒÂƒÃ‚Â–ÃƒÂ…Ã‚ÂŸÃƒÂ…Ã‚ÂÃƒÂƒÃ‚Â¼ÃƒÂƒÃ‚Âœ\s]/g, '').replace(/\s+/g, '_');
             const yeniDosyaAdi = `${safeIsim}_${timestamp}.pdf`;
             const yeniDosyaYolu = path.join(sonucKlasoru, yeniDosyaAdi);
             
-            // Dosyayı kopyala
+            // DosyayÃƒÂ„Ã‚Â± kopyala
             fs.copyFileSync(pdfYolu, yeniDosyaYolu);
             
-            // sinav_katilimcilari tablosunu güncelle
+            // sinav_katilimcilari tablosunu gÃƒÂƒÃ‚Â¼ncelle
             await dbRun(`
               UPDATE sinav_katilimcilari 
               SET pdf_path = ?, sonuc_durumu = 'yuklendi'
               WHERE sinav_id = ? AND ogrenci_id = ? AND ogrenci_kaynak = ?
             `, [yeniDosyaYolu, sinavId, ogrenciId, kaynak]);
             
-            console.log(`   ✅ Başarılı: ${ogrenci.ad_soyad}`);
+            console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±: ${ogrenci.ad_soyad}`);
             basarili++;
           } else {
-            console.log(`   ❌ Öğrenci bulunamadı: ${ogrenciId}`);
+            console.log(`   ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Öğrenci bulunamadı: ${ogrenciId}`);
             hatali++;
           }
         } else {
-          console.log(`   ❌ PDF dosyası bulunamadı: ${pdfYolu}`);
+          console.log(`   ÃƒÂ¢Ã‚ÂÃ‚ÂŒ PDF dosyasÃƒÂ„Ã‚Â± bulunamadı: ${pdfYolu}`);
           hatali++;
         }
       } catch (error) {
-        console.error(`   ❌ Eşleştirme hatası:`, error);
+        console.error(`   ÃƒÂ¢Ã‚ÂÃ‚ÂŒ EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme hatasÃƒÂ„Ã‚Â±:`, error);
         hatali++;
       }
     }
     
-    // Sınavın sonuc_yuklendi durumunu güncelle (ama henüz yayınlanmamış)
+    // SınavÃƒÂ„Ã‚Â±n sonuc_yuklendi durumunu gÃƒÂƒÃ‚Â¼ncelle (ama henÃƒÂƒÃ‚Â¼z yayÃƒÂ„Ã‚Â±nlanmamÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸ)
     await dbRun('UPDATE sinavlar SET sonuc_yuklendi = 1, sonuc_yayinlandi = 0 WHERE id = ?', [sinavId]);
     
-    // ✅ GÜNCEL İSTATİSTİKLERİ HESAPLA
+    // ÃƒÂ¢Ã‚ÂœÃ‚Â… GÃƒÂƒÃ‚ÂœNCEL ÃƒÂ„Ã‚Â°STATÃƒÂ„Ã‚Â°STÃƒÂ„Ã‚Â°KLERÃƒÂ„Ã‚Â° HESAPLA
     const istatistikler = await dbGet(`
       SELECT 
         COUNT(*) as toplam,
@@ -5325,28 +4126,28 @@ app.post('/kurum/sinav-manuel-eslestir/:id', requireAuth, async (req, res) => {
       WHERE sinav_id = ?
     `, [sinavId]);
     
-    console.log(`\n📊 MANUEL EŞLEŞTIRME TAMAMLANDI:`);
-    console.log(`   ✅ Başarılı: ${basarili}`);
-    console.log(`   ❌ Hatalı: ${hatali}`);
-    console.log(`\n📊 GÜNCEL DURUM:`);
-    console.log(`   Toplam Katılımcı: ${istatistikler.toplam}`);
-    console.log(`   Eşleşen: ${istatistikler.eslesmis}`);
-    console.log(`   Eşleşmeyen: ${istatistikler.eslesmemis}`);
+    console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚ÂŠ MANUEL EÃƒÂ…Ã‚ÂLEÃƒÂ…Ã‚ÂTIRME TAMAMLANDI:`);
+    console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±: ${basarili}`);
+    console.log(`   ÃƒÂ¢Ã‚ÂÃ‚ÂŒ HatalÃƒÂ„Ã‚Â±: ${hatali}`);
+    console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚ÂŠ GÃƒÂƒÃ‚ÂœNCEL DURUM:`);
+    console.log(`   Toplam KatÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â±: ${istatistikler.toplam}`);
+    console.log(`   EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸen: ${istatistikler.eslesmis}`);
+    console.log(`   EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmeyen: ${istatistikler.eslesmemis}`);
     
     res.json({ 
       success: true, 
-      message: `${basarili} öğrenci eşleştirildi! ${hatali > 0 ? `(${hatali} hata)` : ''}`,
+      message: `${basarili} ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirildi! ${hatali > 0 ? `(${hatali} hata)` : ''}`,
       matchedCount: istatistikler.eslesmis || 0,
       unmatchedCount: istatistikler.eslesmemis || 0,
       totalCount: istatistikler.toplam || 0
     });
   } catch (error) {
-    console.error('❌ Manuel eşleştirme hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Manuel eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
 
-// 📄 Kurum - Eşleşmemiş PDF Sayfalarını Listele
+// ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â„ Kurum - EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmemiÃƒÂ…Ã‚ÂŸ PDF SayfalarÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± Listele
 app.get('/kurum/sinav-eslesmemis-pdfler/:id', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, error: 'Yetkiniz yok!' });
@@ -5355,12 +4156,12 @@ app.get('/kurum/sinav-eslesmemis-pdfler/:id', requireAuth, async (req, res) => {
   try {
     const sinavId = req.params.id;
     
-    console.log('\n📄 TÜM PDF SAYFALARI LİSTELENİYOR (Eşleşen + Eşleşmeyen):', sinavId);
+    console.log('\nÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â„ TÃƒÂƒÃ‚ÂœM PDF SAYFALARI LÃƒÂ„Ã‚Â°STELENÃƒÂ„Ã‚Â°YOR (EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸen + EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmeyen):', sinavId);
     
-    // TÜM yüklenmiş PDF'leri al - HEM EŞLEŞEN HEM EŞLEŞMEYEN
-    // pdf_path NULL olanlar = henüz eşleşmemiş (BİLİNMEYEN)
-    // pdf_path dolu olanlar = eşleşmiş
-    // BİLİNMEYEN olanlar = PDF var ama öğrenci eşleşmemiş
+    // TÃƒÂƒÃ‚ÂœM yÃƒÂƒÃ‚Â¼klenmiÃƒÂ…Ã‚ÂŸ PDF'leri al - HEM EÃƒÂ…Ã‚ÂLEÃƒÂ…Ã‚ÂEN HEM EÃƒÂ…Ã‚ÂLEÃƒÂ…Ã‚ÂMEYEN
+    // pdf_path NULL olanlar = henÃƒÂƒÃ‚Â¼z eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmemiÃƒÂ…Ã‚ÂŸ (BÃƒÂ„Ã‚Â°LÃƒÂ„Ã‚Â°NMEYEN)
+    // pdf_path dolu olanlar = eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmiÃƒÂ…Ã‚ÂŸ
+    // BÃƒÂ„Ã‚Â°LÃƒÂ„Ã‚Â°NMEYEN olanlar = PDF var ama ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmemiÃƒÂ…Ã‚ÂŸ
     const eslesmemisOgrenciler = await dbAll(`
       SELECT 
         sk.id as katilimci_id,
@@ -5371,7 +4172,7 @@ app.get('/kurum/sinav-eslesmemis-pdfler/:id', requireAuth, async (req, res) => {
         CASE 
           WHEN sk.ogrenci_kaynak = 'kurum' THEN ok.ogrenci_adi_soyadi
           WHEN sk.ogrenci_kaynak = 'veli' THEN o.ad_soyad
-          ELSE 'BİLİNMEYEN'
+          ELSE 'BÃƒÂ„Ã‚Â°LÃƒÂ„Ã‚Â°NMEYEN'
         END as ad_soyad,
         CASE 
           WHEN sk.ogrenci_kaynak = 'kurum' THEN ok.sinif
@@ -5383,14 +4184,14 @@ app.get('/kurum/sinav-eslesmemis-pdfler/:id', requireAuth, async (req, res) => {
       WHERE sk.sinav_id = ?
       ORDER BY 
         CASE 
-          WHEN sk.pdf_path IS NOT NULL AND (ok.ogrenci_adi_soyadi = 'BİLİNMEYEN' OR o.ad_soyad = 'BİLİNMEYEN' OR (ok.ogrenci_adi_soyadi IS NULL AND o.ad_soyad IS NULL)) THEN 0
+          WHEN sk.pdf_path IS NOT NULL AND (ok.ogrenci_adi_soyadi = 'BÃƒÂ„Ã‚Â°LÃƒÂ„Ã‚Â°NMEYEN' OR o.ad_soyad = 'BÃƒÂ„Ã‚Â°LÃƒÂ„Ã‚Â°NMEYEN' OR (ok.ogrenci_adi_soyadi IS NULL AND o.ad_soyad IS NULL)) THEN 0
           WHEN sk.pdf_path IS NULL THEN 1
           ELSE 2
         END,
         sk.id
     `, [sinavId]);
     
-    // Eşleştirilebilir öğrencileri al (tüm katılımcılar)
+    // EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirilebilir ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri al (tÃƒÂƒÃ‚Â¼m katÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â±lar)
     const tumOgrenciler = await dbAll(`
       SELECT 
         sk.ogrenci_id,
@@ -5410,15 +4211,15 @@ app.get('/kurum/sinav-eslesmemis-pdfler/:id', requireAuth, async (req, res) => {
       ORDER BY ad_soyad
     `, [sinavId]);
     
-    // Orijinal PDF yolunu bul - eşleşmiş herhangi bir öğrencinin PDF'inden al
+    // Orijinal PDF yolunu bul - eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmiÃƒÂ…Ã‚ÂŸ herhangi bir ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencinin PDF'inden al
     let orijinalPdfYolu = null;
     
-    // Önce sinavlar tablosuna bak
+    // ÃƒÂƒÃ‚Â–nce sinavlar tablosuna bak
     const sinav = await dbGet('SELECT dosya_yolu FROM sinavlar WHERE id = ?', [sinavId]);
     if (sinav && sinav.dosya_yolu) {
         orijinalPdfYolu = sinav.dosya_yolu;
     } else {
-        // Yoksa eşleşmiş herhangi bir öğrencinin PDF'ini al
+        // Yoksa eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmiÃƒÂ…Ã‚ÂŸ herhangi bir ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencinin PDF'ini al
         const eslesmisOgrenci = await dbGet(
             'SELECT pdf_path FROM sinav_katilimcilari WHERE sinav_id = ? AND pdf_path IS NOT NULL LIMIT 1',
             [sinavId]
@@ -5428,9 +4229,9 @@ app.get('/kurum/sinav-eslesmemis-pdfler/:id', requireAuth, async (req, res) => {
         }
     }
     
-    console.log(`   📄 Eşleşmemiş: ${eslesmemisOgrenciler.length}`);
-    console.log(`   👥 Toplam Öğrenci: ${tumOgrenciler.length}`);
-    console.log(`   📁 PDF Yolu: ${orijinalPdfYolu}`);
+    console.log(`   ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â„ EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmemiÃƒÂ…Ã‚ÂŸ: ${eslesmemisOgrenciler.length}`);
+    console.log(`   ÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â¥ Toplam Öğrenci: ${tumOgrenciler.length}`);
+    console.log(`   ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â PDF Yolu: ${orijinalPdfYolu}`);
     
     res.json({
       success: true,
@@ -5442,12 +4243,12 @@ app.get('/kurum/sinav-eslesmemis-pdfler/:id', requireAuth, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ Eşleşmemiş PDF listeleme hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmemiÃƒÂ…Ã‚ÂŸ PDF listeleme hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, error: error.message });
   }
 });
 
-// 🔄 Kurum - Mevcut PDF'i Başka Öğrenciye Ata
+// ÃƒÂ°Ã‚ÂŸÃ‚Â”Ã‚Â„ Kurum - Mevcut PDF'i BaÃƒÂ…Ã‚ÂŸka Öğrenciye Ata
 app.post('/kurum/sinav-pdf-yeniden-eslestir', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
@@ -5456,19 +4257,19 @@ app.post('/kurum/sinav-pdf-yeniden-eslestir', requireAuth, async (req, res) => {
   try {
     const { katilimci_id, yeni_ogrenci_id, yeni_kaynak, sinav_id } = req.body;
     
-    console.log(`\n🔄 PDF YENİDEN EŞLEŞTİRİLİYOR`);
-    console.log(`   Katılımcı ID: ${katilimci_id}`);
+    console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â”Ã‚Â„ PDF YENÃƒÂ„Ã‚Â°DEN EÃƒÂ…Ã‚ÂLEÃƒÂ…Ã‚ÂTÃƒÂ„Ã‚Â°RÃƒÂ„Ã‚Â°LÃƒÂ„Ã‚Â°YOR`);
+    console.log(`   KatÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â± ID: ${katilimci_id}`);
     console.log(`   Yeni Öğrenci ID: ${yeni_ogrenci_id}`);
     console.log(`   Yeni Kaynak: ${yeni_kaynak}`);
     
-    // Eski katılımcının PDF yolunu al
+    // Eski katÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â±n PDF yolunu al
     const eskiKatilimci = await dbGet('SELECT pdf_path FROM sinav_katilimcilari WHERE id = ?', [katilimci_id]);
     
     if (!eskiKatilimci || !eskiKatilimci.pdf_path) {
       return res.json({ success: false, message: 'PDF bulunamadı!' });
     }
     
-    // Yeni öğrenci bilgilerini al
+    // Yeni ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci bilgilerini al
     let yeniOgrenci;
     if (yeni_kaynak === 'kurum') {
       yeniOgrenci = await dbGet('SELECT ogrenci_adi_soyadi as ad_soyad FROM ogrenci_kayitlari WHERE id = ?', [yeni_ogrenci_id]);
@@ -5485,53 +4286,53 @@ app.post('/kurum/sinav-pdf-yeniden-eslestir', requireAuth, async (req, res) => {
     
     // Yeni dosya adı oluştur
     const sinavKlasoru = path.join(__dirname, 'uploads', 'sinav-sonuclari', `sinav_${sinav_id}`);
-    const guvenliIsim = yeniOgrenci.ad_soyad.replace(/[^a-zA-Z0-9ğüşöçİĞÜŞÖÇ\s]/g, '').replace(/\s+/g, '_');
+    const guvenliIsim = yeniOgrenci.ad_soyad.replace(/[^a-zA-Z0-9ÃƒÂ„Ã‚ÂŸÃƒÂƒÃ‚Â¼ÃƒÂ…Ã‚ÂŸÃƒÂƒÃ‚Â¶ÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â°ÃƒÂ„Ã‚ÂÃƒÂƒÃ‚ÂœÃƒÂ…Ã‚ÂÃƒÂƒÃ‚Â–ÃƒÂƒÃ‚Â‡\s]/g, '').replace(/\s+/g, '_');
     const timestamp = Date.now();
     const yeniDosyaAdi = `${guvenliIsim}_${timestamp}.pdf`;
     const yeniDosyaYolu = path.join(sinavKlasoru, yeniDosyaAdi);
     
-    // Dosyayı kopyala/taşı
+    // DosyayÃƒÂ„Ã‚Â± kopyala/taÃƒÂ…Ã‚ÂŸÃƒÂ„Ã‚Â±
     const eskiTamYol = path.join(__dirname, eskiPdfPath);
     if (fs.existsSync(eskiTamYol)) {
       fs.copyFileSync(eskiTamYol, yeniDosyaYolu);
     }
     
-    // Veritabanını güncelle
+    // VeritabanÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± gÃƒÂƒÃ‚Â¼ncelle
     const relativePath = path.join('uploads', 'sinav-sonuclari', `sinav_${sinav_id}`, yeniDosyaAdi);
     
-    // Yeni öğrenci için kayıt oluştur/güncelle
+    // Yeni ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci iÃƒÂƒÃ‚Â§in kayıt oluştur/gÃƒÂƒÃ‚Â¼ncelle
     await dbRun(`
       UPDATE sinav_katilimcilari 
       SET pdf_path = ?, sonuc_durumu = 'yuklendi'
       WHERE sinav_id = ? AND ogrenci_id = ? AND ogrenci_kaynak = ?
     `, [relativePath, sinav_id, yeni_ogrenci_id, yeni_kaynak]);
     
-    // Eski kaydı temizle (PDF'i kaldır)
+    // Eski kaydÃƒÂ„Ã‚Â± temizle (PDF'i kaldÃƒÂ„Ã‚Â±r)
     await dbRun(`
       UPDATE sinav_katilimcilari 
       SET pdf_path = NULL, sonuc_durumu = 'bekleniyor'
       WHERE id = ?
     `, [katilimci_id]);
     
-    // Eski dosyayı sil
+    // Eski dosyayÃƒÂ„Ã‚Â± sil
     if (fs.existsSync(eskiTamYol)) {
       fs.unlinkSync(eskiTamYol);
     }
     
-    console.log(`   ✅ PDF başarıyla "${yeniOgrenci.ad_soyad}" için atandı`);
+    console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… PDF başarıyla "${yeniOgrenci.ad_soyad}" iÃƒÂƒÃ‚Â§in atandÃƒÂ„Ã‚Â±`);
     
     res.json({ 
       success: true, 
-      message: `✅ PDF başarıyla "${yeniOgrenci.ad_soyad}" ile eşleştirildi!`
+      message: `ÃƒÂ¢Ã‚ÂœÃ‚Â… PDF başarıyla "${yeniOgrenci.ad_soyad}" ile eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirildi!`
     });
     
   } catch (error) {
-    console.error('❌ PDF yeniden eşleştirme hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ PDF yeniden eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
-// 👤 Kurum - Tek Öğrenci İçin PDF Eşleştir
+// ÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â¤ Kurum - Tek Öğrenci ÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â§in PDF EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtir
 app.post('/kurum/sinav-tek-ogrenci-eslestir', requireAuth, upload.single('pdf'), async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
@@ -5542,10 +4343,10 @@ app.post('/kurum/sinav-tek-ogrenci-eslestir', requireAuth, upload.single('pdf'),
     const pdfFile = req.file;
     
     if (!pdfFile) {
-      return res.json({ success: false, message: 'PDF dosyası yüklenmedi!' });
+      return res.json({ success: false, message: 'PDF dosyasÃƒÂ„Ã‚Â± yÃƒÂƒÃ‚Â¼klenmedi!' });
     }
     
-    console.log(`\n👤 TEK ÖĞRENCİ EŞLEŞTİRME`);
+    console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â¤ TEK ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂRENCÃƒÂ„Ã‚Â° EÃƒÂ…Ã‚ÂLEÃƒÂ…Ã‚ÂTÃƒÂ„Ã‚Â°RME`);
     console.log(`   Sınav ID: ${sinav_id}`);
     console.log(`   Öğrenci ID: ${ogrenci_id}`);
     console.log(`   Kaynak: ${kaynak}`);
@@ -5563,23 +4364,23 @@ app.post('/kurum/sinav-tek-ogrenci-eslestir', requireAuth, upload.single('pdf'),
       return res.json({ success: false, message: 'Öğrenci bulunamadı!' });
     }
     
-    // Sınav klasörünü oluştur
+    // Sınav klasÃƒÂƒÃ‚Â¶rÃƒÂƒÃ‚Â¼nÃƒÂƒÃ‚Â¼ oluştur
     const sinavKlasoru = path.join(__dirname, 'uploads', 'sinav-sonuclari', `sinav_${sinav_id}`);
     if (!fs.existsSync(sinavKlasoru)) {
       fs.mkdirSync(sinavKlasoru, { recursive: true });
     }
     
-    // Dosya adını oluştur
-    const guvenliIsim = ogrenci.ad_soyad.replace(/[^a-zA-Z0-9ğüşöçİĞÜŞÖÇ\s]/g, '').replace(/\s+/g, '_');
+    // Dosya adınÃƒÂ„Ã‚Â± oluştur
+    const guvenliIsim = ogrenci.ad_soyad.replace(/[^a-zA-Z0-9ÃƒÂ„Ã‚ÂŸÃƒÂƒÃ‚Â¼ÃƒÂ…Ã‚ÂŸÃƒÂƒÃ‚Â¶ÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â°ÃƒÂ„Ã‚ÂÃƒÂƒÃ‚ÂœÃƒÂ…Ã‚ÂÃƒÂƒÃ‚Â–ÃƒÂƒÃ‚Â‡\s]/g, '').replace(/\s+/g, '_');
     const timestamp = Date.now();
     const yeniDosyaAdi = `${guvenliIsim}_${timestamp}.pdf`;
     const yeniDosyaYolu = path.join(sinavKlasoru, yeniDosyaAdi);
     
-    // Dosyayı taşı
+    // DosyayÃƒÂ„Ã‚Â± taÃƒÂ…Ã‚ÂŸÃƒÂ„Ã‚Â±
     fs.copyFileSync(pdfFile.path, yeniDosyaYolu);
-    fs.unlinkSync(pdfFile.path); // Geçici dosyayı sil
+    fs.unlinkSync(pdfFile.path); // GeÃƒÂƒÃ‚Â§ici dosyayÃƒÂ„Ã‚Â± sil
     
-    // Veritabanını güncelle
+    // VeritabanÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± gÃƒÂƒÃ‚Â¼ncelle
     const relativePath = path.join('uploads', 'sinav-sonuclari', `sinav_${sinav_id}`, yeniDosyaAdi);
     await dbRun(`
       UPDATE sinav_katilimcilari 
@@ -5587,23 +4388,23 @@ app.post('/kurum/sinav-tek-ogrenci-eslestir', requireAuth, upload.single('pdf'),
       WHERE sinav_id = ? AND ogrenci_id = ? AND ogrenci_kaynak = ?
     `, [relativePath, sinav_id, ogrenci_id, kaynak]);
     
-    // Sınavın sonuc_yuklendi durumunu güncelle
+    // SınavÃƒÂ„Ã‚Â±n sonuc_yuklendi durumunu gÃƒÂƒÃ‚Â¼ncelle
     await dbRun('UPDATE sinavlar SET sonuc_yuklendi = 1 WHERE id = ?', [sinav_id]);
     
-    console.log(`   ✅ Başarılı: ${ogrenci.ad_soyad} için PDF eşleştirildi`);
+    console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±: ${ogrenci.ad_soyad} iÃƒÂƒÃ‚Â§in PDF eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirildi`);
     
     res.json({ 
       success: true, 
-      message: `✅ ${ogrenci.ad_soyad} için sonuç başarıyla eşleştirildi!`
+      message: `ÃƒÂ¢Ã‚ÂœÃ‚Â… ${ogrenci.ad_soyad} iÃƒÂƒÃ‚Â§in sonuÃƒÂƒÃ‚Â§ başarıyla eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirildi!`
     });
     
   } catch (error) {
-    console.error('❌ Tek öğrenci eşleştirme hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Tek ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
-// 📢 Kurum - Sınav Sonuçlarını Yayınla (Velilere görünür hale getir)
+// ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â¢ Kurum - Sınav SonuçlarınÃƒÂ„Ã‚Â± YayÃƒÂ„Ã‚Â±nla (Velilere gÃƒÂƒÃ‚Â¶rÃƒÂƒÃ‚Â¼nÃƒÂƒÃ‚Â¼r hale getir)
 app.post('/kurum/sinav-sonuclari-yayinla/:id', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
@@ -5612,7 +4413,7 @@ app.post('/kurum/sinav-sonuclari-yayinla/:id', requireAuth, async (req, res) => 
   try {
     const sinavId = req.params.id;
     
-    console.log('\n📢 SINAV SONUÇLARI YAYINLANIYOR:', sinavId);
+    console.log('\nÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â¢ SINAV SONUÃƒÂƒÃ‚Â‡LARI YAYINLANIYOR:', sinavId);
     
     // Sınav bilgilerini al
     const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinavId]);
@@ -5622,14 +4423,14 @@ app.post('/kurum/sinav-sonuclari-yayinla/:id', requireAuth, async (req, res) => 
     }
     
     if (!sinav.sonuc_yuklendi) {
-      return res.json({ success: false, message: 'Henüz sonuç yüklenmemiş!' });
+      return res.json({ success: false, message: 'HenÃƒÂƒÃ‚Â¼z sonuÃƒÂƒÃ‚Â§ yÃƒÂƒÃ‚Â¼klenmemiÃƒÂ…Ã‚ÂŸ!' });
     }
     
     if (sinav.sonuc_yayinlandi) {
-      return res.json({ success: false, message: 'Sonuçlar zaten yayınlanmış!' });
+      return res.json({ success: false, message: 'SonuÃƒÂƒÃ‚Â§lar zaten yayÃƒÂ„Ã‚Â±nlanmÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸ!' });
     }
     
-    // Eşleşmiş sonuç sayısını kontrol et
+    // EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmiÃƒÂ…Ã‚ÂŸ sonuÃƒÂƒÃ‚Â§ sayÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± kontrol et
     const eslesmisler = await dbAll(`
       SELECT COUNT(*) as sayi 
       FROM sinav_katilimcilari 
@@ -5639,26 +4440,26 @@ app.post('/kurum/sinav-sonuclari-yayinla/:id', requireAuth, async (req, res) => 
     const eslesmeSayisi = eslesmisler[0]?.sayi || 0;
     
     if (eslesmeSayisi === 0) {
-      return res.json({ success: false, message: 'Hiç eşleşmiş sonuç yok! Lütfen önce eşleştirme yapın.' });
+      return res.json({ success: false, message: 'HiÃƒÂƒÃ‚Â§ eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmiÃƒÂ…Ã‚ÂŸ sonuÃƒÂƒÃ‚Â§ yok! LÃƒÂƒÃ‚Â¼tfen ÃƒÂƒÃ‚Â¶nce eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme yapÃƒÂ„Ã‚Â±n.' });
     }
     
-    // Sınavı yayınla
+    // SınavÃƒÂ„Ã‚Â± yayÃƒÂ„Ã‚Â±nla
     await dbRun('UPDATE sinavlar SET sonuc_yayinlandi = 1 WHERE id = ?', [sinavId]);
     
-    console.log(`   ✅ Yayınlandı: ${eslesmeSayisi} sonuç velilere görünür hale geldi`);
+    console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… YayÃƒÂ„Ã‚Â±nlandÃƒÂ„Ã‚Â±: ${eslesmeSayisi} sonuÃƒÂƒÃ‚Â§ velilere gÃƒÂƒÃ‚Â¶rÃƒÂƒÃ‚Â¼nÃƒÂƒÃ‚Â¼r hale geldi`);
     
     res.json({ 
       success: true, 
-      message: `✅ Sonuçlar yayınlandı! ${eslesmeSayisi} öğrencinin velisi artık sonuçları görebilir.`
+      message: `ÃƒÂ¢Ã‚ÂœÃ‚Â… SonuÃƒÂƒÃ‚Â§lar yayÃƒÂ„Ã‚Â±nlandÃƒÂ„Ã‚Â±! ${eslesmeSayisi} ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencinin velisi artÃƒÂ„Ã‚Â±k sonuçları gÃƒÂƒÃ‚Â¶rebilir.`
     });
     
   } catch (error) {
-    console.error('❌ Yayınlama hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ YayÃƒÂ„Ã‚Â±nlama hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
-// Kurum - Sınav Sonuç WhatsApp Bildirim Gönder
+// Kurum - Sınav SonuÃƒÂƒÃ‚Â§ WhatsApp Bildirim GÃƒÂƒÃ‚Â¶nder
 app.post('/kurum/sinav-sonuc-whatsapp-gonder/:id', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
@@ -5674,7 +4475,7 @@ app.post('/kurum/sinav-sonuc-whatsapp-gonder/:id', requireAuth, async (req, res)
       return res.json({ success: false, message: 'Sınav bulunamadı!' });
     }
     
-    // Sonucu yüklenmiş katılımcıları al (hem kurum hem veli öğrencileri)
+    // Sonucu yÃƒÂƒÃ‚Â¼klenmiÃƒÂ…Ã‚ÂŸ katÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â±larÃƒÂ„Ã‚Â± al (hem kurum hem veli ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri)
     const kurumKatilimcilari = await dbAll(`
       SELECT 
         sk.*,
@@ -5705,46 +4506,46 @@ app.post('/kurum/sinav-sonuc-whatsapp-gonder/:id', requireAuth, async (req, res)
     const katilimcilar = [...kurumKatilimcilari, ...veliKatilimcilari];
     
     if (katilimcilar.length === 0) {
-      return res.json({ success: false, message: 'Sonucu yüklenmiş öğrenci bulunamadı!' });
+      return res.json({ success: false, message: 'Sonucu yÃƒÂƒÃ‚Â¼klenmiÃƒÂ…Ã‚ÂŸ ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci bulunamadı!' });
     }
     
-    console.log(`\n📱 WHATSAPP BİLDİRİMLERİ GÖNDERİLİYOR`);
+    console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â± WHATSAPP BÃƒÂ„Ã‚Â°LDÃƒÂ„Ã‚Â°RÃƒÂ„Ã‚Â°MLERÃƒÂ„Ã‚Â° GÃƒÂƒÃ‚Â–NDERÃƒÂ„Ã‚Â°LÃƒÂ„Ã‚Â°YOR`);
     console.log(`   Sınav: ${sinav.ad}`);
-    console.log(`   Toplam katılımcı: ${katilimcilar.length}\n`);
+    console.log(`   Toplam katÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â±: ${katilimcilar.length}\n`);
     
     let basarili = 0;
     let basarisiz = 0;
     
-    // Her öğrenci için veli telefonuna bildirim gönder
+    // Her ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci iÃƒÂƒÃ‚Â§in veli telefonuna bildirim gÃƒÂƒÃ‚Â¶nder
     for (const katilimci of katilimcilar) {
-      // Veli telefonu öncelikli, yoksa öğrenci telefonu
+      // Veli telefonu ÃƒÂƒÃ‚Â¶ncelikli, yoksa ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci telefonu
       const telefon = katilimci.veli_telefon || katilimci.ogrenci_telefon;
       
-      console.log(`   📞 ${katilimci.ogrenci_adi} (Veli: ${katilimci.veli_adi || 'Bilinmiyor'}) → ${telefon || 'TELEFON YOK'}`);
+      console.log(`   ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â ${katilimci.ogrenci_adi} (Veli: ${katilimci.veli_adi || 'Bilinmiyor'}) ÃƒÂ¢Ã‚Â†Ã‚Â’ ${telefon || 'TELEFON YOK'}`);
       
       if (!telefon) {
-        console.log(`   ⚠️ ${katilimci.ogrenci_adi} - Telefon numarası yok!`);
+        console.log(`   ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â ${katilimci.ogrenci_adi} - Telefon numarasÃƒÂ„Ã‚Â± yok!`);
         basarisiz++;
         continue;
       }
       
-      // WhatsApp mesajını oluştur
-      const mesaj = `🎓 Sınav Sonucu Açıklandı
+      // WhatsApp mesajÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± oluştur
+      const mesaj = `ÃƒÂ°Ã‚ÂŸÃ‚ÂÃ‚Â“ Sınav Sonucu AÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â±klandÃƒÂ„Ã‚Â±
 
-Sayın ${katilimci.veli_adi || 'Veli'},
+SayÃƒÂ„Ã‚Â±n ${katilimci.veli_adi || 'Veli'},
 
-${katilimci.ogrenci_adi} öğrencinizin sınav sonucu açıklanmıştır.
+${katilimci.ogrenci_adi} ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencinizin sınav sonucu aÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â±klanmÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸtÃƒÂ„Ã‚Â±r.
 
-📚 Sınav: ${sinav.ad}
-📅 Tarih: ${new Date(sinav.tarih).toLocaleDateString('tr-TR')}
+ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Âš Sınav: ${sinav.ad}
+ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â… Tarih: ${new Date(sinav.tarih).toLocaleDateString('tr-TR')}
 
-📥 Sonucu görüntülemek için sisteme giriş yapın:
-👉 ${req.protocol}://${req.get('host')}/login
+ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â¥ Sonucu gÃƒÂƒÃ‚Â¶rÃƒÂƒÃ‚Â¼ntÃƒÂƒÃ‚Â¼lemek iÃƒÂƒÃ‚Â§in sisteme giriÃƒÂ…Ã‚ÂŸ yapÃƒÂ„Ã‚Â±n:
+ÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â‰ ${req.protocol}://${req.get('host')}/login
 
-─────────────────
-🏫 Sınav Merkezi`;
+ÃƒÂ¢Ã‚Â”Ã‚Â€ÃƒÂ¢Ã‚Â”Ã‚Â€ÃƒÂ¢Ã‚Â”Ã‚Â€ÃƒÂ¢Ã‚Â”Ã‚Â€ÃƒÂ¢Ã‚Â”Ã‚Â€ÃƒÂ¢Ã‚Â”Ã‚Â€ÃƒÂ¢Ã‚Â”Ã‚Â€ÃƒÂ¢Ã‚Â”Ã‚Â€ÃƒÂ¢Ã‚Â”Ã‚Â€ÃƒÂ¢Ã‚Â”Ã‚Â€ÃƒÂ¢Ã‚Â”Ã‚Â€ÃƒÂ¢Ã‚Â”Ã‚Â€ÃƒÂ¢Ã‚Â”Ã‚Â€ÃƒÂ¢Ã‚Â”Ã‚Â€ÃƒÂ¢Ã‚Â”Ã‚Â€ÃƒÂ¢Ã‚Â”Ã‚Â€ÃƒÂ¢Ã‚Â”Ã‚Â€
+ÃƒÂ°Ã‚ÂŸÃ‚ÂÃ‚Â« Sınav Merkezi`;
       
-      // WhatsApp gönder
+      // WhatsApp gÃƒÂƒÃ‚Â¶nder
       const result = await whatsappBildirimGonder(
         telefon,
         mesaj,
@@ -5752,50 +4553,50 @@ ${katilimci.ogrenci_adi} öğrencinizin sınav sonucu açıklanmıştır.
       );
       
       if (result.success) {
-        console.log(`   ✅ ${katilimci.ogrenci_adi} - ${telefon}`);
+        console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… ${katilimci.ogrenci_adi} - ${telefon}`);
         basarili++;
         
-        // Bildirim durumunu güncelle
+        // Bildirim durumunu gÃƒÂƒÃ‚Â¼ncelle
         await dbRun(
           'UPDATE sinav_katilimcilari SET sonuc_durumu = ?, whatsapp_gonderim_tarihi = datetime("now") WHERE id = ?',
           ['bildirildi', katilimci.id]
         );
       } else {
-        console.log(`   ❌ ${katilimci.ogrenci_adi} - ${telefon} - ${result.message}`);
+        console.log(`   ÃƒÂ¢Ã‚ÂÃ‚ÂŒ ${katilimci.ogrenci_adi} - ${telefon} - ${result.message}`);
         basarisiz++;
       }
       
-      // API rate limit için küçük gecikme
+      // API rate limit iÃƒÂƒÃ‚Â§in kÃƒÂƒÃ‚Â¼ÃƒÂƒÃ‚Â§ÃƒÂƒÃ‚Â¼k gecikme
       await new Promise(resolve => setTimeout(resolve, 500));
     }
     
-    console.log(`\n✅ Bildirim gönderimi tamamlandı!`);
-    console.log(`   Başarılı: ${basarili}`);
-    console.log(`   Başarısız: ${basarisiz}`);
+    console.log(`\nÃƒÂ¢Ã‚ÂœÃ‚Â… Bildirim gÃƒÂƒÃ‚Â¶nderimi tamamlandÃƒÂ„Ã‚Â±!`);
+    console.log(`   BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±: ${basarili}`);
+    console.log(`   BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±z: ${basarisiz}`);
     
     res.json({ 
       success: true, 
-      message: `${basarili} bildirim gönderildi, ${basarisiz} başarısız.`,
+      message: `${basarili} bildirim gÃƒÂƒÃ‚Â¶nderildi, ${basarisiz} baÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±z.`,
       basarili: basarili,
       basarisiz: basarisiz
     });
     
   } catch (error) {
-    console.error('WhatsApp bildirim hatası:', error);
-    res.json({ success: false, message: 'Bildirim gönderilirken bir hata oluştu!' });
+    console.error('WhatsApp bildirim hatasÃƒÂ„Ã‚Â±:', error);
+    res.json({ success: false, message: 'Bildirim gÃƒÂƒÃ‚Â¶nderilirken bir hata oluştu!' });
   }
 });
 
 // Veli - Sınav Sonuçları
 app.get('/veli/sinav-sonuclari', requireAuth, requireRole('veli'), async (req, res) => {
   try {
-    console.log(`\n📋 SINAV SONUÇLARI (Veli ID: ${req.session.userId}, Username: ${req.session.username})`);
+    console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â‹ SINAV SONUÃƒÂƒÃ‚Â‡LARI (Veli ID: ${req.session.userId}, Username: ${req.session.username})`);
     
-    // 1. Veli'nin kendi eklediği öğrenciler (ogrenciler tablosu)
+    // 1. Veli'nin kendi eklediÃƒÂ„Ã‚ÂŸi ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenciler (ogrenciler tablosu)
     const veliOgrencileri = await dbAll('SELECT * FROM ogrenciler WHERE veli_id = ?', [req.session.userId]);
-    console.log(`   Veli ekledi: ${veliOgrencileri.length} öğrenci`);
+    console.log(`   Veli ekledi: ${veliOgrencileri.length} ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci`);
     
-    // 2. Kurum tarafından eklenen öğrenciler (TC eşleşmesi ile)
+    // 2. Kurum tarafÃƒÂ„Ã‚Â±ndan eklenen ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenciler (TC eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmesi ile)
     const kurumOgrencileri = await dbAll(`
       SELECT 
         id,
@@ -5807,23 +4608,23 @@ app.get('/veli/sinav-sonuclari', requireAuth, requireRole('veli'), async (req, r
       FROM ogrenci_kayitlari
       WHERE REPLACE(CAST(tc_kimlik_no AS TEXT), '.0', '') = ?
     `, [req.session.username]);
-    console.log(`   Kurum ekledi: ${kurumOgrencileri.length} öğrenci (TC eşleştirme)`);
+    console.log(`   Kurum ekledi: ${kurumOgrencileri.length} ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci (TC eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme)`);
     
-    // 3. İki listeyi birleştir
+    // 3. ÃƒÂ„Ã‚Â°ki listeyi birleÃƒÂ…Ã‚ÂŸtir
     const ogrenciler = [...veliOgrencileri, ...kurumOgrencileri];
-    console.log(`   📊 TOPLAM: ${ogrenciler.length} öğrenci`);
+    console.log(`   ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚ÂŠ TOPLAM: ${ogrenciler.length} ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci`);
     
     if (ogrenciler.length === 0) {
       return res.render('veli/sinav-sonuclari', {
         user: { username: req.session.username, type: req.session.userType },
         sonuclar: [],
         ogrenciler: [],
-        error: 'Henüz öğrenci kaydınız bulunmuyor.',
+        error: 'HenÃƒÂƒÃ‚Â¼z ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci kaydÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â±z bulunmuyor.',
         success: req.session.success
       });
     }
     
-    // Veli'nin kendi eklediği öğrencilerin sonuçları (ogrenciler tablosu)
+    // Veli'nin kendi eklediÃƒÂ„Ã‚ÂŸi ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerin sonuçları (ogrenciler tablosu)
     const veliSonuclari = await dbAll(`
       SELECT 
         sk.id,
@@ -5851,9 +4652,9 @@ app.get('/veli/sinav-sonuclari', requireAuth, requireRole('veli'), async (req, r
         AND sk.pdf_path IS NOT NULL
     `, [req.session.userId]);
     
-    console.log(`   ✅ Veli ekledi: ${veliSonuclari.length} sonuç`);
+    console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… Veli ekledi: ${veliSonuclari.length} sonuÃƒÂƒÃ‚Â§`);
     
-    // Kurum tarafından eklenen öğrencilerin sonuçları (ogrenci_kayitlari tablosu)
+    // Kurum tarafÃƒÂ„Ã‚Â±ndan eklenen ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerin sonuçları (ogrenci_kayitlari tablosu)
     const kurumSonuclari = await dbAll(`
       SELECT 
         sk.id,
@@ -5881,14 +4682,14 @@ app.get('/veli/sinav-sonuclari', requireAuth, requireRole('veli'), async (req, r
         AND sk.pdf_path IS NOT NULL
     `, [req.session.userId]);
     
-    console.log(`   ✅ Kurum ekledi: ${kurumSonuclari.length} sonuç`);
+    console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… Kurum ekledi: ${kurumSonuclari.length} sonuÃƒÂƒÃ‚Â§`);
     
-    // İki kaynağı birleştir
+    // ÃƒÂ„Ã‚Â°ki kaynaÃƒÂ„Ã‚ÂŸÃƒÂ„Ã‚Â± birleÃƒÂ…Ã‚ÂŸtir
     const sonuclar = [...veliSonuclari, ...kurumSonuclari].sort((a, b) => {
       return new Date(b.sinav_tarihi) - new Date(a.sinav_tarihi);
     });
     
-    console.log(`   📊 Toplam: ${sonuclar.length} sonuç`);
+    console.log(`   ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚ÂŠ Toplam: ${sonuclar.length} sonuÃƒÂƒÃ‚Â§`);
     
     res.render('veli/sinav-sonuclari', {
       user: { username: req.session.username, type: req.session.userType },
@@ -5901,29 +4702,29 @@ app.get('/veli/sinav-sonuclari', requireAuth, requireRole('veli'), async (req, r
     req.session.error = null;
     req.session.success = null;
   } catch (error) {
-    console.error('Sınav sonuçları hatası:', error);
+    console.error('Sınav sonuçları hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Sınav sonuçları yüklenirken bir hata oluştu!';
     res.redirect('/veli/dashboard');
   }
 });
 
-// Veli - Sınav Sonuç PDF İndir
+// Veli - Sınav SonuÃƒÂƒÃ‚Â§ PDF ÃƒÂ„Ã‚Â°ndir
 app.get('/veli/sinav-sonuc-indir/:katilimciId', requireAuth, requireRole('veli'), async (req, res) => {
   try {
     const katilimciId = req.params.katilimciId;
     
-    // Önce ogrenci_kaynak'a bak
+    // ÃƒÂƒÃ‚Â–nce ogrenci_kaynak'a bak
     const katilimciBilgi = await dbGet('SELECT ogrenci_kaynak, ogrenci_id, pdf_path FROM sinav_katilimcilari WHERE id = ?', [katilimciId]);
     
     if (!katilimciBilgi) {
-      return res.status(404).send('Sonuç bulunamadı!');
+      return res.status(404).send('SonuÃƒÂƒÃ‚Â§ bulunamadı!');
     }
     
     let yetkiVar = false;
     
-    // Kaynak'a göre yetki kontrolü
+    // Kaynak'a gÃƒÂƒÃ‚Â¶re yetki kontrolÃƒÂƒÃ‚Â¼
     if (katilimciBilgi.ogrenci_kaynak === 'veli') {
-      // Veli'nin kendi eklediği öğrenci
+      // Veli'nin kendi eklediÃƒÂ„Ã‚ÂŸi ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci
       const ogrenci = await dbGet('SELECT veli_id FROM ogrenciler WHERE id = ?', [katilimciBilgi.ogrenci_id]);
       yetkiVar = ogrenci && ogrenci.veli_id === req.session.userId;
     } else {
@@ -5937,12 +4738,12 @@ app.get('/veli/sinav-sonuc-indir/:katilimciId', requireAuth, requireRole('veli')
       return res.status(403).send('Bu sonuca erişim yetkiniz yok!');
     }
     
-    // PDF var mı kontrol et
+    // PDF var mÃƒÂ„Ã‚Â± kontrol et
     if (!katilimciBilgi.pdf_path || !fs.existsSync(katilimciBilgi.pdf_path)) {
-      return res.status(404).send('PDF dosyası bulunamadı!');
+      return res.status(404).send('PDF dosyasÃƒÂ„Ã‚Â± bulunamadı!');
     }
     
-    // PDF indirme kaydını güncelle
+    // PDF indirme kaydÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± gÃƒÂƒÃ‚Â¼ncelle
     const simdi = new Date().toISOString();
     await dbRun(`
       UPDATE sinav_katilimcilari 
@@ -5953,21 +4754,21 @@ app.get('/veli/sinav-sonuc-indir/:katilimciId', requireAuth, requireRole('veli')
       WHERE id = ?
     `, [simdi, katilimciId]);
     
-    console.log(`\n📥 PDF İNDİRME KAYDI`);
-    console.log(`   Katılımcı ID: ${katilimciId}`);
+    console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â¥ PDF ÃƒÂ„Ã‚Â°NDÃƒÂ„Ã‚Â°RME KAYDI`);
+    console.log(`   KatÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â± ID: ${katilimciId}`);
     console.log(`   Tarih: ${simdi}`);
     console.log(`   Veli ID: ${req.session.userId}`);
     
     // PDF'i indir
     res.download(katilimciBilgi.pdf_path, path.basename(katilimciBilgi.pdf_path), (err) => {
       if (err) {
-        console.error('PDF indirme hatası:', err);
+        console.error('PDF indirme hatasÃƒÂ„Ã‚Â±:', err);
         res.status(500).send('PDF indirilemedi!');
       }
     });
     
   } catch (error) {
-    console.error('PDF indirme hatası:', error);
+    console.error('PDF indirme hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).send('Bir hata oluştu!');
   }
 });
@@ -5977,7 +4778,7 @@ app.get('/veli/profil', requireAuth, requireRole('veli'), async (req, res) => {
   try {
     const kullanici = await dbGet('SELECT * FROM users WHERE id = ?', [req.session.userId]);
     
-    // Talep edilen sınavları getir
+    // Talep edilen sınavlarÃƒÂ„Ã‚Â± getir
     const talepEdilenSinavlar = await dbAll(`
       SELECT 
         s.*,
@@ -5994,10 +4795,10 @@ app.get('/veli/profil', requireAuth, requireRole('veli'), async (req, res) => {
       ORDER BY st.talep_tarihi DESC
     `, [req.session.userId, req.session.userId]);
     
-    // Login hatalarını filtrele - sadece profil ile ilgili hataları göster
+    // Login hatalarÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± filtrele - sadece profil ile ilgili hatalarÃƒÂ„Ã‚Â± gÃƒÂƒÃ‚Â¶ster
     let error = req.session.error;
-    if (error && (error.includes('Kullanıcı adı veya şifre') || error.includes('şifre hatalı'))) {
-      error = null; // Login hatalarını gösterme
+    if (error && (error.includes('Kullanıcı adı veya şifre') || error.includes('şifre hatalÃƒÂ„Ã‚Â±'))) {
+      error = null; // Login hatalarÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± gÃƒÂƒÃ‚Â¶sterme
     }
     
     res.render('veli_profil', {
@@ -6010,13 +4811,13 @@ app.get('/veli/profil', requireAuth, requireRole('veli'), async (req, res) => {
     req.session.error = null;
     req.session.success = null;
   } catch (error) {
-    console.error('Profil hatası:', error);
+    console.error('Profil hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Profil yüklenirken bir hata oluştu!';
     res.redirect('/veli/dashboard');
   }
 });
 
-// Veli Profil Güncelleme
+// Veli Profil GÃƒÂƒÃ‚Â¼ncelleme
 app.post('/veli/profil', requireAuth, requireRole('veli'), async (req, res) => {
   try {
     const { ad_soyad, telefon, current_password, new_password } = req.body;
@@ -6027,10 +4828,10 @@ app.post('/veli/profil', requireAuth, requireRole('veli'), async (req, res) => {
       return;
     }
     
-    // Şifre değiştirme kontrolü
+    // ÃƒÂ…Ã‚Âifre değiştirme kontrolÃƒÂƒÃ‚Â¼
     if (new_password && new_password.trim() !== '') {
       if (!current_password || current_password.trim() === '') {
-        req.session.error = 'Şifre değiştirmek için mevcut şifrenizi girmelisiniz!';
+        req.session.error = 'ÃƒÂ…Ã‚Âifre değiştirmek iÃƒÂƒÃ‚Â§in mevcut şifrenizi girmelisiniz!';
         res.redirect('/veli/profil');
         return;
       }
@@ -6046,7 +4847,7 @@ app.post('/veli/profil', requireAuth, requireRole('veli'), async (req, res) => {
       const sifreDogruMu = await bcrypt.compare(current_password, kullanici.password_hash);
       
       if (!sifreDogruMu) {
-        req.session.error = 'Mevcut şifreniz yanlış!';
+        req.session.error = 'Mevcut şifreniz yanlÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸ!';
         res.redirect('/veli/profil');
         return;
       }
@@ -6054,16 +4855,16 @@ app.post('/veli/profil', requireAuth, requireRole('veli'), async (req, res) => {
       // Yeni şifreyi hashle
       const yeniSifreHash = await bcrypt.hash(new_password, 10);
       
-      // Profil ve şifreyi güncelle
+      // Profil ve şifreyi gÃƒÂƒÃ‚Â¼ncelle
       await dbRun(
         'UPDATE users SET ad_soyad = ?, telefon = ?, password_hash = ? WHERE id = ?',
         [ad_soyad, telefon, yeniSifreHash, req.session.userId]
       );
       
-      console.log(`✅ Veli şifre değiştirdi: User ID ${req.session.userId}`);
+      console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… Veli şifre deÃƒÂ„Ã‚ÂŸiÃƒÂ…Ã‚ÂŸtirdi: User ID ${req.session.userId}`);
       req.session.success = 'Profil bilgileriniz ve şifreniz başarıyla güncellendi!';
     } else {
-      // Sadece profil bilgilerini güncelle
+      // Sadece profil bilgilerini gÃƒÂƒÃ‚Â¼ncelle
       await dbRun(
         'UPDATE users SET ad_soyad = ?, telefon = ? WHERE id = ?',
         [ad_soyad, telefon, req.session.userId]
@@ -6074,7 +4875,7 @@ app.post('/veli/profil', requireAuth, requireRole('veli'), async (req, res) => {
     
     res.redirect('/veli/profil');
   } catch (error) {
-    console.error('Profil güncelleme hatası:', error);
+    console.error('Profil gÃƒÂƒÃ‚Â¼ncelleme hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Profil güncellenirken bir hata oluştu!';
     res.redirect('/veli/profil');
   }
@@ -6091,7 +4892,7 @@ app.get('/veli/ogrenci-ekle', requireAuth, requireRole('veli'), async (req, res)
     req.session.error = null;
     req.session.success = null;
   } catch (error) {
-    console.error('Öğrenci ekle sayfası hatası:', error);
+    console.error('Öğrenci ekle sayfasÃƒÂ„Ã‚Â± hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Sayfa yüklenirken bir hata oluştu!';
     res.redirect('/veli/dashboard');
   }
@@ -6102,15 +4903,15 @@ app.post('/veli/ogrenci-ekle', requireAuth, requireRole('veli'), async (req, res
   try {
     const { ad_soyad, tc_no, telefon, okul, sinif } = req.body;
     
-    console.log('Öğrenci ekleme isteği:', { ad_soyad, tc_no, telefon, okul, sinif, veli_id: req.session.userId });
+    console.log('Öğrenci ekleme isteÃƒÂ„Ã‚ÂŸi:', { ad_soyad, tc_no, telefon, okul, sinif, veli_id: req.session.userId });
     
     if (!ad_soyad || !okul || !sinif) {
-      req.session.error = 'Öğrenci adı soyadı, okul ve sınıf zorunludur!';
+      req.session.error = 'Öğrenci adı soyadı, okul ve sÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â±f zorunludur!';
       res.redirect('/veli/ogrenci-ekle');
       return;
     }
     
-    // Öğrenci numarası oluştur
+    // Öğrenci numarasÃƒÂ„Ã‚Â± oluştur
     const ogrenciNo = await generateOgrenciNo();
     
     // Öğrenci ekle
@@ -6124,13 +4925,13 @@ app.post('/veli/ogrenci-ekle', requireAuth, requireRole('veli'), async (req, res
     req.session.success = `${ad_soyad} başarıyla eklendi! Öğrenci No: ${ogrenciNo}`;
     res.redirect('/veli/dashboard');
   } catch (error) {
-    console.error('Öğrenci ekleme hatası:', error);
+    console.error('Öğrenci ekleme hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Öğrenci eklenirken bir hata oluştu: ' + error.message;
     res.redirect('/veli/ogrenci-ekle');
   }
 });
 
-// Veli - Öğrenci Düzenle (GET)
+// Veli - Öğrenci DÃƒÂƒÃ‚Â¼zenle (GET)
 app.get('/veli/ogrenci-duzenle/:id', requireAuth, requireRole('veli'), async (req, res) => {
   try {
     const ogrenci = await dbGet('SELECT * FROM ogrenciler WHERE id = ? AND veli_id = ?', [req.params.id, req.session.userId]);
@@ -6141,7 +4942,7 @@ app.get('/veli/ogrenci-duzenle/:id', requireAuth, requireRole('veli'), async (re
       return;
     }
     
-    // Bu öğrenciye yetki verilmiş rehber öğretmenleri getir
+    // Bu ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenciye yetki verilmiÃƒÂ…Ã‚ÂŸ rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmenleri getir
     const rehberOgretmenler = await dbAll(`
       SELECT 
         t.id as talep_id, 
@@ -6168,34 +4969,34 @@ app.get('/veli/ogrenci-duzenle/:id', requireAuth, requireRole('veli'), async (re
     req.session.error = null;
     req.session.success = null;
   } catch (error) {
-    console.error('Öğrenci düzenle sayfası hatası:', error);
+    console.error('Öğrenci dÃƒÂƒÃ‚Â¼zenle sayfasÃƒÂ„Ã‚Â± hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Sayfa yüklenirken bir hata oluştu!';
     res.redirect('/veli/dashboard');
   }
 });
 
-// Veli - Öğrenci Düzenle (POST)
+// Veli - Öğrenci DÃƒÂƒÃ‚Â¼zenle (POST)
 app.post('/veli/ogrenci-duzenle/:id', requireAuth, requireRole('veli'), async (req, res) => {
   try {
     const { ad_soyad, tc_no, telefon, okul, sinif } = req.body;
     const ogrenciId = req.params.id;
     
-    // Öğrencinin bu veliye ait olduğunu kontrol et
+    // Öğrencinin bu veliye ait olduÃƒÂ„Ã‚ÂŸunu kontrol et
     const ogrenci = await dbGet('SELECT * FROM ogrenciler WHERE id = ? AND veli_id = ?', [ogrenciId, req.session.userId]);
     
     if (!ogrenci) {
-      req.session.error = 'Öğrenci bulunamadı veya size ait değil!';
+      req.session.error = 'Öğrenci bulunamadı veya size ait deÃƒÂ„Ã‚ÂŸil!';
       res.redirect('/veli/dashboard');
       return;
     }
     
     if (!ad_soyad || !okul || !sinif) {
-      req.session.error = 'Öğrenci adı soyadı, okul ve sınıf zorunludur!';
+      req.session.error = 'Öğrenci adı soyadı, okul ve sÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â±f zorunludur!';
       res.redirect(`/veli/ogrenci-duzenle/${ogrenciId}`);
       return;
     }
     
-    // Öğrenci güncelle
+    // Öğrenci gÃƒÂƒÃ‚Â¼ncelle
     await dbRun(
       'UPDATE ogrenciler SET ad_soyad = ?, tc_no = ?, telefon = ?, okul = ?, sinif = ? WHERE id = ? AND veli_id = ?',
       [ad_soyad, tc_no, telefon, okul, sinif, ogrenciId, req.session.userId]
@@ -6204,51 +5005,51 @@ app.post('/veli/ogrenci-duzenle/:id', requireAuth, requireRole('veli'), async (r
     req.session.success = `${ad_soyad} başarıyla güncellendi!`;
     res.redirect('/veli/dashboard');
   } catch (error) {
-    console.error('Öğrenci güncelleme hatası:', error);
+    console.error('Öğrenci gÃƒÂƒÃ‚Â¼ncelleme hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Öğrenci güncellenirken bir hata oluştu!';
     res.redirect(`/veli/ogrenci-duzenle/${req.params.id}`);
   }
 });
 
-// Veli - Rehber Öğretmen Yetkisini Kaldır
+// Veli - Rehber ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸretmen Yetkisini KaldÃƒÂ„Ã‚Â±r
 app.post('/veli/rehber-yetki-kaldir/:talep_id', requireAuth, requireRole('veli'), async (req, res) => {
   try {
     const talepId = req.params.talep_id;
-    console.log('🗑️  Yetki kaldırma isteği:', { talepId, veliId: req.session.userId });
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â—Ã‚Â‘ÃƒÂ¯Ã‚Â¸Ã‚Â  Yetki kaldÃƒÂ„Ã‚Â±rma isteÃƒÂ„Ã‚ÂŸi:', { talepId, veliId: req.session.userId });
     
-    // Talebin bu veliye ait olduğunu kontrol et
+    // Talebin bu veliye ait olduÃƒÂ„Ã‚ÂŸunu kontrol et
     const talep = await dbGet(
       'SELECT t.*, o.veli_id FROM ogrenci_talepleri t INNER JOIN ogrenciler o ON t.ogrenci_id = o.id WHERE t.id = ?',
       [talepId]
     );
     
-    console.log('📋 Talep bulundu:', talep);
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â‹ Talep bulundu:', talep);
     
     if (!talep || talep.veli_id !== req.session.userId) {
-      console.log('❌ Yetki kontrolü başarısız');
+      console.log('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Yetki kontrolÃƒÂƒÃ‚Â¼ baÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±z');
       return res.json({ success: false, message: 'Yetkiniz yok!' });
     }
     
-    // Talebi sil (yetkiyi kaldır)
+    // Talebi sil (yetkiyi kaldÃƒÂ„Ã‚Â±r)
     await dbRun('DELETE FROM ogrenci_talepleri WHERE id = ?', [talepId]);
-    console.log('✅ Yetki başarıyla kaldırıldı');
+    console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… Yetki başarıyla kaldÃƒÂ„Ã‚Â±rÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â±');
     
-    res.json({ success: true, message: 'Rehber öğretmen yetkisi kaldırıldı!' });
+    res.json({ success: true, message: 'Rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmen yetkisi kaldÃƒÂ„Ã‚Â±rÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â±!' });
   } catch (error) {
-    console.error('❌ Yetki kaldırma hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Yetki kaldÃƒÂ„Ã‚Â±rma hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
 
-// Veli - Rehber Öğretmen Sınav Sonucu Görme Yetkisini Değiştir
+// Veli - Rehber ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸretmen Sınav Sonucu GÃƒÂƒÃ‚Â¶rme Yetkisini DeÃƒÂ„Ã‚ÂŸiÃƒÂ…Ã‚ÂŸtir
 app.post('/veli/rehber-sonuc-yetki-degistir/:talep_id', requireAuth, requireRole('veli'), async (req, res) => {
   try {
     const talepId = req.params.talep_id;
     const { yeni_durum } = req.body;
     
-    console.log('🔄 Sonuç yetkisi değiştirme isteği:', { talepId, yeniDurum: yeni_durum, veliId: req.session.userId });
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â”Ã‚Â„ SonuÃƒÂƒÃ‚Â§ yetkisi değiştirme isteÃƒÂ„Ã‚ÂŸi:', { talepId, yeniDurum: yeni_durum, veliId: req.session.userId });
     
-    // Talebin bu veliye ait olduğunu kontrol et
+    // Talebin bu veliye ait olduÃƒÂ„Ã‚ÂŸunu kontrol et
     const talep = await dbGet(
       'SELECT t.*, o.veli_id FROM ogrenci_talepleri t INNER JOIN ogrenciler o ON t.ogrenci_id = o.id WHERE t.id = ?',
       [talepId]
@@ -6258,31 +5059,31 @@ app.post('/veli/rehber-sonuc-yetki-degistir/:talep_id', requireAuth, requireRole
       return res.json({ success: false, message: 'Yetkiniz yok!' });
     }
     
-    // Yetkiyi güncelle
+    // Yetkiyi gÃƒÂƒÃ‚Â¼ncelle
     await dbRun(
       'UPDATE ogrenci_talepleri SET sonuc_goruntuleme_aktif = ? WHERE id = ?',
       [yeni_durum, talepId]
     );
     
-    console.log(`✅ Sınav sonucu görme yetkisi ${yeni_durum == 1 ? 'açıldı' : 'kapatıldı'}`);
+    console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… Sınav sonucu gÃƒÂƒÃ‚Â¶rme yetkisi ${yeni_durum == 1 ? 'aÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â±' : 'kapatÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â±'}`);
     res.json({ 
       success: true, 
-      message: `Sınav sonucu görme yetkisi ${yeni_durum == 1 ? 'açıldı' : 'kapatıldı'}!` 
+      message: `Sınav sonucu gÃƒÂƒÃ‚Â¶rme yetkisi ${yeni_durum == 1 ? 'aÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â±' : 'kapatÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â±'}!` 
     });
   } catch (error) {
-    console.error('Yetki değiştirme hatası:', error);
+    console.error('Yetki değiştirme hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
 
-// Kurum - Rehber Öğretmenler Listesi (Yetki Yönetimi)
+// Kurum - Rehber ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸretmenler Listesi (Yetki YÃƒÂƒÃ‚Â¶netimi)
 app.get('/kurum/rehber-ogretmenler', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
   }
   
   try {
-    // Tüm onaylı talepleri rehber öğretmene göre grupla
+    // TÃƒÂƒÃ‚Â¼m onaylÃƒÂ„Ã‚Â± talepleri rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmene gÃƒÂƒÃ‚Â¶re grupla
     const talepler = await dbAll(`
       SELECT 
         t.id as talep_id,
@@ -6307,7 +5108,7 @@ app.get('/kurum/rehber-ogretmenler', requireAuth, async (req, res) => {
       ORDER BY u.ad_soyad ASC, o.ad_soyad ASC
     `);
     
-    // Rehber öğretmene göre grupla
+    // Rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmene gÃƒÂƒÃ‚Â¶re grupla
     const rehberMap = new Map();
     
     talepler.forEach(talep => {
@@ -6348,13 +5149,13 @@ app.get('/kurum/rehber-ogretmenler', requireAuth, async (req, res) => {
     req.session.error = null;
     req.session.success = null;
   } catch (error) {
-    console.error('Rehber öğretmen listesi hatası:', error);
+    console.error('Rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmen listesi hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Sayfa yüklenirken bir hata oluştu!';
     res.redirect('/kurum/dashboard');
   }
 });
 
-// Kurum - Rehber Öğretmen Sınav Sonucu Görme Yetkisini Değiştir
+// Kurum - Rehber ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸretmen Sınav Sonucu GÃƒÂƒÃ‚Â¶rme Yetkisini DeÃƒÂ„Ã‚ÂŸiÃƒÂ…Ã‚ÂŸtir
 app.post('/kurum/rehber-sonuc-yetki-degistir/:talep_id', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
@@ -6364,21 +5165,21 @@ app.post('/kurum/rehber-sonuc-yetki-degistir/:talep_id', requireAuth, async (req
     const talepId = req.params.talep_id;
     const { yeni_durum } = req.body;
     
-    console.log('🔄 Kurum - Sonuç yetkisi değiştirme:', { talepId, yeniDurum: yeni_durum });
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â”Ã‚Â„ Kurum - SonuÃƒÂƒÃ‚Â§ yetkisi değiştirme:', { talepId, yeniDurum: yeni_durum });
     
-    // Yetkiyi güncelle
+    // Yetkiyi gÃƒÂƒÃ‚Â¼ncelle
     await dbRun(
       'UPDATE ogrenci_talepleri SET sonuc_goruntuleme_aktif = ? WHERE id = ?',
       [yeni_durum, talepId]
     );
     
-    console.log(`✅ Sınav sonucu görme yetkisi ${yeni_durum == 1 ? 'açıldı' : 'kapatıldı'}`);
+    console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… Sınav sonucu gÃƒÂƒÃ‚Â¶rme yetkisi ${yeni_durum == 1 ? 'aÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â±' : 'kapatÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â±'}`);
     res.json({ 
       success: true, 
-      message: `Sınav sonucu görme yetkisi ${yeni_durum == 1 ? 'açıldı' : 'kapatıldı'}!` 
+      message: `Sınav sonucu gÃƒÂƒÃ‚Â¶rme yetkisi ${yeni_durum == 1 ? 'aÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â±' : 'kapatÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â±'}!` 
     });
   } catch (error) {
-    console.error('Yetki değiştirme hatası:', error);
+    console.error('Yetki değiştirme hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
@@ -6388,11 +5189,11 @@ app.post('/veli/ogrenci-sil/:id', requireAuth, requireRole('veli'), async (req, 
   try {
     const ogrenciId = req.params.id;
     
-    // Öğrencinin bu veliye ait olduğunu kontrol et
+    // Öğrencinin bu veliye ait olduÃƒÂ„Ã‚ÂŸunu kontrol et
     const ogrenci = await dbGet('SELECT * FROM ogrenciler WHERE id = ? AND veli_id = ?', [ogrenciId, req.session.userId]);
     
     if (!ogrenci) {
-      req.session.error = 'Öğrenci bulunamadı veya size ait değil!';
+      req.session.error = 'Öğrenci bulunamadı veya size ait deÃƒÂ„Ã‚ÂŸil!';
       res.redirect('/veli/dashboard');
       return;
     }
@@ -6403,16 +5204,16 @@ app.post('/veli/ogrenci-sil/:id', requireAuth, requireRole('veli'), async (req, 
     req.session.success = `${ogrenci.ad_soyad} başarıyla silindi!`;
     res.redirect('/veli/dashboard');
   } catch (error) {
-    console.error('Öğrenci silme hatası:', error);
+    console.error('Öğrenci silme hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Öğrenci silinirken bir hata oluştu!';
     res.redirect('/veli/dashboard');
   }
 });
 
-// Veli - Tüm Sınav Takvimi (Tüm Öğrenciler)
+// Veli - TÃƒÂƒÃ‚Â¼m Sınav Takvimi (TÃƒÂƒÃ‚Â¼m Öğrenciler)
 app.get('/veli/tum-sinav-takvimi', requireAuth, requireRole('veli'), async (req, res) => {
   try {
-    // Velinin tüm öğrencilerini getir (her iki tablodan)
+    // Velinin tÃƒÂƒÃ‚Â¼m ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerini getir (her iki tablodan)
     const veliOgrencileri = await dbAll('SELECT * FROM ogrenciler WHERE veli_id = ?', [req.session.userId]);
     const kurumOgrencileri = await dbAll(`
       SELECT id, ogrenci_adi_soyadi as ad_soyad, sinif, tc_kimlik_no as tc_no
@@ -6422,10 +5223,10 @@ app.get('/veli/tum-sinav-takvimi', requireAuth, requireRole('veli'), async (req,
     
     const ogrenciler = [...veliOgrencileri, ...kurumOgrencileri];
     
-    // Her öğrenci için sınav takvimini getir (her iki kaynaktan)
+    // Her ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci iÃƒÂƒÃ‚Â§in sınav takvimini getir (her iki kaynaktan)
     let tumTakvim = [];
     try {
-      // Veli eklediği öğrencilerin sınavları
+      // Veli eklediÃƒÂ„Ã‚ÂŸi ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerin sınavlarÃƒÂ„Ã‚Â±
       const veliTakvim = await dbAll(`
         SELECT 
           s.id as sinav_id,
@@ -6447,7 +5248,7 @@ app.get('/veli/tum-sinav-takvimi', requireAuth, requireRole('veli'), async (req,
         ORDER BY s.tarih ASC
       `, [req.session.userId]);
       
-      // Kurum eklediği öğrencilerin sınavları
+      // Kurum eklediÃƒÂ„Ã‚ÂŸi ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerin sınavlarÃƒÂ„Ã‚Â±
       const kurumTakvim = await dbAll(`
         SELECT 
           s.id as sinav_id,
@@ -6470,7 +5271,7 @@ app.get('/veli/tum-sinav-takvimi', requireAuth, requireRole('veli'), async (req,
       
       tumTakvim = [...veliTakvim, ...kurumTakvim].sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
       
-      console.log(`\n📅 Veli Sınav Takvimi (User ID: ${req.session.userId}):`);
+      console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â… Veli Sınav Takvimi (User ID: ${req.session.userId}):`);
       console.log(`   Veli ekledi: ${veliTakvim.length} sınav`);
       console.log(`   Kurum ekledi: ${kurumTakvim.length} sınav`);
       console.log(`   Toplam: ${tumTakvim.length} sınav`);
@@ -6480,7 +5281,7 @@ app.get('/veli/tum-sinav-takvimi', requireAuth, requireRole('veli'), async (req,
         });
       }
     } catch (error) {
-      console.log('❌ Sınav takvimi sorgusu hatası:', error);
+      console.log('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Sınav takvimi sorgusu hatasÃƒÂ„Ã‚Â±:', error);
       tumTakvim = [];
     }
     
@@ -6494,7 +5295,7 @@ app.get('/veli/tum-sinav-takvimi', requireAuth, requireRole('veli'), async (req,
     req.session.error = null;
     req.session.success = null;
   } catch (error) {
-    console.error('❌ Sınav takvimi sayfası hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Sınav takvimi sayfasÃƒÂ„Ã‚Â± hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Sayfa yüklenirken bir hata oluştu!';
     res.redirect('/veli/dashboard');
   }
@@ -6505,11 +5306,11 @@ app.get('/veli/sinav-takvimi/:ogrenci_id', requireAuth, requireRole('veli'), asy
   try {
     const ogrenciId = req.params.ogrenci_id;
     
-    // Öğrencinin bu veliye ait olduğunu kontrol et
+    // Öğrencinin bu veliye ait olduÃƒÂ„Ã‚ÂŸunu kontrol et
     const ogrenci = await dbGet('SELECT * FROM ogrenciler WHERE id = ? AND veli_id = ?', [ogrenciId, req.session.userId]);
     
     if (!ogrenci) {
-      req.session.error = 'Öğrenci bulunamadı veya size ait değil!';
+      req.session.error = 'Öğrenci bulunamadı veya size ait deÃƒÂ„Ã‚ÂŸil!';
       res.redirect('/veli/dashboard');
       return;
     }
@@ -6533,10 +5334,10 @@ app.get('/veli/sinav-takvimi/:ogrenci_id', requireAuth, requireRole('veli'), asy
         ORDER BY s.tarih ASC
       `, [ogrenciId]);
       
-      console.log(`\n📅 Öğrenci Sınav Takvimi (Öğrenci ID: ${ogrenciId}):`);
+      console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â… Öğrenci Sınav Takvimi (Öğrenci ID: ${ogrenciId}):`);
       console.log(`   Toplam ${takvim.length} sınav bulundu`);
     } catch (error) {
-      console.log('❌ Sınav takvimi sorgusu hatası:', error);
+      console.log('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Sınav takvimi sorgusu hatasÃƒÂ„Ã‚Â±:', error);
       takvim = [];
     }
     
@@ -6550,7 +5351,7 @@ app.get('/veli/sinav-takvimi/:ogrenci_id', requireAuth, requireRole('veli'), asy
     req.session.error = null;
     req.session.success = null;
   } catch (error) {
-    console.error('❌ Sınav takvimi sayfası hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Sınav takvimi sayfasÃƒÂ„Ã‚Â± hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Sayfa yüklenirken bir hata oluştu!';
     res.redirect('/veli/dashboard');
   }
@@ -6584,7 +5385,7 @@ app.get('/veli/talepler', requireAuth, requireRole('veli'), async (req, res) => 
     req.session.error = null;
     req.session.success = null;
   } catch (error) {
-    console.error('Talepler hatası:', error);
+    console.error('Talepler hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Talepler yüklenirken bir hata oluştu!';
     res.redirect('/veli/dashboard');
   }
@@ -6604,16 +5405,16 @@ app.post('/veli/talep/:id/:islem', requireAuth, requireRole('veli'), async (req,
     }
     
     if (islem === 'onayla') {
-      // Talebi onayla - İlişki ogrenci_talepleri tablosunda durum='onaylandi' ile saklanır
+      // Talebi onayla - ÃƒÂ„Ã‚Â°liÃƒÂ…Ã‚ÂŸki ogrenci_talepleri tablosunda durum='onaylandi' ile saklanÃƒÂ„Ã‚Â±r
       await dbRun('UPDATE ogrenci_talepleri SET durum = ? WHERE id = ?', ['onaylandi', id]);
       
       // Öğrenci bilgisini al
       const ogrenci = await dbGet('SELECT ad_soyad FROM ogrenciler WHERE id = ?', [talep.ogrenci_id]);
       
-      // Rehber öğretmen bilgisini al
+      // Rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmen bilgisini al
       const rehber = await dbGet('SELECT ad_soyad, brans FROM users WHERE id = ?', [talep.rehber_ogretmen_id]);
       
-      req.session.success = `${ogrenci.ad_soyad} için ${rehber.ad_soyad} (${rehber.brans}) rehber öğretmen talebi onaylandı!`;
+      req.session.success = `${ogrenci.ad_soyad} iÃƒÂƒÃ‚Â§in ${rehber.ad_soyad} (${rehber.brans}) rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmen talebi onaylandÃƒÂ„Ã‚Â±!`;
     } else if (islem === 'reddet') {
       // Talebi reddet
       await dbRun('UPDATE ogrenci_talepleri SET durum = ? WHERE id = ?', ['reddedildi', id]);
@@ -6623,8 +5424,8 @@ app.post('/veli/talep/:id/:islem', requireAuth, requireRole('veli'), async (req,
     
     res.redirect('/veli/talepler');
   } catch (error) {
-    console.error('Talep işleme hatası:', error);
-    req.session.error = 'Talep işlenirken bir hata oluştu!';
+    console.error('Talep iÃƒÂ…Ã‚ÂŸleme hatasÃƒÂ„Ã‚Â±:', error);
+    req.session.error = 'Talep iÃƒÂ…Ã‚ÂŸlenirken bir hata oluştu!';
     res.redirect('/veli/talepler');
   }
 });
@@ -6639,11 +5440,33 @@ app.get('/veli/dashboard', requireAuth, requireRole('veli'), async (req, res) =>
     console.log('Session UserType:', req.session.userType);
     console.log('===========================================');
     
+    // Kullanıcı bilgilerini al (telefon ve TC için)
+    const kullanici = await dbGet('SELECT username, telefon FROM users WHERE id = ?', [req.session.userId]);
+    if (!kullanici) {
+      req.session.error = 'Kullanıcı bilgileri bulunamadı!';
+      return res.redirect('/login');
+    }
+    
+    // TC kimlik numarasını belirle: önce username'i dene, sonra telefon'u
+    let tcKimlikNo = req.session.username;
+    // Eğer username sayısal değilse veya telefon varsa, telefon'u kullan
+    if (kullanici.telefon && (!/^\d+$/.test(req.session.username) || req.session.username.length !== 11)) {
+      // Telefon numarasından TC çıkar (telefon formatı: 5XXXXXXXXX gibi)
+      const telefonTemiz = kullanici.telefon.toString().replace(/\D/g, '');
+      // Eğer telefon 11 haneli ise TC olabilir
+      if (telefonTemiz.length === 11) {
+        tcKimlikNo = telefonTemiz;
+      }
+    }
+    
+    console.log(`🔍 TC Kimlik No: ${tcKimlikNo} (username: ${req.session.username}, telefon: ${kullanici.telefon})`);
+    
     // 1. Veli'nin kendi eklediği öğrenciler (ogrenciler tablosu)
     const veliOgrenciler = await dbAll('SELECT * FROM ogrenciler WHERE veli_id = ?', [req.session.userId]);
     console.log(`✅ Veli tablosundan ${veliOgrenciler.length} öğrenci bulundu`);
     
     // 2. Kurum tarafından eklenen öğrenciler (TC eşleşmesi ile)
+    // Hem username hem de telefon ile eşleştir
     const kurumOgrenciler = await dbAll(`
       SELECT 
         id,
@@ -6653,17 +5476,18 @@ app.get('/veli/dashboard', requireAuth, requireRole('veli'), async (req, res) =>
         'kurum' as kaynak
       FROM ogrenci_kayitlari 
       WHERE REPLACE(CAST(tc_kimlik_no AS TEXT), '.0', '') = REPLACE(?, '.0', '')
-    `, [req.session.username]);
-    console.log(`✅ Kurum tablosundan ${kurumOgrenciler.length} öğrenci bulundu (TC: ${req.session.username})`);
+         OR (veli_telefon IS NOT NULL AND REPLACE(CAST(veli_telefon AS TEXT), '.0', '') = REPLACE(?, '.0', ''))
+    `, [tcKimlikNo, kullanici.telefon ? kullanici.telefon.toString().replace(/\D/g, '') : '']);
+    console.log(`✅ Kurum tablosundan ${kurumOgrenciler.length} öğrenci bulundu (TC: ${tcKimlikNo}, Telefon: ${kullanici.telefon})`);
     
-    // 3. Birleştir
+    // 3. BirleÃƒÂ…Ã‚ÂŸtir
     const ogrenciler = [...veliOgrenciler, ...kurumOgrenciler];
-    console.log(`📊 TOPLAM ${ogrenciler.length} öğrenci`);
+    console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚ÂŠ TOPLAM ${ogrenciler.length} ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci`);
     
-    // 4. İstatistikler
+    // 4. ÃƒÂ„Ã‚Â°statistikler
     for (let ogrenci of ogrenciler) {
       if (ogrenci.kaynak === 'kurum') {
-        // Kurum öğrencisi - sinav_katilimcilari'ndan sınavları al
+        // Kurum ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencisi - sinav_katilimcilari'ndan sınavlarÃƒÂ„Ã‚Â± al
         const katilimlar = await dbAll(`
           SELECT s.ad AS sinav_adi, s.tarih AS sinav_tarihi, sk.pdf_path
           FROM sinav_katilimcilari sk
@@ -6675,7 +5499,7 @@ app.get('/veli/dashboard', requireAuth, requireRole('veli'), async (req, res) =>
         ogrenci.excel_sonuc_sayisi = 0;
         ogrenci.sinavlar = katilimlar;
       } else {
-        // Veli öğrencisi - eski sistem
+        // Veli ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencisi - eski sistem
         const pdfCount = await dbGet(
           'SELECT COUNT(*) as sayi FROM sinav_sonuclari_pdf WHERE ogrenci_id = ?',
           [ogrenci.id]
@@ -6690,13 +5514,13 @@ app.get('/veli/dashboard', requireAuth, requireRole('veli'), async (req, res) =>
       }
     }
     
-    // Bekleyen talep sayısını al
+    // Bekleyen talep sayÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± al
     const bekleyenTalepler = await dbGet(
       'SELECT COUNT(*) as sayi FROM ogrenci_talepleri WHERE veli_id = ? AND durum = ?',
       [req.session.userId, 'beklemede']
     );
     
-    // Yaklaşan sınavlar (sınav takvimi henüz kullanılmıyor, boş liste gönder)
+    // YaklaÃƒÂ…Ã‚ÂŸan sınavlar (sınav takvimi henÃƒÂƒÃ‚Â¼z kullanÃƒÂ„Ã‚Â±lmÃƒÂ„Ã‚Â±yor, boÃƒÂ…Ã‚ÂŸ liste gÃƒÂƒÃ‚Â¶nder)
     let yaklasanSinavlar = [];
     try {
       yaklasanSinavlar = await dbAll(`
@@ -6706,22 +5530,41 @@ app.get('/veli/dashboard', requireAuth, requireRole('veli'), async (req, res) =>
         LIMIT 5
       `);
     } catch (sinavErr) {
-      console.log('⚠️ Sınav takvimi sorgulanamadı (henüz kullanılmıyor)');
+      console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Sınav takvimi sorgulanamadı (henÃƒÂƒÃ‚Â¼z kullanÃƒÂ„Ã‚Â±lmÃƒÂ„Ã‚Â±yor)');
       yaklasanSinavlar = [];
     }
     
-    console.log('🎉 Dashboard render ediliyor!');
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚ÂÃ‚Â‰ Dashboard render ediliyor!');
+    // Dashboard'da gösterilecek username: Her zaman kullanıcının giriş yaptığı username'i göster
+    // Kullanıcı hangi username ile giriş yaptıysa, o gösterilmeli
+    const displayUsername = req.session.username;
+    
     res.render('veli_dashboard', { 
-      user: { username: req.session.username, type: req.session.userType },
+      user: { username: displayUsername, type: req.session.userType },
       ogrenciler: ogrenciler,
       bekleyenTalepSayisi: bekleyenTalepler ? bekleyenTalepler.sayi : 0,
       yaklasanSinavlar: yaklasanSinavlar
     });
   } catch (error) {
-    console.error('❌ Dashboard HATA:', error);
-    // Hata durumunda boş listelerle render et (redirect döngüsünü önlemek için)
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Dashboard HATA:', error);
+    // Hata durumunda boÃƒÂ…Ã‚ÂŸ listelerle render et (redirect dÃƒÂƒÃ‚Â¶ngÃƒÂƒÃ‚Â¼sÃƒÂƒÃ‚Â¼nÃƒÂƒÃ‚Â¼ ÃƒÂƒÃ‚Â¶nlemek iÃƒÂƒÃ‚Â§in)
+    // Kullanıcı bilgilerini tekrar al
+    let displayUsername = req.session.username;
+    try {
+      const kullanici = await dbGet('SELECT telefon FROM users WHERE id = ?', [req.session.userId]);
+      // Eğer username 11 haneli bir sayı değilse ve telefon 11 haneli ise, telefon'u göster
+      if (!/^\d{11}$/.test(req.session.username) && kullanici && kullanici.telefon) {
+        const telefonTemiz = kullanici.telefon.toString().replace(/\D/g, '');
+        if (telefonTemiz.length === 11) {
+          displayUsername = telefonTemiz;
+        }
+      }
+    } catch (err) {
+      console.error('Kullanıcı bilgisi alınamadı:', err);
+    }
+    
     res.render('veli_dashboard', { 
-      user: { username: req.session.username, type: req.session.userType },
+      user: { username: displayUsername, type: req.session.userType },
       ogrenciler: [],
       bekleyenTalepSayisi: 0,
       yaklasanSinavlar: []
@@ -6734,7 +5577,7 @@ app.get('/rehber/dashboard', requireAuth, requireRole('rehber_ogretmen'), async 
   try {
     const sinavlar = await dbAll('SELECT * FROM sinavlar ORDER BY tarih DESC');
     
-    // İstatistikler - ONAYLANMIŞ ÖĞRENCİLER
+    // ÃƒÂ„Ã‚Â°statistikler - ONAYLANMIÃƒÂ…Ã‚Â ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂRENCÃƒÂ„Ã‚Â°LER
     const ogrenciSayisi = await dbGet(
       'SELECT COUNT(DISTINCT ogrenci_id) as sayi FROM ogrenci_talepleri WHERE rehber_ogretmen_id = ? AND durum = ?',
       [req.session.userId, 'onaylandi']
@@ -6746,7 +5589,7 @@ app.get('/rehber/dashboard', requireAuth, requireRole('rehber_ogretmen'), async 
       WHERE t.rehber_ogretmen_id = ? AND t.durum = ?
     `, [req.session.userId, 'onaylandi']);
     
-    // Sınav sonuçları sayısı (onaylı öğrencilerin PDF sonuçları)
+    // Sınav sonuçları sayÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â± (onaylÃƒÂ„Ã‚Â± ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerin PDF sonuçları)
     const sinavSonucSayisi = await dbGet(`
       SELECT COUNT(DISTINCT sk.id) as sayi 
       FROM sinav_katilimcilari sk
@@ -6757,7 +5600,7 @@ app.get('/rehber/dashboard', requireAuth, requireRole('rehber_ogretmen'), async 
         AND sk.pdf_path != ''
     `, [req.session.userId]);
     
-    // Bekleyen talepler sayısı
+    // Bekleyen talepler sayÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±
     const bekleyenTalepSayisi = await dbGet(
       'SELECT COUNT(*) as sayi FROM ogrenci_talepleri WHERE rehber_ogretmen_id = ? AND durum = ?',
       [req.session.userId, 'beklemede']
@@ -6774,8 +5617,8 @@ app.get('/rehber/dashboard', requireAuth, requireRole('rehber_ogretmen'), async 
       }
     });
   } catch (error) {
-    console.error('Dashboard hatası:', error);
-    // Sonsuz döngüyü önlemek için boş veri ile render et
+    console.error('Dashboard hatasÃƒÂ„Ã‚Â±:', error);
+    // Sonsuz dÃƒÂƒÃ‚Â¶ngÃƒÂƒÃ‚Â¼yÃƒÂƒÃ‚Â¼ ÃƒÂƒÃ‚Â¶nlemek iÃƒÂƒÃ‚Â§in boÃƒÂ…Ã‚ÂŸ veri ile render et
     res.render('rehber_dashboard', { 
       user: { username: req.session.username },
       sinavlar: [],
@@ -6789,14 +5632,14 @@ app.get('/rehber/dashboard', requireAuth, requireRole('rehber_ogretmen'), async 
   }
 });
 
-// Sınav Yükleme
-// Rehber - Sınav Yükleme Route'ları KALDIRILDI (Sadece kurum yapabilir)
+// Sınav YÃƒÂƒÃ‚Â¼kleme
+// Rehber - Sınav YÃƒÂƒÃ‚Â¼kleme Route'larÃƒÂ„Ã‚Â± KALDIRILDI (Sadece kurum yapabilir)
 
-// Rehber Öğretmen - Sınav Sonuçları
+// Rehber ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸretmen - Sınav Sonuçları
 app.get('/rehber/sinav-sonuclari', requireAuth, requireRole('rehber_ogretmen'), async (req, res) => {
   try {
-    // Onaylı VE yetkisi aktif olan öğrencilerin sınav sonuçlarını getir
-    // Veli öğrencileri
+    // OnaylÃƒÂ„Ã‚Â± VE yetkisi aktif olan ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerin sınav sonuçlarınÃƒÂ„Ã‚Â± getir
+    // Veli ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri
     const veliSonuclari = await dbAll(`
       SELECT 
         sk.id,
@@ -6825,10 +5668,10 @@ app.get('/rehber/sinav-sonuclari', requireAuth, requireRole('rehber_ogretmen'), 
       ORDER BY s.tarih DESC, o.ad_soyad ASC
     `, [req.session.userId]);
     
-    // Kurum öğrencileri için (ogrenci_kaynak = 'kurum' olanlar)
-    // Not: Kurum öğrencileri için ogrenci_id NULL olabilir, bu durumda ad_soyad ile eşleştirme yapılmalı
-    // Şimdilik sadece veli öğrencilerini gösteriyoruz
-    // TODO: Kurum öğrencileri için sinav_katilimcilari tablosuna ogrenci_ad_soyad kolonu eklenebilir
+    // Kurum ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri iÃƒÂƒÃ‚Â§in (ogrenci_kaynak = 'kurum' olanlar)
+    // Not: Kurum ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri iÃƒÂƒÃ‚Â§in ogrenci_id NULL olabilir, bu durumda ad_soyad ile eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme yapÃƒÂ„Ã‚Â±lmalÃƒÂ„Ã‚Â±
+    // ÃƒÂ…Ã‚Âimdilik sadece veli ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerini gÃƒÂƒÃ‚Â¶steriyoruz
+    // TODO: Kurum ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri iÃƒÂƒÃ‚Â§in sinav_katilimcilari tablosuna ogrenci_ad_soyad kolonu eklenebilir
     
     const sonuclar = veliSonuclari;
     
@@ -6842,7 +5685,7 @@ app.get('/rehber/sinav-sonuclari', requireAuth, requireRole('rehber_ogretmen'), 
     req.session.error = null;
     req.session.success = null;
   } catch (error) {
-    console.error('Sınav sonuçları hatası:', error);
+    console.error('Sınav sonuçları hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Sınav sonuçları yüklenirken bir hata oluştu!';
     res.redirect('/rehber/dashboard');
   }
@@ -6851,7 +5694,7 @@ app.get('/rehber/sinav-sonuclari', requireAuth, requireRole('rehber_ogretmen'), 
 // Öğrenci Listesi
 app.get('/rehber/ogrenciler', requireAuth, requireRole('rehber_ogretmen'), async (req, res) => {
   try {
-    // VELİ ÖĞRENCİLERİ (ogrenciler tablosundan)
+    // VELÃƒÂ„Ã‚Â° ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂRENCÃƒÂ„Ã‚Â°LERÃƒÂ„Ã‚Â° (ogrenciler tablosundan)
     const veliOgrencileri = await dbAll(`
       SELECT 
         o.*,
@@ -6869,7 +5712,7 @@ app.get('/rehber/ogrenciler', requireAuth, requireRole('rehber_ogretmen'), async
       ORDER BY o.ad_soyad ASC
     `, [req.session.userId]);
     
-    // KURUM ÖĞRENCİLERİ (ogrenci_kayitlari tablosundan - ogrenci_id NULL olanlar)
+    // KURUM ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂRENCÃƒÂ„Ã‚Â°LERÃƒÂ„Ã‚Â° (ogrenci_kayitlari tablosundan - ogrenci_id NULL olanlar)
     const kurumTalepleri = await dbAll(`
       SELECT DISTINCT
         t.ad_soyad,
@@ -6906,7 +5749,7 @@ app.get('/rehber/ogrenciler', requireAuth, requireRole('rehber_ogretmen'), async
       });
     }
     
-    // Birleştir
+    // BirleÃƒÂ…Ã‚ÂŸtir
     const ogrenciler = [...veliOgrencileri, ...kurumOgrencileri];
     
     res.render('ogrenci_listesi', { 
@@ -6914,7 +5757,7 @@ app.get('/rehber/ogrenciler', requireAuth, requireRole('rehber_ogretmen'), async
       ogrenciler: ogrenciler
     });
   } catch (error) {
-    console.error('Öğrenci listesi hatası:', error);
+    console.error('Öğrenci listesi hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Öğrenci listesi yüklenirken bir hata oluştu!';
     res.redirect('/rehber/dashboard');
   }
@@ -6925,14 +5768,14 @@ app.get('/rehber/ogrenci/:ogrenci_id', requireAuth, requireRole('rehber_ogretmen
   const ogrenciId = parseInt(req.params.ogrenci_id);
   
   try {
-    // Öğrenci bilgileri - VELİ TARAFINDAN ONAYLANMIŞ MI KONTROL ET
+    // Öğrenci bilgileri - VELÃƒÂ„Ã‚Â° TARAFINDAN ONAYLANMIÃƒÂ…Ã‚Â MI KONTROL ET
     const onay = await dbGet(
       'SELECT id FROM ogrenci_talepleri WHERE ogrenci_id = ? AND rehber_ogretmen_id = ? AND durum = ?',
       [ogrenciId, req.session.userId, 'onaylandi']
     );
     
     if (!onay) {
-      req.session.error = 'Öğrenci bulunamadı veya size ait değil!';
+      req.session.error = 'Öğrenci bulunamadı veya size ait deÃƒÂ„Ã‚ÂŸil!';
       return res.redirect('/rehber/ogrenciler');
     }
     
@@ -6977,27 +5820,27 @@ app.get('/rehber/ogrenci/:ogrenci_id', requireAuth, requireRole('rehber_ogretmen
       excel_sonuclari: excelSonuclari
     });
   } catch (error) {
-    console.error('Öğrenci detay hatası:', error);
+    console.error('Öğrenci detay hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Öğrenci bilgileri yüklenirken bir hata oluştu!';
     res.redirect('/rehber/ogrenciler');
   }
 });
 
-// Rehber Öğretmen Profili
+// Rehber ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸretmen Profili
 app.get('/rehber/profil', requireAuth, requireRole('rehber_ogretmen'), async (req, res) => {
   try {
     const kullanici = await dbGet('SELECT * FROM users WHERE id = ?', [req.session.userId]);
     
-    // Başka sayfalardan gelen hataları filtrele - sadece profil ile ilgili hataları göster
+    // BaÃƒÂ…Ã‚ÂŸka sayfalardan gelen hatalarÃƒÂ„Ã‚Â± filtrele - sadece profil ile ilgili hatalarÃƒÂ„Ã‚Â± gÃƒÂƒÃ‚Â¶ster
     let error = req.session.error;
     if (error && (
       error.includes('Kullanıcı adı veya şifre') || 
-      error.includes('şifre hatalı') ||
+      error.includes('şifre hatalÃƒÂ„Ã‚Â±') ||
       error.includes('Veli listesi yüklenirken') ||
       error.includes('Öğrenci listesi yüklenirken') ||
       error.includes('Sınav sonuçları yüklenirken')
     )) {
-      error = null; // Başka sayfalardan gelen hataları gösterme
+      error = null; // BaÃƒÂ…Ã‚ÂŸka sayfalardan gelen hatalarÃƒÂ„Ã‚Â± gÃƒÂƒÃ‚Â¶sterme
     }
     
     res.render('rehber_profil', {
@@ -7011,20 +5854,20 @@ app.get('/rehber/profil', requireAuth, requireRole('rehber_ogretmen'), async (re
     req.session.error = null;
     req.session.success = null;
   } catch (error) {
-    console.error('Profil hatası:', error);
+    console.error('Profil hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Profil yüklenirken bir hata oluştu!';
     res.redirect('/rehber/dashboard');
   }
 });
 
-// Profil Güncelleme
+// Profil GÃƒÂƒÃ‚Â¼ncelleme
 app.post('/rehber/profil', requireAuth, requireRole('rehber_ogretmen'), async (req, res) => {
   try {
     const { ad_soyad, kurum, telefon, brans, mezuniyet } = req.body;
     
-    // Zorunlu alanları kontrol et
+    // Zorunlu alanlarÃƒÂ„Ã‚Â± kontrol et
     if (!ad_soyad || !kurum || !telefon || !brans) {
-      req.session.error = 'Lütfen tüm zorunlu alanları doldurun (Ad Soyad, Kurum, Telefon, Branş)';
+      req.session.error = 'LÃƒÂƒÃ‚Â¼tfen tÃƒÂƒÃ‚Â¼m zorunlu alanlarÃƒÂ„Ã‚Â± doldurun (Ad Soyad, Kurum, Telefon, BranÃƒÂ…Ã‚ÂŸ)';
       res.redirect('/rehber/profil');
       return;
     }
@@ -7037,17 +5880,17 @@ app.post('/rehber/profil', requireAuth, requireRole('rehber_ogretmen'), async (r
     req.session.success = 'Profil bilgileriniz başarıyla güncellendi!';
     res.redirect('/rehber/profil');
   } catch (error) {
-    console.error('Profil güncelleme hatası:', error);
+    console.error('Profil gÃƒÂƒÃ‚Â¼ncelleme hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Profil güncellenirken bir hata oluştu!';
     res.redirect('/rehber/profil');
   }
 });
 
-// Veli İletişim Listesi
+// Veli ÃƒÂ„Ã‚Â°letiÃƒÂ…Ã‚ÂŸim Listesi
 app.get('/rehber/veliler', requireAuth, requireRole('rehber_ogretmen'), async (req, res) => {
   try {
-    // Sadece onaylanmış öğrencilerin velilerini göster
-    // Önce veli ID'lerini al
+    // Sadece onaylanmÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸ ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencilerin velilerini gÃƒÂƒÃ‚Â¶ster
+    // ÃƒÂƒÃ‚Â–nce veli ID'lerini al
     const veliIds = await dbAll(`
       SELECT DISTINCT t.veli_id
       FROM ogrenci_talepleri t
@@ -7063,7 +5906,7 @@ app.get('/rehber/veliler', requireAuth, requireRole('rehber_ogretmen'), async (r
       });
     }
     
-    // Her veli için bilgileri ve öğrenci sayısını al
+    // Her veli iÃƒÂƒÃ‚Â§in bilgileri ve ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci sayÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± al
     const veliler = [];
     for (const veliIdRow of veliIds) {
       const veliId = veliIdRow.veli_id;
@@ -7073,7 +5916,7 @@ app.get('/rehber/veliler', requireAuth, requireRole('rehber_ogretmen'), async (r
       
       if (!veli) continue;
       
-      // Öğrenci sayısını al
+      // Öğrenci sayÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± al
       const ogrenciSayisi = await dbGet(`
         SELECT COUNT(DISTINCT CASE WHEN t.ogrenci_id IS NOT NULL THEN t.ogrenci_id ELSE NULL END) as sayi
         FROM ogrenci_talepleri t
@@ -7095,15 +5938,15 @@ app.get('/rehber/veliler', requireAuth, requireRole('rehber_ogretmen'), async (r
           AND t.durum = 'onaylandi'
       `, [veliId, req.session.userId]);
       
-      // Geçersiz email ve telefon formatlarını filtrele
+      // GeÃƒÂƒÃ‚Â§ersiz email ve telefon formatlarÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± filtrele
       let email = veli.email;
       if (email && (email.includes('@temp.com') || email.includes('.0@') || email.match(/^\d+\.0@/))) {
-        email = null; // Geçersiz email'leri gösterme
+        email = null; // GeÃƒÂƒÃ‚Â§ersiz email'leri gÃƒÂƒÃ‚Â¶sterme
       }
       
       let telefon = veli.telefon;
       if (telefon && (telefon.toString().endsWith('.0') || telefon.toString().includes('.0@'))) {
-        telefon = null; // Geçersiz telefon formatlarını gösterme
+        telefon = null; // GeÃƒÂƒÃ‚Â§ersiz telefon formatlarÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± gÃƒÂƒÃ‚Â¶sterme
       }
       
       veliler.push({
@@ -7118,7 +5961,7 @@ app.get('/rehber/veliler', requireAuth, requireRole('rehber_ogretmen'), async (r
       });
     }
     
-    // Ad soyad'a göre sırala
+    // Ad soyad'a gÃƒÂƒÃ‚Â¶re sÃƒÂ„Ã‚Â±rala
     veliler.sort((a, b) => {
       const aAd = (a.ad_soyad || a.username || '').toLowerCase();
       const bAd = (b.ad_soyad || b.username || '').toLowerCase();
@@ -7130,13 +5973,13 @@ app.get('/rehber/veliler', requireAuth, requireRole('rehber_ogretmen'), async (r
       veliler: veliler || []
     });
   } catch (error) {
-    console.error('Veli listesi hatası:', error);
+    console.error('Veli listesi hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Veli listesi yüklenirken bir hata oluştu!';
     res.redirect('/rehber/dashboard');
   }
 });
 
-// Rehber Öğretmen - Gelen Talepler
+// Rehber ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸretmen - Gelen Talepler
 app.get('/rehber/talepler', requireAuth, requireRole('rehber_ogretmen'), async (req, res) => {
   try {
     const talepler = await dbAll(`
@@ -7171,22 +6014,22 @@ app.get('/rehber/talepler', requireAuth, requireRole('rehber_ogretmen'), async (
     req.session.error = null;
     req.session.success = null;
   } catch (error) {
-    console.error('Rehber talep listesi hatası:', error);
+    console.error('Rehber talep listesi hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Talep listesi yüklenirken bir hata oluştu!';
     res.redirect('/rehber/dashboard');
   }
 });
 
-// Rehber Öğretmen - Talep Yanıtla (Onayla/Reddet)
+// Rehber ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸretmen - Talep YanÃƒÂ„Ã‚Â±tla (Onayla/Reddet)
 app.post('/rehber/talep-yanitla', requireAuth, requireRole('rehber_ogretmen'), async (req, res) => {
   try {
     const { talep_id, durum, yanit } = req.body;
     
     if (!talep_id || !durum || !['onaylandi', 'reddedildi'].includes(durum)) {
-      return res.json({ success: false, message: 'Geçersiz parametreler!' });
+      return res.json({ success: false, message: 'GeÃƒÂƒÃ‚Â§ersiz parametreler!' });
     }
     
-    // Talebin bu rehber öğretmene ait olduğunu kontrol et
+    // Talebin bu rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmene ait olduÃƒÂ„Ã‚ÂŸunu kontrol et
     const talep = await dbGet(`
       SELECT t.*, u.telefon as veli_telefon, u.ad_soyad as veli_ad_soyad
       FROM ogrenci_talepleri t
@@ -7195,113 +6038,113 @@ app.post('/rehber/talep-yanitla', requireAuth, requireRole('rehber_ogretmen'), a
     `, [talep_id, req.session.userId]);
     
     if (!talep) {
-      return res.json({ success: false, message: 'Talep bulunamadı veya size ait değil!' });
+      return res.json({ success: false, message: 'Talep bulunamadı veya size ait deÃƒÂ„Ã‚ÂŸil!' });
     }
     
-    // Talebi güncelle
+    // Talebi gÃƒÂƒÃ‚Â¼ncelle
     await dbRun(`
       UPDATE ogrenci_talepleri 
       SET durum = ?, mesaj = ?
       WHERE id = ? AND rehber_ogretmen_id = ?
     `, [durum, yanit || '', talep_id, req.session.userId]);
     
-    // WhatsApp bildirimi gönder (arka planda)
+    // WhatsApp bildirimi gÃƒÂƒÃ‚Â¶nder (arka planda)
     if (talep.veli_telefon) {
       const mesaj = durum === 'onaylandi' 
-        ? `✅ TALEBİNİZ ONAYLANDI!\n\n` +
-          `Merhaba ${talep.veli_ad_soyad || 'Değerli Velimiz'},\n\n` +
-          `Rehber öğretmen talebinizi onayladı.\n\n` +
-          `👤 Öğrenci: ${talep.ad_soyad}\n` +
-          (yanit ? `💬 Rehber Öğretmen Yanıtı: ${yanit}\n\n` : '') +
-          `Artık rehber öğretmen öğrenciniz hakkında bilgilere erişebilecektir.`
-        : `❌ TALEBİNİZ REDDEDİLDİ\n\n` +
-          `Merhaba ${talep.veli_ad_soyad || 'Değerli Velimiz'},\n\n` +
-          `Rehber öğretmen talebinizi reddetti.\n\n` +
-          `👤 Öğrenci: ${talep.ad_soyad}\n` +
-          (yanit ? `💬 Rehber Öğretmen Yanıtı: ${yanit}\n\n` : '') +
-          `Daha fazla bilgi için lütfen rehber öğretmen ile iletişime geçiniz.`;
+        ? `ÃƒÂ¢Ã‚ÂœÃ‚Â… TALEBÃƒÂ„Ã‚Â°NÃƒÂ„Ã‚Â°Z ONAYLANDI!\n\n` +
+          `Merhaba ${talep.veli_ad_soyad || 'DeÃƒÂ„Ã‚ÂŸerli Velimiz'},\n\n` +
+          `Rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmen talebinizi onayladı.\n\n` +
+          `ÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â¤ Öğrenci: ${talep.ad_soyad}\n` +
+          (yanit ? `ÃƒÂ°Ã‚ÂŸÃ‚Â’Ã‚Â¬ Rehber ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸretmen YanÃƒÂ„Ã‚Â±tÃƒÂ„Ã‚Â±: ${yanit}\n\n` : '') +
+          `ArtÃƒÂ„Ã‚Â±k rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmen ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenciniz hakkÃƒÂ„Ã‚Â±nda bilgilere eriÃƒÂ…Ã‚ÂŸebilecektir.`
+        : `ÃƒÂ¢Ã‚ÂÃ‚ÂŒ TALEBÃƒÂ„Ã‚Â°NÃƒÂ„Ã‚Â°Z REDDEDÃƒÂ„Ã‚Â°LDÃƒÂ„Ã‚Â°\n\n` +
+          `Merhaba ${talep.veli_ad_soyad || 'DeÃƒÂ„Ã‚ÂŸerli Velimiz'},\n\n` +
+          `Rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmen talebinizi reddetti.\n\n` +
+          `ÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â¤ Öğrenci: ${talep.ad_soyad}\n` +
+          (yanit ? `ÃƒÂ°Ã‚ÂŸÃ‚Â’Ã‚Â¬ Rehber ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸretmen YanÃƒÂ„Ã‚Â±tÃƒÂ„Ã‚Â±: ${yanit}\n\n` : '') +
+          `Daha fazla bilgi iÃƒÂƒÃ‚Â§in lÃƒÂƒÃ‚Â¼tfen rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmen ile iletiÃƒÂ…Ã‚ÂŸime geÃƒÂƒÃ‚Â§iniz.`;
       
       whatsappBildirimGonder(talep.veli_telefon, mesaj, `rehber_talep_${durum}`)
-        .then(result => console.log('✅ Veli WhatsApp bildirimi gönderildi:', result))
-        .catch(error => console.error('❌ Veli WhatsApp bildirimi hatası:', error));
+        .then(result => console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… Veli WhatsApp bildirimi gÃƒÂƒÃ‚Â¶nderildi:', result))
+        .catch(error => console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Veli WhatsApp bildirimi hatasÃƒÂ„Ã‚Â±:', error));
     }
     
     res.json({ 
       success: true, 
-      message: durum === 'onaylandi' ? 'Talep başarıyla onaylandı!' : 'Talep reddedildi.' 
+      message: durum === 'onaylandi' ? 'Talep başarıyla onaylandÃƒÂ„Ã‚Â±!' : 'Talep reddedildi.' 
     });
     
   } catch (error) {
-    console.error('Rehber talep yanıtlama hatası:', error);
-    res.json({ success: false, message: 'Talep işlenirken bir hata oluştu!' });
+    console.error('Rehber talep yanÃƒÂ„Ã‚Â±tlama hatasÃƒÂ„Ã‚Â±:', error);
+    res.json({ success: false, message: 'Talep iÃƒÂ…Ã‚ÂŸlenirken bir hata oluştu!' });
   }
 });
 
-// Öğrenci Ekleme - KALDIRILDI (Rehber öğretmen artık direkt öğrenci ekleyemez, sadece talep gönderebilir)
+// Öğrenci Ekleme - KALDIRILDI (Rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmen artÃƒÂ„Ã‚Â±k direkt ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci ekleyemez, sadece talep gÃƒÂƒÃ‚Â¶nderebilir)
 // app.get('/rehber/ogrenci-ekle', ...) - KALDIRILDI
 
-// Öğrenci Arama API - KALDIRILDI (Öğrenci ekleme özelliği kaldırıldı)
+// Öğrenci Arama API - KALDIRILDI (Öğrenci ekleme ÃƒÂƒÃ‚Â¶zelliÃƒÂ„Ã‚ÂŸi kaldÃƒÂ„Ã‚Â±rÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â±)
 // app.post('/rehber/ogrenci-ara', ...) - KALDIRILDI
 
-// Öğrenci Ekleme Talebi Gönder (Rehber -> Veli) - YENİ SİSTEM
+// Öğrenci Ekleme Talebi GÃƒÂƒÃ‚Â¶nder (Rehber -> Veli) - YENÃƒÂ„Ã‚Â° SÃƒÂ„Ã‚Â°STEM
 app.post('/rehber/ogrenci-talep', requireAuth, requireRole('rehber_ogretmen'), async (req, res) => {
   try {
-    console.log('\n📨 TALEP GÖNDERME İSTEĞİ:', {
+    console.log('\nÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â¨ TALEP GÃƒÂƒÃ‚Â–NDERME ÃƒÂ„Ã‚Â°STEÃƒÂ„Ã‚ÂÃƒÂ„Ã‚Â°:', {
       userId: req.session.userId,
       ogrenci_id: req.body.ogrenci_id
     });
     
-    // Profil kontrolü
+    // Profil kontrolÃƒÂƒÃ‚Â¼
     const kullanici = await dbGet('SELECT ad_soyad, kurum, telefon, brans FROM users WHERE id = ?', [req.session.userId]);
-    console.log('👤 Kullanıcı Profili:', kullanici);
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â¤ Kullanıcı Profili:', kullanici);
     
     if (!kullanici.ad_soyad || !kullanici.kurum || !kullanici.telefon || !kullanici.brans) {
-      console.log('❌ Profil eksik!');
-      return res.json({ success: false, message: 'Önce profil bilgilerinizi eksiksiz doldurmalısınız!' });
+      console.log('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Profil eksik!');
+      return res.json({ success: false, message: 'ÃƒÂƒÃ‚Â–nce profil bilgilerinizi eksiksiz doldurmalÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â±z!' });
     }
     
     const { ogrenci_id } = req.body;
     
     if (!ogrenci_id) {
-      console.log('❌ Öğrenci ID eksik!');
+      console.log('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Öğrenci ID eksik!');
       return res.json({ success: false, message: 'Öğrenci ID eksik' });
     }
     
     // Öğrenciyi bul
     const ogrenci = await dbGet('SELECT * FROM ogrenciler WHERE id = ?', [ogrenci_id]);
-    console.log('👨‍🎓 Öğrenci:', ogrenci);
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â¨ÃƒÂ¢Ã‚Â€Ã‚ÂÃƒÂ°Ã‚ÂŸÃ‚ÂÃ‚Â“ Öğrenci:', ogrenci);
     
     if (!ogrenci) {
-      console.log('❌ Öğrenci bulunamadı!');
+      console.log('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Öğrenci bulunamadı!');
       return res.json({ success: false, message: 'Öğrenci bulunamadı' });
     }
     
-    // Zaten onaylanmış mı?
+    // Zaten onaylanmÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸ mÃƒÂ„Ã‚Â±?
     const onayliTalep = await dbGet(
       'SELECT id FROM ogrenci_talepleri WHERE ogrenci_id = ? AND rehber_ogretmen_id = ? AND durum = ?',
       [ogrenci_id, req.session.userId, 'onaylandi']
     );
-    console.log('✅ Onaylı talep kontrolü:', onayliTalep);
+    console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… OnaylÃƒÂ„Ã‚Â± talep kontrolÃƒÂƒÃ‚Â¼:', onayliTalep);
     
     if (onayliTalep) {
-      console.log('❌ Zaten kayıtlı!');
-      return res.json({ success: false, message: 'Bu öğrenci zaten size kayıtlı' });
+      console.log('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Zaten kayıtlÃƒÂ„Ã‚Â±!');
+      return res.json({ success: false, message: 'Bu ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci zaten size kayıtlÃƒÂ„Ã‚Â±' });
     }
     
-    // Bekleyen talep var mı kontrol et
+    // Bekleyen talep var mÃƒÂ„Ã‚Â± kontrol et
     const bekleyenTalep = await dbGet(
       'SELECT id FROM ogrenci_talepleri WHERE ogrenci_id = ? AND rehber_ogretmen_id = ? AND durum = ?',
       [ogrenci_id, req.session.userId, 'beklemede']
     );
-    console.log('⏳ Bekleyen talep kontrolü:', bekleyenTalep);
+    console.log('ÃƒÂ¢Ã‚ÂÃ‚Â³ Bekleyen talep kontrolÃƒÂƒÃ‚Â¼:', bekleyenTalep);
     
     if (bekleyenTalep) {
-      console.log('❌ Zaten bekleyen talep var!');
-      return res.json({ success: false, message: 'Bu öğrenci için zaten bekleyen bir talebiniz var' });
+      console.log('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Zaten bekleyen talep var!');
+      return res.json({ success: false, message: 'Bu ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci iÃƒÂƒÃ‚Â§in zaten bekleyen bir talebiniz var' });
     }
     
-    // Talep oluştur (Veli onaylayacak) - Başka branşta atanmış olsa bile talep gönderilebilir
-    console.log('💾 Talep oluşturuluyor:', {
+    // Talep oluştur (Veli onaylayacak) - BaÃƒÂ…Ã‚ÂŸka branÃƒÂ…Ã‚ÂŸta atanmÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸ olsa bile talep gÃƒÂƒÃ‚Â¶nderilebilir
+    console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â’Ã‚Â¾ Talep oluşturuluyor:', {
       ogrenci_id,
       ogrenci_no: ogrenci.ogrenci_no,
       ad_soyad: ogrenci.ad_soyad,
@@ -7314,19 +6157,19 @@ app.post('/rehber/ogrenci-talep', requireAuth, requireRole('rehber_ogretmen'), a
       [ogrenci_id, ogrenci.ogrenci_no, ogrenci.ad_soyad, ogrenci.sinif, ogrenci.okul, ogrenci.veli_id, req.session.userId, req.session.userId, 'beklemede']
     );
     
-    console.log('✅ Talep başarıyla oluşturuldu!\n');
+    console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… Talep başarıyla oluşturuldu!\n');
     
     res.json({ 
       success: true, 
-      message: `${ogrenci.ad_soyad} için talep veliye gönderildi! Veli onayladığında bu öğrenciyi görebilirsiniz.`
+      message: `${ogrenci.ad_soyad} iÃƒÂƒÃ‚Â§in talep veliye gÃƒÂƒÃ‚Â¶nderildi! Veli onayladıÃƒÂ„Ã‚ÂŸÃƒÂ„Ã‚Â±nda bu ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenciyi gÃƒÂƒÃ‚Â¶rebilirsiniz.`
     });
   } catch (error) {
-    console.error('❌ Talep gönderme hatası:', error);
-    res.json({ success: false, message: `Talep hatası: ${error.message}` });
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Talep gÃƒÂƒÃ‚Â¶nderme hatasÃƒÂ„Ã‚Â±:', error);
+    res.json({ success: false, message: `Talep hatasÃƒÂ„Ã‚Â±: ${error.message}` });
   }
 });
 
-// Öğrenci Ekleme POST - KALDIRILDI (Rehber öğretmen artık direkt öğrenci ekleyemez, sadece talep gönderebilir)
+// Öğrenci Ekleme POST - KALDIRILDI (Rehber ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸretmen artÃƒÂ„Ã‚Â±k direkt ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci ekleyemez, sadece talep gÃƒÂƒÃ‚Â¶nderebilir)
 // app.post('/rehber/ogrenci-ekle', ...) - KALDIRILDI
 
 // Sınav Sonuçları (Excel/CSV)
@@ -7334,14 +6177,14 @@ app.get('/veli/sinav-sonuclari/:ogrenci_id', requireAuth, requireRole('veli'), a
   const ogrenciId = parseInt(req.params.ogrenci_id);
   
   try {
-    // Öğrenci kontrolü
+    // Öğrenci kontrolÃƒÂƒÃ‚Â¼
     const ogrenci = await dbGet('SELECT * FROM ogrenciler WHERE id = ? AND veli_id = ?', [ogrenciId, req.session.userId]);
     if (!ogrenci) {
-      req.session.error = 'Bu öğrencinin sonuçlarına erişim yetkiniz yok!';
+      req.session.error = 'Bu ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencinin sonuçlarına erişim yetkiniz yok!';
       return res.redirect('/veli/dashboard');
     }
     
-    // Sınav sonuçlarını çek
+    // Sınav sonuçlarınÃƒÂ„Ã‚Â± ÃƒÂƒÃ‚Â§ek
     const sonuclar = await dbAll(`
       SELECT ss.*, s.ad as sinav_adi, s.tarih as sinav_tarihi
       FROM sinav_sonuclari ss
@@ -7350,7 +6193,7 @@ app.get('/veli/sinav-sonuclari/:ogrenci_id', requireAuth, requireRole('veli'), a
       ORDER BY ss.created_at DESC
     `, [ogrenciId]);
     
-    // Sonuçları sınav bazında grupla ve JSON parse et
+    // Sonuçları sınav bazÃƒÂ„Ã‚Â±nda grupla ve JSON parse et
     const sinavSonuclari = {};
     sonuclar.forEach(sonuc => {
       if (!sinavSonuclari[sonuc.sinav_id]) {
@@ -7384,7 +6227,7 @@ app.get('/veli/sinav-sonuclari/:ogrenci_id', requireAuth, requireRole('veli'), a
       sinav_sonuclari: sinavSonuclari
     });
   } catch (error) {
-    console.error('Sonuç görüntüleme hatası:', error);
+    console.error('SonuÃƒÂƒÃ‚Â§ gÃƒÂƒÃ‚Â¶rÃƒÂƒÃ‚Â¼ntÃƒÂƒÃ‚Â¼leme hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Bir hata oluştu!';
     res.redirect('/veli/dashboard');
   }
@@ -7395,14 +6238,14 @@ app.get('/veli/pdf-sonuclari/:ogrenci_id', requireAuth, requireRole('veli'), asy
   const ogrenciId = parseInt(req.params.ogrenci_id);
   
   try {
-    // Öğrenci kontrolü
+    // Öğrenci kontrolÃƒÂƒÃ‚Â¼
     const ogrenci = await dbGet('SELECT * FROM ogrenciler WHERE id = ? AND veli_id = ?', [ogrenciId, req.session.userId]);
     if (!ogrenci) {
-      req.session.error = 'Bu öğrencinin sonuçlarına erişim yetkiniz yok!';
+      req.session.error = 'Bu ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencinin sonuçlarına erişim yetkiniz yok!';
       return res.redirect('/veli/dashboard');
     }
     
-    // PDF sınav sonuçlarını çek
+    // PDF sınav sonuçlarınÃƒÂ„Ã‚Â± ÃƒÂƒÃ‚Â§ek
     const pdfSonuclari = await dbAll(`
       SELECT * FROM sinav_sonuclari_pdf
       WHERE ogrenci_id = ?
@@ -7415,16 +6258,16 @@ app.get('/veli/pdf-sonuclari/:ogrenci_id', requireAuth, requireRole('veli'), asy
       pdf_sonuclari: pdfSonuclari
     });
   } catch (error) {
-    console.error('PDF sonuç görüntüleme hatası:', error);
+    console.error('PDF sonuÃƒÂƒÃ‚Â§ gÃƒÂƒÃ‚Â¶rÃƒÂƒÃ‚Â¼ntÃƒÂƒÃ‚Â¼leme hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Bir hata oluştu!';
     res.redirect('/veli/dashboard');
   }
 });
 
-// Sınav Takvimi Sayfası
+// Sınav Takvimi SayfasÃƒÂ„Ã‚Â±
 app.get('/sinav-takvimi', async (req, res) => {
   try {
-    // Tüm sınavları getir (hem tekil hem paket sınavları)
+    // TÃƒÂƒÃ‚Â¼m sınavlarÃƒÂ„Ã‚Â± getir (hem tekil hem paket sınavlarÃƒÂ„Ã‚Â±)
     const sinavlar = await dbAll(
       `SELECT 
         s.*,
@@ -7437,9 +6280,9 @@ app.get('/sinav-takvimi', async (req, res) => {
       []
     );
     
-    console.log(`\n📅 SINAV TAKVİMİ YÜKLEME`);
+    console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â… SINAV TAKVÃƒÂ„Ã‚Â°MÃƒÂ„Ã‚Â° YÃƒÂƒÃ‚ÂœKLEME`);
     console.log(`   Toplam Sınav: ${sinavlar.length}`);
-    console.log(`   Paket Sınavları: ${sinavlar.filter(s => s.paket_id).length}`);
+    console.log(`   Paket SınavlarÃƒÂ„Ã‚Â±: ${sinavlar.filter(s => s.paket_id).length}`);
     console.log(`   Tekil Sınavlar: ${sinavlar.filter(s => !s.paket_id).length}`);
     
     res.render('sinav-takvimi', {
@@ -7451,16 +6294,16 @@ app.get('/sinav-takvimi', async (req, res) => {
       sinavlar: sinavlar
     });
   } catch (error) {
-    console.error('Sınav takvimi hatası:', error);
+    console.error('Sınav takvimi hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).send('Bir hata oluştu: ' + error.message);
   }
 });
 
-// ESKİ Sınav Paketleri Route - KALDIRILDI (Yeni route satır 729'da)
+// ESKÃƒÂ„Ã‚Â° Sınav Paketleri Route - KALDIRILDI (Yeni route satÃƒÂ„Ã‚Â±r 729'da)
 
-// ============ DUYURU YÖNETİMİ (KURUM) ============
+// ============ DUYURU YÃƒÂƒÃ‚Â–NETÃƒÂ„Ã‚Â°MÃƒÂ„Ã‚Â° (KURUM) ============
 
-// Kurum - Duyuru Yönetimi Sayfası
+// Kurum - Duyuru YÃƒÂƒÃ‚Â¶netimi SayfasÃƒÂ„Ã‚Â±
 app.get('/kurum/duyurular', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
@@ -7479,7 +6322,7 @@ app.get('/kurum/duyurular', requireAuth, async (req, res) => {
     req.session.error = null;
     req.session.success = null;
   } catch (error) {
-    console.error('Duyuru yönetimi hatası:', error);
+    console.error('Duyuru yÃƒÂƒÃ‚Â¶netimi hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).send('Bir hata oluştu!');
   }
 });
@@ -7494,7 +6337,7 @@ app.post('/kurum/duyuru-ekle', requireAuth, async (req, res) => {
     const { baslik, icerik, tarih, sira, aktif } = req.body;
     
     if (!baslik) {
-      return res.json({ success: false, message: 'Başlık zorunludur!' });
+      return res.json({ success: false, message: 'BaÃƒÂ…Ã‚ÂŸlÃƒÂ„Ã‚Â±k zorunludur!' });
     }
     
     await dbRun(
@@ -7502,18 +6345,18 @@ app.post('/kurum/duyuru-ekle', requireAuth, async (req, res) => {
       [baslik, icerik || '', tarih || new Date().toISOString().split('T')[0], sira || 0, aktif ? 1 : 0]
     );
     
-    console.log(`\n✅ YENİ DUYURU EKLENDİ`);
-    console.log(`   Başlık: ${baslik}`);
+    console.log(`\nÃƒÂ¢Ã‚ÂœÃ‚Â… YENÃƒÂ„Ã‚Â° DUYURU EKLENDÃƒÂ„Ã‚Â°`);
+    console.log(`   BaÃƒÂ…Ã‚ÂŸlÃƒÂ„Ã‚Â±k: ${baslik}`);
     
     req.session.success = 'Duyuru başarıyla eklendi!';
     res.json({ success: true, message: 'Duyuru başarıyla eklendi!' });
   } catch (error) {
-    console.error('Duyuru ekleme hatası:', error);
+    console.error('Duyuru ekleme hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
-// Kurum - Duyuru Güncelle (POST)
+// Kurum - Duyuru GÃƒÂƒÃ‚Â¼ncelle (POST)
 app.post('/kurum/duyuru-guncelle/:id', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, message: 'Yetkisiz erişim!' });
@@ -7524,7 +6367,7 @@ app.post('/kurum/duyuru-guncelle/:id', requireAuth, async (req, res) => {
     const { baslik, icerik, tarih, sira, aktif } = req.body;
     
     if (!baslik) {
-      return res.json({ success: false, message: 'Başlık zorunludur!' });
+      return res.json({ success: false, message: 'BaÃƒÂ…Ã‚ÂŸlÃƒÂ„Ã‚Â±k zorunludur!' });
     }
     
     await dbRun(
@@ -7532,14 +6375,14 @@ app.post('/kurum/duyuru-guncelle/:id', requireAuth, async (req, res) => {
       [baslik, icerik || '', tarih || new Date().toISOString().split('T')[0], sira || 0, aktif ? 1 : 0, duyuruId]
     );
     
-    console.log(`\n✅ DUYURU GÜNCELLENDİ`);
+    console.log(`\nÃƒÂ¢Ã‚ÂœÃ‚Â… DUYURU GÃƒÂƒÃ‚ÂœNCELLENDÃƒÂ„Ã‚Â°`);
     console.log(`   ID: ${duyuruId}`);
-    console.log(`   Başlık: ${baslik}`);
+    console.log(`   BaÃƒÂ…Ã‚ÂŸlÃƒÂ„Ã‚Â±k: ${baslik}`);
     
     req.session.success = 'Duyuru başarıyla güncellendi!';
     res.json({ success: true, message: 'Duyuru başarıyla güncellendi!' });
   } catch (error) {
-    console.error('Duyuru güncelleme hatası:', error);
+    console.error('Duyuru gÃƒÂƒÃ‚Â¼ncelleme hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
@@ -7555,18 +6398,18 @@ app.post('/kurum/duyuru-sil/:id', requireAuth, async (req, res) => {
     
     await dbRun('DELETE FROM duyurular WHERE id = ?', [duyuruId]);
     
-    console.log(`\n❌ DUYURU SİLİNDİ`);
+    console.log(`\nÃƒÂ¢Ã‚ÂÃ‚ÂŒ DUYURU SÃƒÂ„Ã‚Â°LÃƒÂ„Ã‚Â°NDÃƒÂ„Ã‚Â°`);
     console.log(`   ID: ${duyuruId}`);
     
     req.session.success = 'Duyuru başarıyla silindi!';
     res.json({ success: true, message: 'Duyuru başarıyla silindi!' });
   } catch (error) {
-    console.error('Duyuru silme hatası:', error);
+    console.error('Duyuru silme hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
-// Duyurular Route (Genel - Herkes görebilir)
+// Duyurular Route (Genel - Herkes gÃƒÂƒÃ‚Â¶rebilir)
 app.get('/duyurular', async (req, res) => {
   try {
     const duyurular = await new Promise((resolve, reject) => {
@@ -7586,25 +6429,25 @@ app.get('/duyurular', async (req, res) => {
       duyurular: duyurular
     });
   } catch (error) {
-    console.error('Duyurular hatası:', error);
+    console.error('Duyurular hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).send('Bir hata oluştu!');
   }
 });
 
-// ============ KURUMSAL SAYFALAR YÖNETİMİ ============
+// ============ KURUMSAL SAYFALAR YÃƒÂƒÃ‚Â–NETÃƒÂ„Ã‚Â°MÃƒÂ„Ã‚Â° ============
 
-// API - Kurumsal Sayfalar Listesi (Auth gerektirmiyor - dashboard zaten korumalı)
+// API - Kurumsal Sayfalar Listesi (Auth gerektirmiyor - dashboard zaten korumalÃƒÂ„Ã‚Â±)
 app.get('/api/kurumsal-sayfalar', async (req, res) => {
   try {
     const sayfalar = await dbAll('SELECT * FROM kurumsal_sayfalar ORDER BY sira ASC');
     res.json({ success: true, sayfalar: sayfalar });
   } catch (error) {
-    console.error('API kurumsal sayfalar hatası:', error);
-    res.status(500).json({ success: false, message: 'Sayfalar yüklenemedi!', error: error.message });
+    console.error('API kurumsal sayfalar hatasÃƒÂ„Ã‚Â±:', error);
+    res.status(500).json({ success: false, message: 'Sayfalar yÃƒÂƒÃ‚Â¼klenemedi!', error: error.message });
   }
 });
 
-// Kurum - Kurumsal Sayfalar Yönetimi
+// Kurum - Kurumsal Sayfalar YÃƒÂƒÃ‚Â¶netimi
 app.get('/kurum/kurumsal-sayfalar', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
@@ -7623,12 +6466,12 @@ app.get('/kurum/kurumsal-sayfalar', requireAuth, async (req, res) => {
     req.session.error = null;
     req.session.success = null;
   } catch (error) {
-    console.error('Kurumsal sayfalar yönetimi hatası:', error);
+    console.error('Kurumsal sayfalar yÃƒÂƒÃ‚Â¶netimi hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).send('Bir hata oluştu!');
   }
 });
 
-// Kurum - Kurumsal Sayfa Güncelle
+// Kurum - Kurumsal Sayfa GÃƒÂƒÃ‚Â¼ncelle
 app.post('/kurum/kurumsal-sayfa-guncelle/:id', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, message: 'Yetkisiz erişim!' });
@@ -7639,15 +6482,15 @@ app.post('/kurum/kurumsal-sayfa-guncelle/:id', requireAuth, async (req, res) => 
     const { sayfa_adi, baslik, icerik, seo_baslik, seo_aciklama, sira, aktif } = req.body;
     
     if (!sayfa_adi || !baslik) {
-      return res.json({ success: false, message: 'Sayfa adı ve başlık zorunludur!' });
+      return res.json({ success: false, message: 'Sayfa adı ve baÃƒÂ…Ã‚ÂŸlÃƒÂ„Ã‚Â±k zorunludur!' });
     }
     
-    console.log('\n📝 KURUMSAL SAYFA GÜNCELLEME:');
+    console.log('\nÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â KURUMSAL SAYFA GÃƒÂƒÃ‚ÂœNCELLEME:');
     console.log(`   ID: ${sayfaId}`);
     console.log(`   Sayfa Adı: ${sayfa_adi}`);
-    console.log(`   Başlık: ${baslik}`);
-    console.log(`   İçerik: ${icerik ? icerik.substring(0, 100) + '...' : 'BOŞ'}`);
-    console.log(`   İçerik Uzunluğu: ${icerik ? icerik.length : 0} karakter`);
+    console.log(`   BaÃƒÂ…Ã‚ÂŸlÃƒÂ„Ã‚Â±k: ${baslik}`);
+    console.log(`   ÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â§erik: ${icerik ? icerik.substring(0, 100) + '...' : 'BOÃƒÂ…Ã‚Â'}`);
+    console.log(`   ÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â§erik UzunluÃƒÂ„Ã‚ÂŸu: ${icerik ? icerik.length : 0} karakter`);
     console.log(`   Aktif: ${aktif}`);
     
     await dbRun(
@@ -7658,11 +6501,11 @@ app.post('/kurum/kurumsal-sayfa-guncelle/:id', requireAuth, async (req, res) => 
       [sayfa_adi, baslik, icerik || '', seo_baslik || '', seo_aciklama || '', sira || 0, aktif ? 1 : 0, sayfaId]
     );
     
-    console.log('   ✅ VERİTABANINA KAYDEDİLDİ!');
+    console.log('   ÃƒÂ¢Ã‚ÂœÃ‚Â… VERÃƒÂ„Ã‚Â°TABANINA KAYDEDÃƒÂ„Ã‚Â°LDÃƒÂ„Ã‚Â°!');
     
     res.json({ success: true, message: 'Sayfa başarıyla güncellendi!' });
   } catch (error) {
-    console.error('Kurumsal sayfa güncelleme hatası:', error);
+    console.error('Kurumsal sayfa gÃƒÂƒÃ‚Â¼ncelleme hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
@@ -7682,7 +6525,7 @@ app.get('/hakkimizda', async (req, res) => {
       user: req.session.userId ? { type: req.session.userType } : null
     });
   } catch (error) {
-    console.error('Hakkımızda hatası:', error);
+    console.error('HakkÃƒÂ„Ã‚Â±mÃƒÂ„Ã‚Â±zda hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).send('Bir hata oluştu!');
   }
 });
@@ -7701,7 +6544,7 @@ app.get('/iletisim', async (req, res) => {
       user: req.session.userId ? { type: req.session.userType } : null
     });
   } catch (error) {
-    console.error('İletişim hatası:', error);
+    console.error('ÃƒÂ„Ã‚Â°letiÃƒÂ…Ã‚ÂŸim hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).send('Bir hata oluştu!');
   }
 });
@@ -7720,12 +6563,12 @@ app.get('/sinav-merkezleri', async (req, res) => {
       user: req.session.userId ? { type: req.session.userType } : null
     });
   } catch (error) {
-    console.error('Sınav merkezleri hatası:', error);
+    console.error('Sınav merkezleri hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).send('Bir hata oluştu!');
   }
 });
 
-// PDF Test Route (Geliştirme/Test için)
+// PDF Test Route (GeliÃƒÂ…Ã‚ÂŸtirme/Test iÃƒÂƒÃ‚Â§in)
 app.get('/test-pdf', (req, res) => {
   res.render('test-pdf', {
     title: 'PDF Test - Sınav Sonucu Parse',
@@ -7737,7 +6580,7 @@ app.get('/test-pdf', (req, res) => {
 app.post('/test-pdf-upload', pdfUpload.single('pdfFile'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'Lütfen bir PDF dosyası yükleyin!' });
+      return res.status(400).json({ error: 'LÃƒÂƒÃ‚Â¼tfen bir PDF dosyasÃƒÂ„Ã‚Â± yÃƒÂƒÃ‚Â¼kleyin!' });
     }
 
     // PDF'i oku
@@ -7746,16 +6589,16 @@ app.post('/test-pdf-upload', pdfUpload.single('pdfFile'), async (req, res) => {
     // PDF'i parse et
     const pdfData = await pdfParse(dataBuffer);
     
-    // Text içeriğini al
+    // Text iÃƒÂƒÃ‚Â§eriÃƒÂ„Ã‚ÂŸini al
     const text = pdfData.text;
     
-    // Öğrenci bilgilerini çıkar (regex ile)
-    const ogrenciMatch = text.match(/Öğrenci\s+Numara\s+Sınıf\s+([^\n]+)\s+(\d+)\s+(\w+)/);
-    const puanMatch = text.match(/▼\s*([\d,]+)/);
+    // Öğrenci bilgilerini ÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â±kar (regex ile)
+    const ogrenciMatch = text.match(/Öğrenci\s+Numara\s+SÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â±f\s+([^\n]+)\s+(\d+)\s+(\w+)/);
+    const puanMatch = text.match(/ÃƒÂ¢Ã‚Â–Ã‚Â¼\s*([\d,]+)/);
     
-    // Ders detaylarını çıkar
+    // Ders detaylarÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± ÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â±kar
     const dersler = [];
-    const dersRegex = /(Türkçe|Tarih-1|Coğrafya-1|Felsefe|Din Kül\. ve Ahl\. Bil\.|Fizik|Kimya|Biyoloji|TYT Fen)\s+(\d+)\s+(\d+)\s+(\d+)\s+([\d,]+)/g;
+    const dersRegex = /(TÃƒÂƒÃ‚Â¼rkÃƒÂƒÃ‚Â§e|Tarih-1|CoÃƒÂ„Ã‚ÂŸrafya-1|Felsefe|Din KÃƒÂƒÃ‚Â¼l\. ve Ahl\. Bil\.|Fizik|Kimya|Biyoloji|TYT Fen)\s+(\d+)\s+(\d+)\s+(\d+)\s+([\d,]+)/g;
     let dersMatch;
     
     while ((dersMatch = dersRegex.exec(text)) !== null) {
@@ -7779,7 +6622,7 @@ app.post('/test-pdf-upload', pdfUpload.single('pdfFile'), async (req, res) => {
       } : null,
       puan: puanMatch ? puanMatch[1] : null,
       dersler: dersler,
-      rawText: text.substring(0, 2000) // İlk 2000 karakter
+      rawText: text.substring(0, 2000) // ÃƒÂ„Ã‚Â°lk 2000 karakter
     };
     
     res.json({
@@ -7788,7 +6631,7 @@ app.post('/test-pdf-upload', pdfUpload.single('pdfFile'), async (req, res) => {
     });
     
   } catch (error) {
-    console.error('PDF parse hatası:', error);
+    console.error('PDF parse hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).json({ 
       success: false, 
       error: 'PDF parse edilirken hata oluştu: ' + error.message 
@@ -7796,10 +6639,10 @@ app.post('/test-pdf-upload', pdfUpload.single('pdfFile'), async (req, res) => {
   }
 });
 
-// Cevap Anahtarları Route
+// Cevap AnahtarlarÃƒÂ„Ã‚Â± Route
 app.get('/cevap-anahtarlari', async (req, res) => {
   try {
-    // Cevap anahtarı yüklenmiş TÜM sınavları al
+    // Cevap anahtarÃƒÂ„Ã‚Â± yÃƒÂƒÃ‚Â¼klenmiÃƒÂ…Ã‚ÂŸ TÃƒÂƒÃ‚ÂœM sınavlarÃƒÂ„Ã‚Â± al
     const sinavlar = await dbAll(
       `SELECT * FROM sinavlar 
        WHERE cevap_anahtari_pdf IS NOT NULL 
@@ -7809,43 +6652,43 @@ app.get('/cevap-anahtarlari', async (req, res) => {
     );
     
     res.render('cevap-anahtarlari', {
-      title: 'Cevap Anahtarları',
+      title: 'Cevap AnahtarlarÃƒÂ„Ã‚Â±',
       user: req.session.userId ? { type: req.session.userType, username: req.session.username } : null,
       sinavlar: sinavlar
     });
   } catch (error) {
-    console.error('Cevap anahtarları hatası:', error);
+    console.error('Cevap anahtarlarÃƒÂ„Ã‚Â± hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).send('Bir hata oluştu!');
   }
 });
 
-// Rehber - Toplu Sınav Yükleme KALDIRILDI (Sadece kurum yapabilir)
+// Rehber - Toplu Sınav YÃƒÂƒÃ‚Â¼kleme KALDIRILDI (Sadece kurum yapabilir)
 
-// Gelişmiş öğrenci isim eşleştirme fonksiyonu
+// GeliÃƒÂ…Ã‚ÂŸmiÃƒÂ…Ã‚ÂŸ ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci isim eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme fonksiyonu
 function eslesmeSkoru(isim1, isim2) {
   if (!isim1 || !isim2) return 0;
   
-  // İsimleri normalize et
+  // ÃƒÂ„Ã‚Â°simleri normalize et
   const normalize = (str) => {
     return str
       .toLowerCase()
       .trim()
       .replace(/\s+/g, ' ')
-      .replace(/ı/g, 'i')
-      .replace(/ğ/g, 'g')
-      .replace(/ü/g, 'u')
-      .replace(/ş/g, 's')
-      .replace(/ö/g, 'o')
-      .replace(/ç/g, 'c');
+      .replace(/ÃƒÂ„Ã‚Â±/g, 'i')
+      .replace(/ÃƒÂ„Ã‚ÂŸ/g, 'g')
+      .replace(/ÃƒÂƒÃ‚Â¼/g, 'u')
+      .replace(/ÃƒÂ…Ã‚ÂŸ/g, 's')
+      .replace(/ÃƒÂƒÃ‚Â¶/g, 'o')
+      .replace(/ÃƒÂƒÃ‚Â§/g, 'c');
   };
   
   const n1 = normalize(isim1);
   const n2 = normalize(isim2);
   
-  // Tam eşleşme
+  // Tam eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme
   if (n1 === n2) return 100;
   
-  // Kelime kelime karşılaştır
+  // Kelime kelime karÃƒÂ…Ã‚ÂŸÃƒÂ„Ã‚Â±laÃƒÂ…Ã‚ÂŸtÃƒÂ„Ã‚Â±r
   const kelimeler1 = n1.split(' ');
   const kelimeler2 = n2.split(' ');
   
@@ -7860,7 +6703,7 @@ function eslesmeSkoru(isim1, isim2) {
   const maxKelimeSayisi = Math.max(kelimeler1.length, kelimeler2.length);
   const skor = (eslesenKelimeSayisi / maxKelimeSayisi) * 100;
   
-  // Levenshtein mesafesi ile ince ayar (basit yaklaşım)
+  // Levenshtein mesafesi ile ince ayar (basit yaklaÃƒÂ…Ã‚ÂŸÃƒÂ„Ã‚Â±m)
   if (skor > 50) {
     const uzunlukFarki = Math.abs(n1.length - n2.length);
     return Math.max(0, skor - uzunlukFarki * 2);
@@ -7869,11 +6712,11 @@ function eslesmeSkoru(isim1, isim2) {
   return skor;
 }
 
-// Sınav katılımcıları için özel eşleştirme fonksiyonu
+// Sınav katÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â±larÃƒÂ„Ã‚Â± iÃƒÂƒÃ‚Â§in ÃƒÂƒÃ‚Â¶zel eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme fonksiyonu
 async function sinavKatilimciEslestir(pdfOgrenciAdi, sinavId) {
   if (!pdfOgrenciAdi || !sinavId) return null;
   
-  // Sadece bu sınava katılan öğrencileri çek
+  // Sadece bu sınava katÃƒÂ„Ã‚Â±lan ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri ÃƒÂƒÃ‚Â§ek
   const katilimcilar = await dbAll(`
     SELECT ok.* 
     FROM ogrenci_kayitlari ok
@@ -7886,23 +6729,23 @@ async function sinavKatilimciEslestir(pdfOgrenciAdi, sinavId) {
   let enIyiEslesme = null;
   let enIyiSkor = 0;
   
-  // İsim varyasyonları oluştur (Ad Soyad / Soyad Ad)
+  // ÃƒÂ„Ã‚Â°sim varyasyonlarÃƒÂ„Ã‚Â± oluştur (Ad Soyad / Soyad Ad)
   const nameVariations = [pdfOgrenciAdi];
   const parts = pdfOgrenciAdi.trim().split(/\s+/);
   
   if (parts.length === 2) {
-    // "BEREN ÖZCAN" → ["BEREN ÖZCAN", "ÖZCAN BEREN"]
+    // "BEREN ÃƒÂƒÃ‚Â–ZCAN" ÃƒÂ¢Ã‚Â†Ã‚Â’ ["BEREN ÃƒÂƒÃ‚Â–ZCAN", "ÃƒÂƒÃ‚Â–ZCAN BEREN"]
     nameVariations.push(`${parts[1]} ${parts[0]}`);
   } else if (parts.length === 3) {
-    // "AHMED N AR" → ["AHMED N AR", "AR AHMED N", "N AR AHMED"]
+    // "AHMED N AR" ÃƒÂ¢Ã‚Â†Ã‚Â’ ["AHMED N AR", "AR AHMED N", "N AR AHMED"]
     nameVariations.push(`${parts[2]} ${parts[0]} ${parts[1]}`);
     nameVariations.push(`${parts[1]} ${parts[2]} ${parts[0]}`);
   }
   
-  console.log(`🔍 "${pdfOgrenciAdi}" için eşleştirme yapılıyor...`);
-  console.log(`   İsim varyasyonları:`, nameVariations);
+  console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â”Ã‚Â "${pdfOgrenciAdi}" iÃƒÂƒÃ‚Â§in eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme yapÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±yor...`);
+  console.log(`   ÃƒÂ„Ã‚Â°sim varyasyonlarÃƒÂ„Ã‚Â±:`, nameVariations);
   
-  // Her katılımcı için skor hesapla
+  // Her katÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â± iÃƒÂƒÃ‚Â§in skor hesapla
   for (const katilimci of katilimcilar) {
     const dbName = (katilimci.ogrenci_adi_soyadi || '').trim().toUpperCase();
     
@@ -7910,19 +6753,19 @@ async function sinavKatilimciEslestir(pdfOgrenciAdi, sinavId) {
       const variationUpper = variation.toUpperCase();
       let skor = 0;
       
-      // 1. Tam eşleşme (100 puan)
+      // 1. Tam eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme (100 puan)
       if (dbName === variationUpper) {
         skor = 100;
       }
-      // 2. Başlangıç eşleşmesi (80 puan)
+      // 2. BaÃƒÂ…Ã‚ÂŸlangÃƒÂ„Ã‚Â±ÃƒÂƒÃ‚Â§ eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmesi (80 puan)
       else if (dbName.startsWith(variationUpper) || variationUpper.startsWith(dbName)) {
         skor = 80;
       }
-      // 3. İçerik eşleşmesi (60 puan)
+      // 3. ÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â§erik eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmesi (60 puan)
       else if (dbName.includes(variationUpper) || variationUpper.includes(dbName)) {
         skor = 60;
       }
-      // 4. Kelime bazlı eşleşme (40 puan)
+      // 4. Kelime bazlÃƒÂ„Ã‚Â± eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme (40 puan)
       else {
         const dbWords = dbName.split(/\s+/);
         const pdfWords = variationUpper.split(/\s+/);
@@ -7935,17 +6778,17 @@ async function sinavKatilimciEslestir(pdfOgrenciAdi, sinavId) {
       if (skor > enIyiSkor) {
         enIyiSkor = skor;
         enIyiEslesme = katilimci;
-        console.log(`   → Yeni en iyi eşleşme: "${dbName}" (Skor: ${skor})`);
+        console.log(`   ÃƒÂ¢Ã‚Â†Ã‚Â’ Yeni en iyi eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme: "${dbName}" (Skor: ${skor})`);
       }
     }
   }
   
-  // Minimum %55 eşleşme gerekli
+  // Minimum %55 eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme gerekli
   if (enIyiSkor >= 55) {
-    console.log(`✅ En iyi eşleşme (${enIyiSkor} puan): "${enIyiEslesme.ogrenci_adi_soyadi}"`);
+    console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… En iyi eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme (${enIyiSkor} puan): "${enIyiEslesme.ogrenci_adi_soyadi}"`);
     return enIyiEslesme;
   } else {
-    console.log(`❌ Yeterli eşleşme bulunamadı (en yüksek: ${enIyiSkor})`);
+    console.log(`ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Yeterli eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme bulunamadı (en yÃƒÂƒÃ‚Â¼ksek: ${enIyiSkor})`);
     return null;
   }
 }
@@ -7960,7 +6803,7 @@ async function enIyiOgrenciEslestir(pdfOgrenciAdi) {
   
   tumOgrenciler.forEach(ogrenci => {
     const skor = eslesmeSkoru(pdfOgrenciAdi, ogrenci.ad_soyad);
-    if (skor > enYuksekSkor && skor >= 60) { // Minimum %60 eşleşme gerekli
+    if (skor > enYuksekSkor && skor >= 60) { // Minimum %60 eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme gerekli
       enYuksekSkor = skor;
       enIyiEslesme = ogrenci;
     }
@@ -7969,31 +6812,31 @@ async function enIyiOgrenciEslestir(pdfOgrenciAdi) {
   return enIyiEslesme;
 }
 
-// YENİ: İlk Sayfa Analizi - Potansiyel İsim Adayları
+// YENÃƒÂ„Ã‚Â°: ÃƒÂ„Ã‚Â°lk Sayfa Analizi - Potansiyel ÃƒÂ„Ã‚Â°sim AdaylarÃƒÂ„Ã‚Â±
 // Rehber - Toplu Sınav Analiz KALDIRILDI (Sadece kurum yapabilir)
 
-// Rehber - Toplu Sınav Yükleme KALDIRILDI (Sadece kurum yapabilir)
+// Rehber - Toplu Sınav YÃƒÂƒÃ‚Â¼kleme KALDIRILDI (Sadece kurum yapabilir)
 
 // ============================================
-// KURUMSAL İÇERİK YÖNETİMİ (ADMIN PANEL)
+// KURUMSAL ÃƒÂ„Ã‚Â°ÃƒÂƒÃ‚Â‡ERÃƒÂ„Ã‚Â°K YÃƒÂƒÃ‚Â–NETÃƒÂ„Ã‚Â°MÃƒÂ„Ã‚Â° (ADMIN PANEL)
 // ============================================
 
-// Kurumsal içerik listesi (Admin)
-// DEPRECATED: Admin paneli yönlendirmeleri - Artık /kurum/ panelini kullanın
+// Kurumsal iÃƒÂƒÃ‚Â§erik listesi (Admin)
+// DEPRECATED: Admin paneli yÃƒÂƒÃ‚Â¶nlendirmeleri - ArtÃƒÂ„Ã‚Â±k /kurum/ panelini kullanÃƒÂ„Ã‚Â±n
 app.get('/admin/kurumsal-icerik', requireAuth, (req, res) => {
-  console.log('⚠️ ESKİ ROUTE: /admin/kurumsal-icerik → /kurum/kurumsal-sayfalar yönlendiriliyor');
+  console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â ESKÃƒÂ„Ã‚Â° ROUTE: /admin/kurumsal-icerik ÃƒÂ¢Ã‚Â†Ã‚Â’ /kurum/kurumsal-sayfalar yÃƒÂƒÃ‚Â¶nlendiriliyor');
   res.redirect('/kurum/kurumsal-sayfalar');
 });
 
 app.get('/admin/kurumsal-icerik/duzenle/:id', requireAuth, (req, res) => {
-  console.log(`⚠️ ESKİ ROUTE: /admin/kurumsal-icerik/duzenle/${req.params.id} → /kurum/kurumsal-sayfa-duzenle/${req.params.id} yönlendiriliyor`);
+  console.log(`ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â ESKÃƒÂ„Ã‚Â° ROUTE: /admin/kurumsal-icerik/duzenle/${req.params.id} ÃƒÂ¢Ã‚Â†Ã‚Â’ /kurum/kurumsal-sayfa-duzenle/${req.params.id} yÃƒÂƒÃ‚Â¶nlendiriliyor`);
   res.redirect(`/kurum/kurumsal-sayfa-duzenle/${req.params.id}`);
 });
 
-// DEPRECATED: Admin paneli POST/DELETE route'ları kaldırıldı
-// Artık /kurum/kurumsal-sayfa-guncelle/:id kullanılıyor
+// DEPRECATED: Admin paneli POST/DELETE route'larÃƒÂ„Ã‚Â± kaldÃƒÂ„Ã‚Â±rÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â±
+// ArtÃƒÂ„Ã‚Â±k /kurum/kurumsal-sayfa-guncelle/:id kullanÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±yor
 
-// 🆕 YENİ SİSTEM: Manuel Eşleştirme Ekranı
+// ÃƒÂ°Ã‚ÂŸÃ‚Â†Ã‚Â• YENÃƒÂ„Ã‚Â° SÃƒÂ„Ã‚Â°STEM: Manuel EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme EkranÃƒÂ„Ã‚Â±
 app.get('/kurum/sinav-manuel-eslestirme/:id', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).send('Yetkiniz yok!');
@@ -8003,41 +6846,78 @@ app.get('/kurum/sinav-manuel-eslestirme/:id', requireAuth, async (req, res) => {
     const sinavId = req.params.id;
     const sadeceEslesmemis = req.query.sadece_eslesmemis === '1';
     
-    // Sınavı al
+    // SınavÃƒÂ„Ã‚Â± al
     const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinavId]);
     if (!sinav) {
       return res.status(404).send('Sınav bulunamadı!');
     }
     
-    // Sayfa dosyalarını bul
-    const sayfalarDir = path.join('uploads', 'sinav-sonuclari');
+    // Sayfa dosyalarını bul (yeni sistem: sinav_${sinavId} klasöründe)
+    const sayfalarDir = path.join('uploads', 'sinav-sonuclari', `sinav_${sinavId}`);
     let sayfalar = [];
     
     if (fs.existsSync(sayfalarDir)) {
       const allFiles = fs.readdirSync(sayfalarDir);
       sayfalar = allFiles
-        .filter(f => f.startsWith(`sinav_${sinavId}_sayfa_`) && f.endsWith('.pdf'))
-        .sort()
-        .map(f => path.join(sayfalarDir, f));
+        .filter(f => {
+          // Sadece sayfa dosyalarını al (ogrenci_ ile başlayanları ve orijinal dosyaları hariç tut)
+          return f.includes('sayfa_') && 
+                 f.endsWith('.pdf') && 
+                 !f.startsWith('ogrenci_') && 
+                 !f.includes('orijinal_');
+        })
+        .sort((a, b) => {
+          // Sayfa numaralarına göre sırala
+          const numA = parseInt(a.match(/sayfa_(\d+)_/)?.[1] || '0');
+          const numB = parseInt(b.match(/sayfa_(\d+)_/)?.[1] || '0');
+          return numA - numB;
+        })
+        .map(f => {
+          const fullPath = path.join(sayfalarDir, f);
+          // View için relative path
+          return fullPath.replace(/\\/g, '/').replace(/^.*?(uploads\/)/, '$1');
+        });
     }
     
     // Eğer "sadece eşleşmemiş" modundaysa, sadece eşleşmemiş sayfaları filtrele
     if (sadeceEslesmemis) {
       // Hangi sayfaların eşleştiğini kontrol et
-      const eslesmisSayfalar = await dbAll(`
+      const eslesmisKayitlar = await dbAll(`
         SELECT pdf_path FROM sinav_katilimcilari 
-        WHERE sinav_id = ? AND pdf_path IS NOT NULL
+        WHERE sinav_id = ? AND pdf_path IS NOT NULL AND pdf_path != ''
       `, [sinavId]);
       
-      const eslesmisSayfaSet = new Set(eslesmisSayfalar.map(s => s.pdf_path));
+      // Eşleşmiş sayfa numaralarını bul
+      // pdf_path formatı: .../ogrenci_ID_sayfa_NUMARA.pdf
+      const eslesmisSayfaNumaralari = new Set();
+      eslesmisKayitlar.forEach(kayit => {
+        if (kayit.pdf_path) {
+          // Sayfa numarasını çıkar: ogrenci_3237_sayfa_8.pdf -> 8
+          const sayfaMatch = kayit.pdf_path.match(/sayfa_(\d+)\.pdf/);
+          if (sayfaMatch) {
+            eslesmisSayfaNumaralari.add(parseInt(sayfaMatch[1]));
+          }
+        }
+      });
       
       // Sadece eşleşmemiş sayfaları al
-      sayfalar = sayfalar.filter(sayfa => !eslesmisSayfaSet.has(sayfa));
+      sayfalar = sayfalar.filter(sayfa => {
+        // Sayfa path'inden sayfa numarasını çıkar
+        // Format: uploads/sinav-sonuclari/sinav_58/sinav_58_sayfa_1_123456.pdf
+        const sayfaMatch = sayfa.match(/sayfa_(\d+)_/);
+        if (sayfaMatch) {
+          const sayfaNo = parseInt(sayfaMatch[1]);
+          // Eğer bu sayfa numarası eşleşmiş sayfalar arasında yoksa, göster
+          return !eslesmisSayfaNumaralari.has(sayfaNo);
+        }
+        // Eğer sayfa numarası bulunamazsa, göster (güvenlik için)
+        return true;
+      });
       
-      console.log(`📄 Sadece eşleşmemiş sayfalar: ${sayfalar.length}`);
+      console.log(`📋 Sadece eşleşmemiş sayfalar: ${sayfalar.length} (Eşleşmiş: ${eslesmisSayfaNumaralari.size}, Toplam: ${sayfalar.length + eslesmisSayfaNumaralari.size})`);
     }
     
-    // Katılımcıları al (pdf_path ile birlikte - eşleşme durumunu kontrol için)
+    // KatÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â±larÃƒÂ„Ã‚Â± al (pdf_path ile birlikte - eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme durumunu kontrol iÃƒÂƒÃ‚Â§in)
     const katilimcilar = await dbAll(`
       SELECT 
         sk.ogrenci_id,
@@ -8059,12 +6939,12 @@ app.get('/kurum/sinav-manuel-eslestirme/:id', requireAuth, async (req, res) => {
       ORDER BY ad_soyad
     `, [sinavId]);
     
-    console.log(`\n📋 MANUEL EŞLEŞTİRME - KATILIMCI LİSTESİ (Sınav ID: ${sinavId})`);
-    console.log(`   Toplam Katılımcı: ${katilimcilar.length}`);
+    console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â‹ MANUEL EÃƒÂ…Ã‚ÂLEÃƒÂ…Ã‚ÂTÃƒÂ„Ã‚Â°RME - KATILIMCI LÃƒÂ„Ã‚Â°STESÃƒÂ„Ã‚Â° (Sınav ID: ${sinavId})`);
+    console.log(`   Toplam KatÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â±: ${katilimcilar.length}`);
     const eslesmisSayisi = katilimcilar.filter(k => k.pdf_path && k.pdf_path.trim() !== '').length;
-    console.log(`   Eşleşmiş Katılımcı: ${eslesmisSayisi}`);
+    console.log(`   EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmiÃƒÂ…Ã‚ÂŸ KatÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â±: ${eslesmisSayisi}`);
     if (eslesmisSayisi > 0) {
-      console.log(`   Eşleşmiş Öğrenciler:`);
+      console.log(`   EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmiÃƒÂ…Ã‚ÂŸ Öğrenciler:`);
       katilimcilar.filter(k => k.pdf_path && k.pdf_path.trim() !== '').forEach(k => {
         console.log(`     - ${k.ad_soyad} (ID: ${k.ogrenci_id}) -> ${k.pdf_path}`);
       });
@@ -8078,12 +6958,12 @@ app.get('/kurum/sinav-manuel-eslestirme/:id', requireAuth, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Manuel eşleştirme ekranı hatası:', error);
+    console.error('Manuel eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme ekranÃƒÂ„Ã‚Â± hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).send('Bir hata oluştu!');
   }
 });
 
-// 🆕 Eşleşenleri Kontrol Et Sayfası
+// ÃƒÂ°Ã‚ÂŸÃ‚Â†Ã‚Â• EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸenleri Kontrol Et SayfasÃƒÂ„Ã‚Â±
 app.get('/kurum/sinav-eslesen-kontrol/:id', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).send('Yetkiniz yok!');
@@ -8092,13 +6972,13 @@ app.get('/kurum/sinav-eslesen-kontrol/:id', requireAuth, async (req, res) => {
   try {
     const sinavId = req.params.id;
     
-    // Sınavı al
+    // SınavÃƒÂ„Ã‚Â± al
     const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinavId]);
     if (!sinav) {
       return res.status(404).send('Sınav bulunamadı!');
     }
     
-    // Eşleşmiş katılımcıları al (pdf_path dolu olanlar)
+    // EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmiÃƒÂ…Ã‚ÂŸ katÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â±larÃƒÂ„Ã‚Â± al (pdf_path dolu olanlar)
     const eslesmisler = await dbAll(`
       SELECT 
         sk.ogrenci_id,
@@ -8120,9 +7000,9 @@ app.get('/kurum/sinav-eslesen-kontrol/:id', requireAuth, async (req, res) => {
       ORDER BY ad_soyad
     `, [sinavId]);
     
-    console.log(`\n✅ EŞLEŞEN KONTROL SAYFASI`);
+    console.log(`\nÃƒÂ¢Ã‚ÂœÃ‚Â… EÃƒÂ…Ã‚ÂLEÃƒÂ…Ã‚ÂEN KONTROL SAYFASI`);
     console.log(`   Sınav ID: ${sinavId}`);
-    console.log(`   Eşleşmiş Sayısı: ${eslesmisler.length}`);
+    console.log(`   EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmiÃƒÂ…Ã‚ÂŸ SayÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±: ${eslesmisler.length}`);
     
     res.render('kurum/sinav-eslesen-kontrol', {
       user: req.session,
@@ -8131,12 +7011,12 @@ app.get('/kurum/sinav-eslesen-kontrol/:id', requireAuth, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Eşleşen kontrol sayfası hatası:', error);
+    console.error('EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸen kontrol sayfasÃƒÂ„Ã‚Â± hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).send('Bir hata oluştu!');
   }
 });
 
-// 🆕 Eşleşmeyi Kaldır
+// ÃƒÂ°Ã‚ÂŸÃ‚Â†Ã‚Â• EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmeyi KaldÃƒÂ„Ã‚Â±r
 app.post('/kurum/sinav-eslestirme-kaldir', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, error: 'Yetkiniz yok!' });
@@ -8145,11 +7025,11 @@ app.post('/kurum/sinav-eslestirme-kaldir', requireAuth, async (req, res) => {
   try {
     const { sinav_id, ogrenci_id, kaynak } = req.body;
     
-    console.log(`\n❌ EŞLEŞMEYİ KALDIR`);
+    console.log(`\nÃƒÂ¢Ã‚ÂÃ‚ÂŒ EÃƒÂ…Ã‚ÂLEÃƒÂ…Ã‚ÂMEYÃƒÂ„Ã‚Â° KALDIR`);
     console.log(`   Sınav ID: ${sinav_id}`);
     console.log(`   Öğrenci ID: ${ogrenci_id} (${kaynak})`);
     
-    // pdf_path'i NULL yap ve sonuc_durumu'nu beklemede'ye çek
+    // pdf_path'i NULL yap ve sonuc_durumu'nu beklemede'ye ÃƒÂƒÃ‚Â§ek
     const result = await new Promise((resolve, reject) => {
       db.run(`
         UPDATE sinav_katilimcilari 
@@ -8161,31 +7041,31 @@ app.post('/kurum/sinav-eslestirme-kaldir', requireAuth, async (req, res) => {
       });
     });
     
-    console.log(`   ✅ Başarılı: ${result.changes} satır güncellendi`);
+    console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±: ${result.changes} satÃƒÂ„Ã‚Â±r güncellendi`);
     
     if (result.changes === 0) {
-      console.log(`   ⚠️  UYARI: Hiçbir satır güncellenmedi!`);
-      return res.json({ success: false, error: 'Eşleşme bulunamadı!' });
+      console.log(`   ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â  UYARI: HiÃƒÂƒÃ‚Â§bir satÃƒÂ„Ã‚Â±r gÃƒÂƒÃ‚Â¼ncellenmedi!`);
+      return res.json({ success: false, error: 'EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme bulunamadı!' });
     }
     
     res.json({ success: true });
     
   } catch (error) {
-    console.error('❌ Eşleşme kaldırma hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸme kaldÃƒÂ„Ã‚Â±rma hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// 🆕 TOPLU VELİ HESABI OLUŞTURMA
+// ÃƒÂ°Ã‚ÂŸÃ‚Â†Ã‚Â• TOPLU VELÃƒÂ„Ã‚Â° HESABI OLUÃƒÂ…Ã‚ÂTURMA
 app.post('/kurum/toplu-veli-hesap-olustur', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, error: 'Yetkiniz yok!' });
   }
   
   try {
-    console.log('\n👥 TOPLU VELİ HESABI OLUŞTURMA BAŞLADI');
+    console.log('\nÃƒÂ°Ã‚ÂŸÃ‚Â‘Ã‚Â¥ TOPLU VELÃƒÂ„Ã‚Â° HESABI OLUÃƒÂ…Ã‚ÂTURMA BAÃƒÂ…Ã‚ÂLADI');
     
-    // Tüm öğrencileri al (sadece kurum öğrencileri - tc_no olanlar)
+    // TÃƒÂƒÃ‚Â¼m ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri al (sadece kurum ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri - tc_no olanlar)
     const ogrenciler = await dbAll(`
       SELECT id, ogrenci_adi_soyadi, tc_kimlik_no, sinif, telefon, veli_adi, veli_telefon
       FROM ogrenci_kayitlari
@@ -8193,7 +7073,7 @@ app.post('/kurum/toplu-veli-hesap-olustur', requireAuth, async (req, res) => {
       ORDER BY sinif, ogrenci_adi_soyadi
     `);
     
-    console.log(`   📊 ${ogrenciler.length} öğrenci bulundu`);
+    console.log(`   ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚ÂŠ ${ogrenciler.length} ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci bulundu`);
     
     let olusturulan = 0;
     let mevcutOlanlar = 0;
@@ -8201,7 +7081,7 @@ app.post('/kurum/toplu-veli-hesap-olustur', requireAuth, async (req, res) => {
     
     for (const ogrenci of ogrenciler) {
       try {
-        // Kontrol et: Bu TC ile kullanıcı var mı?
+        // Kontrol et: Bu TC ile kullanıcı var mÃƒÂ„Ã‚Â±?
         const mevcutUser = await dbGet('SELECT id FROM users WHERE username = ?', [ogrenci.tc_kimlik_no]);
         
         if (mevcutUser) {
@@ -8209,10 +7089,10 @@ app.post('/kurum/toplu-veli-hesap-olustur', requireAuth, async (req, res) => {
           continue;
         }
         
-        // Şifreyi hashle (ilk şifre = TC)
+        // ÃƒÂ…Ã‚Âifreyi hashle (ilk şifre = TC)
         const hashedPassword = await bcrypt.hash(ogrenci.tc_kimlik_no, 10);
         
-        // Veli hesabı oluştur
+        // Veli hesabÃƒÂ„Ã‚Â± oluştur
         await dbRun(`
           INSERT INTO users (username, email, password_hash, user_type, ad_soyad, telefon, password_changed)
           VALUES (?, ?, ?, 'veli', ?, ?, 0)
@@ -8227,7 +7107,7 @@ app.post('/kurum/toplu-veli-hesap-olustur', requireAuth, async (req, res) => {
         // Veli ID'sini al
         const veliUser = await dbGet('SELECT id FROM users WHERE username = ?', [ogrenci.tc_kimlik_no]);
         
-        // ogrenciler tablosuna ekle (veli-öğrenci ilişkisi)
+        // ogrenciler tablosuna ekle (veli-ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci iliÃƒÂ…Ã‚ÂŸkisi)
         await dbRun(`
           INSERT OR IGNORE INTO ogrenciler (veli_id, ad_soyad, sinif, telefon, tc_no)
           VALUES (?, ?, ?, ?, ?)
@@ -8242,15 +7122,15 @@ app.post('/kurum/toplu-veli-hesap-olustur', requireAuth, async (req, res) => {
         olusturulan++;
         
       } catch (error) {
-        console.error(`   ❌ Hata (${ogrenci.ogrenci_adi_soyadi}):`, error.message);
+        console.error(`   ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Hata (${ogrenci.ogrenci_adi_soyadi}):`, error.message);
         hatalar++;
       }
     }
     
-    console.log(`\n✅ TOPLU VELİ HESABI OLUŞTURMA TAMAMLANDI`);
-    console.log(`   ✅ Oluşturulan: ${olusturulan}`);
-    console.log(`   ⚠️  Mevcut olanlar: ${mevcutOlanlar}`);
-    console.log(`   ❌ Hatalar: ${hatalar}`);
+    console.log(`\nÃƒÂ¢Ã‚ÂœÃ‚Â… TOPLU VELÃƒÂ„Ã‚Â° HESABI OLUÃƒÂ…Ã‚ÂTURMA TAMAMLANDI`);
+    console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… OluÃƒÂ…Ã‚ÂŸturulan: ${olusturulan}`);
+    console.log(`   ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â  Mevcut olanlar: ${mevcutOlanlar}`);
+    console.log(`   ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Hatalar: ${hatalar}`);
     
     res.json({ 
       success: true, 
@@ -8261,12 +7141,12 @@ app.post('/kurum/toplu-veli-hesap-olustur', requireAuth, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ Toplu veli hesabı oluşturma hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Toplu veli hesabÃƒÂ„Ã‚Â± oluşturma hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// 🆕 YENİ SİSTEM: Sayfa Eşleştirme Kaydet
+// ÃƒÂ°Ã‚ÂŸÃ‚Â†Ã‚Â• YENÃƒÂ„Ã‚Â° SÃƒÂ„Ã‚Â°STEM: Sayfa EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme Kaydet
 app.post('/kurum/sinav-sayfa-eslestir', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).json({ success: false, error: 'Yetkiniz yok!' });
@@ -8275,12 +7155,12 @@ app.post('/kurum/sinav-sayfa-eslestir', requireAuth, async (req, res) => {
   try {
     const { sinav_id, sayfa_yolu, ogrenci_id, kaynak } = req.body;
     
-    console.log(`\n🔗 TEK SAYFA EŞLEŞTİRME`);
+    console.log(`\nÃƒÂ°Ã‚ÂŸÃ‚Â”Ã‚Â— TEK SAYFA EÃƒÂ…Ã‚ÂLEÃƒÂ…Ã‚ÂTÃƒÂ„Ã‚Â°RME`);
     console.log(`   Sınav ID: ${sinav_id}`);
     console.log(`   Öğrenci ID: ${ogrenci_id} (${kaynak})`);
     console.log(`   Sayfa Yolu: ${sayfa_yolu}`);
     
-    // sinav_katilimcilari tablosunu güncelle
+    // sinav_katilimcilari tablosunu gÃƒÂƒÃ‚Â¼ncelle
     const result = await new Promise((resolve, reject) => {
       db.run(`
         UPDATE sinav_katilimcilari 
@@ -8292,21 +7172,21 @@ app.post('/kurum/sinav-sayfa-eslestir', requireAuth, async (req, res) => {
       });
     });
     
-    console.log(`   ✅ Başarılı: ${result.changes} satır güncellendi`);
+    console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±: ${result.changes} satÃƒÂ„Ã‚Â±r güncellendi`);
     
     if (result.changes === 0) {
-      console.log(`   ⚠️  UYARI: Hiçbir satır güncellenmedi! WHERE koşulu tutmadı.`);
+      console.log(`   ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â  UYARI: HiÃƒÂƒÃ‚Â§bir satÃƒÂ„Ã‚Â±r gÃƒÂƒÃ‚Â¼ncellenmedi! WHERE koÃƒÂ…Ã‚ÂŸulu tutmadı.`);
     }
     
     res.json({ success: true, changes: result.changes });
     
   } catch (error) {
-    console.error('❌ Sayfa eşleştirme hatası:', error);
+    console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Sayfa eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// 🆕 YENİ SİSTEM: Yeni Sonuç Yükleme Sayfası
+// ÃƒÂ°Ã‚ÂŸÃ‚Â†Ã‚Â• YENÃƒÂ„Ã‚Â° SÃƒÂ„Ã‚Â°STEM: Yeni SonuÃƒÂƒÃ‚Â§ YÃƒÂƒÃ‚Â¼kleme SayfasÃƒÂ„Ã‚Â±
 app.get('/kurum/sinav-sonuc-yukle-yeni/:id', requireAuth, async (req, res) => {
   if (req.session.userType !== 'kurum_yonetici') {
     return res.status(403).send('Yetkiniz yok!');
@@ -8333,8 +7213,751 @@ app.get('/kurum/sinav-sonuc-yukle-yeni/:id', requireAuth, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Sonuç yükleme sayfası hatası:', error);
+    console.error('SonuÃƒÂƒÃ‚Â§ yÃƒÂƒÃ‚Â¼kleme sayfasÃƒÂ„Ã‚Â± hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).send('Bir hata oluştu!');
+  }
+});
+
+// Kurum - PDF Sayfalara Ayır (Yeni Sistem)
+app.post('/kurum/sinav-sonuc-yukle-sayfalara-ayir', requireAuth, uploadLimiter, pdfUpload.single('pdfFile'), async (req, res) => {
+  if (req.session.userType !== 'kurum_yonetici') {
+    return res.status(403).json({ success: false, error: 'Yetkiniz yok!' });
+  }
+  
+  try {
+    const { sinav_id } = req.body;
+    
+    if (!sinav_id) {
+      return res.status(400).json({ success: false, error: 'Sınav ID eksik!' });
+    }
+    
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'PDF dosyası yüklenmedi!' });
+    }
+    
+    console.log('📄 PDF sayfalara ayrılıyor:', req.file.originalname);
+    console.log('📋 Sınav ID:', sinav_id);
+    
+    // PDF'i yükle
+    const pdfBytes = fs.readFileSync(req.file.path);
+    const pdfDoc = await PDFDocument.load(pdfBytes);
+    const totalPages = pdfDoc.getPageCount();
+    
+    console.log(`📊 Toplam sayfa: ${totalPages}`);
+    
+    // Sonuç klasörünü oluştur
+    const sonucKlasoru = path.join('uploads', 'sinav-sonuclari', `sinav_${sinav_id}`);
+    if (!fs.existsSync(sonucKlasoru)) {
+      fs.mkdirSync(sonucKlasoru, { recursive: true });
+    }
+    
+    // ESKİ SAYFALARI TEMİZLE (yeni PDF yüklenirken)
+    // Sadece sayfa dosyalarını sil (ogrenci_ ile başlayanları ve orijinal dosyaları koru)
+    try {
+      const existingFiles = fs.readdirSync(sonucKlasoru);
+      const oldSayfaFiles = existingFiles.filter(f => 
+        f.includes('sayfa_') && f.endsWith('.pdf') && !f.startsWith('ogrenci_')
+      );
+      
+      if (oldSayfaFiles.length > 0) {
+        console.log(`🗑️  ${oldSayfaFiles.length} eski sayfa dosyası temizleniyor...`);
+        oldSayfaFiles.forEach(file => {
+          try {
+            fs.unlinkSync(path.join(sonucKlasoru, file));
+          } catch (err) {
+            console.warn(`   ⚠️  ${file} silinemedi:`, err.message);
+          }
+        });
+      }
+    } catch (cleanupError) {
+      console.warn('Eski dosya temizleme hatası (devam ediliyor):', cleanupError);
+    }
+    
+    // Her sayfayı ayrı PDF olarak kaydet
+    const sayfaYollari = [];
+    
+    for (let i = 0; i < totalPages; i++) {
+      const singlePagePdf = await PDFDocument.create();
+      const [copiedPage] = await singlePagePdf.copyPages(pdfDoc, [i]);
+      singlePagePdf.addPage(copiedPage);
+      const singlePageBytes = await singlePagePdf.save();
+      
+      // Dosya adı: sinav_ID_sayfa_NUMARA_timestamp.pdf
+      const sayfaFileName = `sinav_${sinav_id}_sayfa_${i + 1}_${Date.now()}.pdf`;
+      const sayfaYolu = path.join(sonucKlasoru, sayfaFileName);
+      
+      fs.writeFileSync(sayfaYolu, singlePageBytes);
+      sayfaYollari.push(sayfaYolu);
+      
+      console.log(`   ✓ Sayfa ${i + 1}/${totalPages} kaydedildi`);
+    }
+    
+    // Orijinal PDF'i de kaydet
+    const orijinalFileName = `sinav_${sinav_id}_orijinal_${Date.now()}.pdf`;
+    const orijinalYol = path.join(sonucKlasoru, orijinalFileName);
+    fs.copyFileSync(req.file.path, orijinalYol);
+    
+    // Veritabanına kaydet - sinavlar tablosuna orijinal PDF yolunu ekle
+    await dbRun(
+      'UPDATE sinavlar SET dosya_yolu = ?, sonuc_yuklendi = 1 WHERE id = ?',
+      [orijinalYol, sinav_id]
+    );
+    
+    // Geçici dosyayı sil
+    try {
+      fs.unlinkSync(req.file.path);
+    } catch (unlinkError) {
+      console.warn('Geçici dosya silinemedi:', unlinkError);
+    }
+    
+    console.log(`✅ PDF başarıyla ${totalPages} sayfaya ayrıldı!`);
+    
+    res.json({
+      success: true,
+      data: {
+        sayfaSayisi: totalPages,
+        sayfaYollari: sayfaYollari,
+        orijinalYol: orijinalYol,
+        // Akıllı eşleştirme (analiz/pattern seçimi) ekranına yönlendir
+        redirectTo: `/kurum/sinav-isim-pattern-secimi/${sinav_id}`
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ PDF ayırma hatası:', error);
+    
+    // Geçici dosyayı temizle
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (unlinkError) {
+        console.warn('Geçici dosya silinemedi:', unlinkError);
+      }
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'PDF sayfalara ayrılırken bir hata oluştu!' 
+    });
+  }
+});
+
+// Kurum - İsim Pattern Seçimi
+app.get('/kurum/sinav-isim-pattern-secimi/:id', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+  try {
+    const sinavId = req.params.id;
+    
+    const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinavId]);
+    if (!sinav) {
+      return res.status(404).send('Sınav bulunamadı!');
+    }
+    
+    // İlk PDF sayfasını bul (sayfalara ayrılmış PDF'lerden)
+    const sonucKlasoru = path.join('uploads', 'sinav-sonuclari', `sinav_${sinavId}`);
+    
+    if (!fs.existsSync(sonucKlasoru)) {
+      return res.status(404).send('PDF sayfaları bulunamadı! Lütfen önce PDF yükleyin.');
+    }
+    
+    // İlk sayfa PDF'ini bul
+    const files = fs.readdirSync(sonucKlasoru);
+    const ilkSayfa = files.find(f => f.includes('sayfa_1_') && f.endsWith('.pdf'));
+    
+    if (!ilkSayfa) {
+      return res.status(404).send('İlk PDF sayfası bulunamadı!');
+    }
+    
+    const ilkPdfPath = path.join(sonucKlasoru, ilkSayfa);
+    
+    // View için relative path (uploads/ ile başlayan kısmı al)
+    const ilkPdfPathRelative = ilkPdfPath.replace(/\\/g, '/').replace(/^.*?(uploads\/)/, '$1');
+    
+    // İsim adaylarını çıkar
+    const isimAdaylari = await extractNameCandidates(ilkPdfPath);
+    
+    res.render('kurum/sinav-isim-pattern-secimi', {
+      user: req.session,
+      sinavId: sinavId,
+      sinav: sinav,
+      ilkPdfPath: ilkPdfPathRelative,
+      isimAdaylari: isimAdaylari || []
+    });
+    
+  } catch (error) {
+    console.error('İsim pattern seçimi sayfası hatası:', error);
+    res.status(500).send('Bir hata oluştu: ' + error.message);
+  }
+});
+
+// Kurum - Otomatik Eşleştirme (Pattern Seçiminden Sonra)
+app.post('/kurum/sinav-otomatik-eslestir-pattern', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+  try {
+    const { sinav_id, pattern_index, selected_text } = req.body;
+    
+    if (!sinav_id || pattern_index === null || !selected_text) {
+      return res.status(400).json({ success: false, error: 'Eksik parametreler!' });
+    }
+    
+    console.log('\n🎯 Otomatik Eşleştirme Başlatılıyor...');
+    console.log('📋 Sınav ID:', sinav_id);
+    console.log('📝 Seçilen Pattern:', selected_text);
+    
+    // Sınav bilgilerini al
+    const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinav_id]);
+    if (!sinav) {
+      return res.status(400).json({ success: false, error: 'Sınav bulunamadı!' });
+    }
+    
+    // Katılımcıları al
+    const kurumKatilimcilari = await dbAll(`
+      SELECT sk.id, sk.ogrenci_id, sk.ogrenci_kaynak as kaynak,
+             ok.ogrenci_adi_soyadi as ad_soyad
+      FROM sinav_katilimcilari sk
+      INNER JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id AND sk.ogrenci_kaynak = 'kurum'
+      WHERE sk.sinav_id = ?
+    `, [sinav_id]);
+    
+    const veliKatilimcilari = await dbAll(`
+      SELECT sk.id, sk.ogrenci_id, sk.ogrenci_kaynak as kaynak,
+             o.ad_soyad
+      FROM sinav_katilimcilari sk
+      INNER JOIN ogrenciler o ON sk.ogrenci_id = o.id AND sk.ogrenci_kaynak = 'veli'
+      WHERE sk.sinav_id = ?
+    `, [sinav_id]);
+    
+    const katilimcilar = [
+      ...kurumKatilimcilari.map(k => ({ ...k, ogrenci_id: k.ogrenci_id })),
+      ...veliKatilimcilari.map(k => ({ ...k, ogrenci_id: k.ogrenci_id }))
+    ];
+    
+    // PDF sayfalarını bul
+    const sonucKlasoru = path.join('uploads', 'sinav-sonuclari', `sinav_${sinav_id}`);
+    if (!fs.existsSync(sonucKlasoru)) {
+      return res.status(400).json({ success: false, error: 'PDF sayfaları bulunamadı!' });
+    }
+    
+    const files = fs.readdirSync(sonucKlasoru)
+      .filter(f => f.includes('sayfa_') && f.endsWith('.pdf'))
+      .sort((a, b) => {
+        const numA = parseInt(a.match(/sayfa_(\d+)_/)?.[1] || '0');
+        const numB = parseInt(b.match(/sayfa_(\d+)_/)?.[1] || '0');
+        return numA - numB;
+      });
+    
+    console.log(`📄 ${files.length} sayfa bulundu`);
+    
+    let eslesen = 0;
+    let eslesmeyen = 0;
+    const eslesmeler = [];
+    
+    // Pattern bilgilerini al (isimAdaylari'dan pattern_index ile)
+    // İlk sayfadan pattern bilgisini al
+    const ilkSayfaYolu = path.join(sonucKlasoru, files[0]);
+    const ilkSayfaText = (await extractTextHybrid(ilkSayfaYolu)).text;
+    const ilkSayfaLines = ilkSayfaText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    
+    // Pattern'deki satır numarasını bul (selected_text'i içeren satır)
+    let patternLineNumber = -1;
+    for (let i = 0; i < ilkSayfaLines.length; i++) {
+      if (ilkSayfaLines[i].includes(selected_text) || selected_text.includes(ilkSayfaLines[i])) {
+        patternLineNumber = i;
+        break;
+      }
+    }
+    
+    // Eğer bulunamazsa, pattern_index'i kullan
+    if (patternLineNumber === -1 && pattern_index !== null) {
+      patternLineNumber = parseInt(pattern_index);
+    }
+    
+    console.log(`📍 Pattern satır numarası: ${patternLineNumber} (${patternLineNumber >= 0 ? ilkSayfaLines[patternLineNumber] : 'bulunamadı'})`);
+    
+    // Her sayfayı işle
+    for (let i = 0; i < files.length; i++) {
+      const sayfaDosyasi = files[i];
+      const sayfaYolu = path.join(sonucKlasoru, sayfaDosyasi);
+      const sayfaNo = i + 1;
+      
+      try {
+        // PDF'den text çıkar
+        const extractionResult = await extractTextHybrid(sayfaYolu);
+        const text = extractionResult.text;
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        
+        // Çoklu strateji ile isim çıkar
+        let extractedName = '';
+        let extractionMethod = '';
+        
+        // STRATEJİ 1: Pattern satır numarasından direkt al
+        if (patternLineNumber >= 0 && lines[patternLineNumber]) {
+          extractedName = lines[patternLineNumber].trim();
+          extractionMethod = 'pattern_line';
+        }
+        
+        // STRATEJİ 2: selected_text'i içeren satırı bul
+        if (!extractedName || extractedName.length < 5) {
+          for (const line of lines) {
+            const normalizedLine = line.toUpperCase().trim();
+            const normalizedSelected = selected_text.toUpperCase().trim();
+            
+            // Tam eşleşme veya kısmi eşleşme
+            if (normalizedLine.includes(normalizedSelected) || 
+                normalizedSelected.includes(normalizedLine) ||
+                normalizedLine.replace(/\s+/g, '') === normalizedSelected.replace(/\s+/g, '')) {
+              extractedName = line.trim();
+              extractionMethod = 'text_match';
+              break;
+            }
+          }
+        }
+        
+        // STRATEJİ 3: Pattern satırının yakınındaki satırları kontrol et (±2 satır)
+        if (!extractedName || extractedName.length < 5) {
+          if (patternLineNumber >= 0) {
+            for (let offset = -2; offset <= 2; offset++) {
+              const checkLine = patternLineNumber + offset;
+              if (checkLine >= 0 && checkLine < lines.length && lines[checkLine]) {
+                const candidate = lines[checkLine].trim();
+                // İsim gibi görünüyor mu? (2-4 kelime, büyük harf başlangıç)
+                if (candidate.length >= 8 && candidate.length <= 50) {
+                  const words = candidate.split(/\s+/);
+                  if (words.length >= 2 && words.length <= 4) {
+                    // İlk kelime büyük harfle başlıyor mu?
+                    if (/^[A-ZÇĞİÖŞÜ]/.test(words[0])) {
+                      extractedName = candidate;
+                      extractionMethod = `pattern_nearby_${offset}`;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+        // STRATEJİ 4: İlk 15 satırda isim benzeri pattern ara
+        if (!extractedName || extractedName.length < 5) {
+          for (let j = 0; j < Math.min(15, lines.length); j++) {
+            const candidate = lines[j].trim();
+            // İsim pattern'i: 2-4 kelime, her kelime büyük harfle başlıyor
+            const namePattern = /^([A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+){1,3})$/;
+            const upperPattern = /^([A-ZÇĞİÖŞÜ]{2,}(?:\s+[A-ZÇĞİÖŞÜ]{2,}){1,3})$/;
+            
+            if ((namePattern.test(candidate) || upperPattern.test(candidate)) && 
+                candidate.length >= 8 && candidate.length <= 50) {
+              // Gereksiz kelimeleri kontrol et
+              const lower = candidate.toLowerCase();
+              if (!lower.includes('öğrenci') && !lower.includes('numara') && 
+                  !lower.includes('sınıf') && !lower.includes('sonuç')) {
+                extractedName = candidate;
+                extractionMethod = `early_line_${j}`;
+                break;
+              }
+            }
+          }
+        }
+        
+        // Hala bulunamazsa, selected_text'i direkt kullan
+        if (!extractedName || extractedName.length < 5) {
+          extractedName = selected_text;
+          extractionMethod = 'fallback';
+        }
+        
+        if (!extractedName || extractedName.length < 5) {
+          console.log(`   ⚠️ Sayfa ${sayfaNo}: İsim çıkarılamadı`);
+          eslesmeyen++;
+          continue;
+        }
+        
+        // İsmi temizle
+        const cleanName = cleanExtractedName(extractedName);
+        
+        if (!cleanName || cleanName.length < 5) {
+          console.log(`   ⚠️ Sayfa ${sayfaNo}: Temizlenmiş isim çok kısa: "${cleanName}"`);
+          eslesmeyen++;
+          continue;
+        }
+        
+        // En iyi eşleşmeyi bul (threshold'u düşürdük)
+        const match = findBestMatch(cleanName, katilimcilar);
+        
+        // Threshold'u 0.60'a düşürdük (daha fazla eşleşme için)
+        if (match && match.similarity >= 0.60) {
+          // Eşleşme bulundu - kaydet
+          const finalPath = path.join(sonucKlasoru, `ogrenci_${match.ogrenci.ogrenci_id}_sayfa_${sayfaNo}.pdf`);
+          fs.copyFileSync(sayfaYolu, finalPath);
+          
+          await dbRun(`
+            UPDATE sinav_katilimcilari 
+            SET pdf_path = ?, sonuc_durumu = 'yuklendi'
+            WHERE sinav_id = ? AND ogrenci_id = ? AND ogrenci_kaynak = ?
+          `, [finalPath, sinav_id, match.ogrenci.ogrenci_id, match.ogrenci.kaynak]);
+          
+          eslesen++;
+          eslesmeler.push({
+            sayfa: sayfaNo,
+            ogrenci: match.ogrenci.ad_soyad,
+            extracted: cleanName,
+            original: extractedName,
+            method: extractionMethod,
+            confidence: match.similarity
+          });
+          console.log(`   ✅ Sayfa ${sayfaNo}: "${cleanName}" → "${match.ogrenci.ad_soyad}" (${(match.similarity * 100).toFixed(0)}%, ${extractionMethod})`);
+        } else {
+          console.log(`   ❌ Sayfa ${sayfaNo}: "${cleanName}" eşleşmedi (en iyi: ${match ? (match.similarity * 100).toFixed(0) + '%' : 'yok'})`);
+          eslesmeyen++;
+        }
+        
+      } catch (error) {
+        console.error(`Sayfa ${sayfaNo} işlenirken hata:`, error);
+        eslesmeyen++;
+      }
+    }
+    
+    // Sınav durumunu güncelle
+    await dbRun('UPDATE sinavlar SET sonuc_yuklendi = 1 WHERE id = ?', [sinav_id]);
+    
+    console.log(`✅ Eşleştirme tamamlandı: ${eslesen} başarılı, ${eslesmeyen} başarısız`);
+    
+    res.json({
+      success: true,
+      data: {
+        eslesen,
+        eslesmeyen,
+        toplam: files.length,
+        eslesmeler: eslesmeler.slice(0, 10) // İlk 10'unu göster
+      }
+    });
+    
+  } catch (error) {
+    console.error('Otomatik eşleştirme hatası:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Otomatik eşleştirme sırasında bir hata oluştu!' 
+    });
+  }
+});
+
+// İsim adaylarını çıkaran fonksiyon (autoMatcher.js'den uyarlanmış)
+async function extractNameCandidates(pdfPath) {
+  try {
+    console.log(`\n🔍 İsim adayları çıkarılıyor: ${path.basename(pdfPath)}`);
+    
+    const dataBuffer = fs.readFileSync(pdfPath);
+    const pdfData = await pdfParse(dataBuffer);
+    const text = pdfData.text;
+    
+    const candidates = [];
+    const seen = new Set();
+    const lines = text.split('\n');
+    
+    // Tüm satırlarda isim ara
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      const line = lines[lineIndex];
+      
+      // Pattern 1: Başı büyük harfli isimler (Ahmet Mehmet Yılmaz)
+      const matches1 = line.match(/\b([A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+){1,2})\b/g);
+      if (matches1) {
+        matches1.forEach(match => {
+          const normalized = match.trim().toLowerCase();
+          if (match.length >= 8 && !seen.has(normalized)) {
+            const lower = match.toLowerCase();
+            if (!lower.includes('öğrenci') && !lower.includes('sınav') && !lower.includes('sonuç') && !lower.includes('numara')) {
+              seen.add(normalized);
+              candidates.push({
+                text: match.trim(),
+                pattern: 'Başı Büyük Harf',
+                lineNumber: lineIndex + 1,
+                confidence: 80
+              });
+            }
+          }
+        });
+      }
+      
+      // Pattern 2: Tam büyük harfli isimler (ALİ VELİ ÇELİK)
+      const matches2 = line.match(/\b([A-ZÇĞİÖŞÜ]{2,}(?:\s+[A-ZÇĞİÖŞÜ]{2,}){1,2})\b/g);
+      if (matches2) {
+        matches2.forEach(match => {
+          const normalized = match.trim().toLowerCase();
+          if (match.length >= 8 && !seen.has(normalized)) {
+            const lower = match.toLowerCase();
+            if (!lower.includes('sonuç') && !lower.includes('sınav') && !lower.includes('belge') && !lower.includes('deneme')) {
+              seen.add(normalized);
+              candidates.push({
+                text: match.trim(),
+                pattern: 'Tam Büyük Harf',
+                lineNumber: lineIndex + 1,
+                confidence: 90
+              });
+            }
+          }
+        });
+      }
+    }
+    
+    // Güvene göre sırala ve ilk 10'u al
+    candidates.sort((a, b) => b.confidence - a.confidence);
+    const topCandidates = candidates.slice(0, 10);
+    
+    console.log(`   ✅ ${topCandidates.length} adet isim adayı bulundu`);
+    
+    return topCandidates;
+    
+  } catch (error) {
+    console.error('❌ İsim adayları çıkarma hatası:', error);
+    return [];
+  }
+}
+
+// Kurum - Sınav listesi (koleksiyon sayfasÃƒÂ½)
+app.get('/kurum/sinavlar', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+  try {
+    const sinavlar = await dbAll('SELECT * FROM sinavlar ORDER BY created_at DESC');
+    
+    res.render('kurum/sinavlar', {
+      user: { username: req.session.username, type: req.session.userType },
+      sinavlar: sinavlar,
+      error: req.session.error,
+      success: req.session.success
+    });
+    req.session.error = null;
+    req.session.success = null;
+  } catch (error) {
+    console.error('Sınav listesi hatasÃƒÂ½:', error);
+    req.session.error = 'Sınav listesi yÃƒÂ¼klenirken bir hata oluştu!';
+    res.redirect('/kurum/dashboard');
+  }
+});
+
+// Kurum - Sınav detay
+app.get('/kurum/sinav-detay/:id', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+  try {
+    const sinavId = req.params.id;
+    const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinavId]);
+    if (!sinav) {
+      req.session.error = 'Sınav bulunamadı!';
+      return res.redirect('/kurum/sinavlar');
+    }
+    
+    // KatÃƒÂ½lÃƒÂ½mcÃƒÂ½lar (kurum ve veli)
+    const kurumKatilimcilari = await dbAll(`
+      SELECT sk.id, sk.ogrenci_id, sk.ogrenci_kaynak as kaynak, sk.pdf_path, sk.sonuc_durumu, sk.pdf_goruldu, sk.pdf_gorunme_tarihi, sk.pdf_indirilme_sayisi,
+             ok.ogrenci_adi_soyadi as ad_soyad, ok.sinif, ok.telefon, ok.veli_adi
+      FROM sinav_katilimcilari sk
+      INNER JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id AND sk.ogrenci_kaynak = 'kurum'
+      WHERE sk.sinav_id = ?
+    `, [sinavId]);
+    
+    const veliKatilimcilari = await dbAll(`
+      SELECT sk.id, sk.ogrenci_id, sk.ogrenci_kaynak as kaynak, sk.pdf_path, sk.sonuc_durumu, sk.pdf_goruldu, sk.pdf_gorunme_tarihi, sk.pdf_indirilme_sayisi,
+             o.ad_soyad, o.sinif, o.telefon, NULL as veli_adi
+      FROM sinav_katilimcilari sk
+      INNER JOIN ogrenciler o ON sk.ogrenci_id = o.id AND sk.ogrenci_kaynak = 'veli'
+      WHERE sk.sinav_id = ?
+    `, [sinavId]);
+    
+    const katilimcilar = [...kurumKatilimcilari, ...veliKatilimcilari];
+    
+    // SÃƒÂ½nÃƒÂ½f listesi (ÃƒÂ¶ÃƒÂ°renci ekleme filtresi)
+    const siniflar = ['1','2','3','4','5','6','7','8','9','10','11','12','Mezun'];
+    
+    // ÃƒÂ–ÃƒÂ°renci havuzu (kurum + veli) seÃƒÂ§im listesi iÃƒÂ§in
+    // Zaten eklenmiş öğrencileri filtrele
+    const mevcutKatilimciKeys = new Set(
+      katilimcilar.map(k => `${k.kaynak}_${k.ogrenci_id}`)
+    );
+    
+    const kurumOgrencileri = await dbAll(`SELECT id, ogrenci_adi_soyadi as ad_soyad, sinif FROM ogrenci_kayitlari ORDER BY ad_soyad ASC`);
+    const veliOgrencileri = await dbAll(`SELECT id, ad_soyad, sinif FROM ogrenciler ORDER BY ad_soyad ASC`);
+    
+    // Duplicate kontrolü için: aynı isim ve sınıfa sahip öğrencileri birleştir
+    const ogrenciMap = new Map();
+    
+    // Önce kurum öğrencilerini ekle
+    kurumOgrencileri
+      .filter(o => !mevcutKatilimciKeys.has(`kurum_${o.id}`))
+      .forEach(o => {
+        const key = `${(o.ad_soyad || '').toLowerCase().trim()}_${(o.sinif || '').trim()}`;
+        if (!ogrenciMap.has(key)) {
+          ogrenciMap.set(key, { unique_id: `kurum_${o.id}`, ad_soyad: o.ad_soyad, sinif: o.sinif || '', kaynak: 'kurum' });
+        }
+      });
+    
+    // Sonra veli öğrencilerini ekle (eğer aynı isim ve sınıf yoksa)
+    veliOgrencileri
+      .filter(o => !mevcutKatilimciKeys.has(`veli_${o.id}`))
+      .forEach(o => {
+        const key = `${(o.ad_soyad || '').toLowerCase().trim()}_${(o.sinif || '').trim()}`;
+        if (!ogrenciMap.has(key)) {
+          ogrenciMap.set(key, { unique_id: `veli_${o.id}`, ad_soyad: o.ad_soyad, sinif: o.sinif || '', kaynak: 'veli' });
+        }
+      });
+    
+    const tumOgrenciler = Array.from(ogrenciMap.values()).sort((a, b) => 
+      (a.ad_soyad || '').localeCompare(b.ad_soyad || '')
+    );
+    
+    // İstatistikleri hesapla
+    const toplam = katilimcilar.length;
+    const eslesmis = katilimcilar.filter(k => k.pdf_path && k.sonuc_durumu !== 'beklemede').length;
+    const eslesmemis = toplam - eslesmis;
+    const oran = toplam > 0 ? Math.round((eslesmis / toplam) * 100) : 0;
+    
+    const istatistikler = {
+      toplam,
+      eslesmis,
+      eslesmemis,
+      oran
+    };
+    
+    res.render('kurum/sinav-detay', {
+      user: { username: req.session.username, type: req.session.userType },
+      sinav,
+      katilimcilar,
+      siniflar,
+      tumOgrenciler,
+      istatistikler,
+      error: req.session.error,
+      success: req.session.success
+    });
+    req.session.error = null;
+    req.session.success = null;
+  } catch (error) {
+    console.error('Sınav detay hatasÃƒÂ½:', error);
+    req.session.error = 'Sınav detaylarÃƒÂ½ yÃƒÂ¼klenirken bir hata oluştu!';
+    res.redirect('/kurum/sinavlar');
+  }
+});
+
+// Kurum - Sınav ekle
+app.post('/kurum/sinav-ekle', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+  try {
+    const { ad, tarih, sinif, aciklama } = req.body;
+    if (!ad || !tarih) {
+      req.session.error = 'Sınav adÃƒÂ½ ve tarih zorunludur!';
+      return res.redirect('/kurum/sinavlar');
+    }
+    
+    await dbRun(
+      `INSERT INTO sinavlar (ad, tarih, sinif, aciklama, durum, katilimci_sayisi, sonuc_yuklendi, sonuclar_aciklandi) 
+       VALUES (?, ?, ?, ?, 'taslak', 0, 0, 0)`,
+      [ad.trim(), tarih, sinif || null, aciklama || null]
+    );
+    
+    req.session.success = 'Sınav eklendi!';
+    res.redirect('/kurum/sinavlar');
+  } catch (error) {
+    console.error('Sınav ekleme hatası:', error);
+    req.session.error = 'Sınav eklenirken bir hata oluştu!';
+    res.redirect('/kurum/sinavlar');
+  }
+});
+
+// Kurum - Sınav katÃƒÂ½lÃƒÂ½mcÃƒÂ½sÃƒÂ½ ekle (ÃƒÂ§oklu)
+app.post('/kurum/sinav-katilimci-ekle', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+  try {
+    const { sinav_id, ogrenci_ids } = req.body;
+    if (!sinav_id || !Array.isArray(ogrenci_ids) || ogrenci_ids.length === 0) {
+      return res.status(400).json({ success: false, error: 'Sinav veya ogrenci bilgisi eksik!' });
+    }
+    // Mevcut katilimcilari onbellege al (cift kaydi engelle)
+    const mevcut = await dbAll("SELECT ogrenci_id, ogrenci_kaynak FROM sinav_katilimcilari WHERE sinav_id = ?", [sinav_id]);
+    const mevcutSet = new Set(mevcut.map(m => `${m.ogrenci_kaynak}_${m.ogrenci_id}`));
+    
+    // Duplicate kontrolü: aynı öğrenci birden fazla kez seçilmişse sadece birini al
+    const uniqueOgrenciIds = [...new Set(ogrenci_ids)];
+    
+    let added = 0;
+    let skipped = 0;
+    for (const raw of uniqueOgrenciIds) {
+      if (!raw || typeof raw !== 'string' || !raw.includes('_')) continue;
+      const [kaynak, idStr] = raw.split('_');
+      const ogrenciId = parseInt(idStr, 10);
+      if (!ogrenciId || (kaynak !== 'kurum' && kaynak !== 'veli')) continue;
+      const key = `${kaynak}_${ogrenciId}`;
+      if (mevcutSet.has(key)) { skipped++; continue; }
+      await dbRun("INSERT INTO sinav_katilimcilari (sinav_id, ogrenci_id, ogrenci_kaynak, sonuc_durumu) VALUES (?, ?, ?, ?)", [sinav_id, ogrenciId, kaynak, 'beklemede']);
+      mevcutSet.add(key);
+      added++;
+    }
+    
+    // Mevcut duplicate kayıtları temizle (aynı sinav_id, ogrenci_id, ogrenci_kaynak kombinasyonundan sadece birini tut)
+    try {
+      // Önce tüm kayıtları al
+      const allRecords = await dbAll(`
+        SELECT rowid, sinav_id, ogrenci_id, ogrenci_kaynak 
+        FROM sinav_katilimcilari 
+        WHERE sinav_id = ?
+        ORDER BY rowid
+      `, [sinav_id]);
+      
+      // Her kombinasyon için ilk kaydı tut, diğerlerini sil
+      const seen = new Set();
+      const toDelete = [];
+      
+      for (const record of allRecords) {
+        const key = `${record.sinav_id}_${record.ogrenci_id}_${record.ogrenci_kaynak}`;
+        if (seen.has(key)) {
+          toDelete.push(record.rowid);
+        } else {
+          seen.add(key);
+        }
+      }
+      
+      // Duplicate kayıtları sil
+      if (toDelete.length > 0) {
+        const placeholders = toDelete.map(() => '?').join(',');
+        await dbRun(`DELETE FROM sinav_katilimcilari WHERE rowid IN (${placeholders})`, toDelete);
+      }
+    } catch (cleanupError) {
+      console.error('Duplicate temizleme hatası (devam ediliyor):', cleanupError);
+      // Hata olsa bile devam et
+    }
+    
+    await dbRun("UPDATE sinavlar SET katilimci_sayisi = (SELECT COUNT(*) FROM sinav_katilimcilari WHERE sinav_id = ?) WHERE id = ?", [sinav_id, sinav_id]);
+    
+    const message = added > 0 
+      ? `${added} öğrenci başarıyla eklendi.${skipped > 0 ? ` ${skipped} öğrenci zaten ekliydi.` : ''}`
+      : skipped > 0 
+        ? `${skipped} öğrenci zaten ekliydi.`
+        : 'Hiçbir öğrenci eklenemedi.';
+    
+    res.json({ success: true, added, skipped, message });
+  } catch (error) {
+    console.error('Sınav katÃƒÂ½lÃƒÂ½mcÃƒÂ½ ekleme hatasÃƒÂ½:', error);
+    res.status(500).json({ success: false, error: 'KatÃƒÂ½lÃƒÂ½mcÃƒÂ½ eklenemedi!', message: error.message });
+  }
+});
+
+// Kurum - Sınav katÃƒÂ½lÃƒÂ½mcÃƒÂ½ sil
+app.post('/kurum/sinav-katilimci-sil/:id', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+  try {
+    const katilimciId = req.params.id;
+    const kayit = await dbGet('SELECT sinav_id FROM sinav_katilimcilari WHERE id = ?', [katilimciId]);
+    await dbRun('DELETE FROM sinav_katilimcilari WHERE id = ?', [katilimciId]);
+    if (kayit && kayit.sinav_id) {
+      await dbRun(
+        'UPDATE sinavlar SET katilimci_sayisi = (SELECT COUNT(*) FROM sinav_katilimcilari WHERE sinav_id = ?) WHERE id = ?',
+        [kayit.sinav_id, kayit.sinav_id]
+      );
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Sınav katÃƒÂ½lÃƒÂ½mcÃƒÂ½ silme hatasÃƒÂ½:', error);
+    res.status(500).json({ success: false, error: 'KatÃƒÂ½lÃƒÂ½mcÃƒÂ½ silinemedi!' });
+  }
+});
+
+// Kurum - Sınav sil
+app.post('/kurum/sinav-sil/:id', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+  try {
+    const sinavId = req.params.id;
+    await dbRun('DELETE FROM sinavlar WHERE id = ?', [sinavId]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Sınav silme hatasÃƒÂ½:', error);
+    res.status(500).json({ success: false, error: 'Sınav silinemedi!' });
   }
 });
 
@@ -8356,13 +7979,13 @@ app.get('/kurum/kurumsal-sayfalar', requireAuth, requireRole('kurum_yonetici'), 
     req.session.success = null;
     req.session.error = null;
   } catch (error) {
-    console.error('Kurumsal sayfalar listesi hatası:', error);
+    console.error('Kurumsal sayfalar listesi hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Sayfa yüklenirken bir hata oluştu!';
     res.redirect('/kurum/dashboard');
   }
 });
 
-// Kurumsal Sayfa Düzenle (GET)
+// Kurumsal Sayfa DÃƒÂƒÃ‚Â¼zenle (GET)
 app.get('/kurum/kurumsal-sayfa-duzenle/:id', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
   try {
     const sayfa = await dbGet('SELECT * FROM kurumsal_sayfalar WHERE id = ?', [req.params.id]);
@@ -8377,13 +8000,13 @@ app.get('/kurum/kurumsal-sayfa-duzenle/:id', requireAuth, requireRole('kurum_yon
       sayfa: sayfa
     });
   } catch (error) {
-    console.error('Sayfa düzenle hatası:', error);
+    console.error('Sayfa dÃƒÂƒÃ‚Â¼zenle hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Sayfa yüklenirken bir hata oluştu!';
     res.redirect('/kurum/kurumsal-sayfalar');
   }
 });
 
-// Site Ayarları Sayfası (GET)
+// Site Ayarları SayfasÃƒÂ„Ã‚Â± (GET)
 app.get('/kurum/site-ayarlari', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
   try {
     const ayarlar = await dbAll('SELECT * FROM site_ayarlari ORDER BY anahtar ASC');
@@ -8402,13 +8025,13 @@ app.get('/kurum/site-ayarlari', requireAuth, requireRole('kurum_yonetici'), asyn
     req.session.success = null;
     req.session.error = null;
   } catch (error) {
-    console.error('Site ayarları sayfa hatası:', error);
+    console.error('Site ayarları sayfa hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Sayfa yüklenirken bir hata oluştu!';
     res.redirect('/kurum/dashboard');
   }
 });
 
-// Site Ayarları Güncelle (POST)
+// Site Ayarları GÃƒÂƒÃ‚Â¼ncelle (POST)
 app.post('/kurum/site-ayarlari', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
   try {
     const { site_adi, site_adres, site_telefon, site_email, site_aciklama } = req.body;
@@ -8419,32 +8042,49 @@ app.post('/kurum/site-ayarlari', requireAuth, requireRole('kurum_yonetici'), asy
     await dbRun('INSERT OR REPLACE INTO site_ayarlari (anahtar, deger, updated_at) VALUES (?, ?, datetime("now"))', ['site_email', site_email]);
     await dbRun('INSERT OR REPLACE INTO site_ayarlari (anahtar, deger, updated_at) VALUES (?, ?, datetime("now"))', ['site_aciklama', site_aciklama]);
     
-    console.log('✅ Site ayarları güncellendi');
+    console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… Site ayarları güncellendi');
     req.session.success = 'Site ayarları başarıyla güncellendi!';
     res.redirect('/kurum/site-ayarlari');
   } catch (error) {
-    console.error('Site ayarları güncelleme hatası:', error);
+    console.error('Site ayarları gÃƒÂƒÃ‚Â¼ncelleme hatasÃƒÂ„Ã‚Â±:', error);
     req.session.error = 'Ayarlar güncellenirken bir hata oluştu!';
     res.redirect('/kurum/site-ayarlari');
   }
 });
 
-// Sunucuyu başlat
+// Sunucuyu baÃƒÂ…Ã‚ÂŸlat
 app.listen(PORT, () => {
-  console.log(`🚀 Sunucu çalışıyor: http://localhost:${PORT}`);
-  console.log(`📁 Veritabanı: sinav_merkezi.db`);
+  console.log(`ÃƒÂ°Ã‚ÂŸÃ‚ÂšÃ‚Â€ Sunucu ÃƒÂƒÃ‚Â§alÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸÃƒÂ„Ã‚Â±yor: http://localhost:${PORT}`);
+  console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â VeritabanÃƒÂ„Ã‚Â±: sinav_merkezi.db`);
 });
 
 // Graceful shutdown
-// Rehber - Manuel Eşleştirme KALDIRILDI (Sadece kurum yapabilir)
+// Rehber - Manuel EÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme KALDIRILDI (Sadece kurum yapabilir)
 
 process.on('SIGINT', () => {
   db.close((err) => {
     if (err) {
-      console.error('Veritabanı kapatma hatası:', err);
+      console.error('VeritabanÃƒÂ„Ã‚Â± kapatma hatasÃƒÂ„Ã‚Â±:', err);
     } else {
-      console.log('✅ Veritabanı bağlantısı kapatıldı');
+      console.log('Database connected:', DB_PATH);
     }
     process.exit(0);
   });
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

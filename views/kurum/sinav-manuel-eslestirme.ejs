@@ -293,7 +293,8 @@ function loadPage() {
     }
     
     const page = PAGES[currentPageIndex];
-    const pdfUrl = `/${page.replace(/\\/g, '/')}`;
+    // Path zaten relative (uploads/ ile başlıyor), sadece / ekle
+    const pdfUrl = page.startsWith('/') ? page : `/${page.replace(/\\/g, '/')}`;
     
     document.getElementById('pdfFrame').src = pdfUrl;
     document.getElementById('currentPageNum').textContent = currentPageIndex + 1;

@@ -679,6 +679,11 @@ async function ogrenciEkle() {
             })
         });
         
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Sunucu hatası' }));
+            throw new Error(errorData.error || errorData.message || 'Sunucu hatası');
+        }
+        
         const data = await response.json();
         
         if (data.success) {
@@ -686,18 +691,20 @@ async function ogrenciEkle() {
             bootstrap.Modal.getInstance(document.getElementById('ogrenciEkleModal')).hide();
             
             // Başarı mesajı göster
-            document.getElementById('successMessage').innerHTML = data.message.replace(/\n/g, '<br>');
-            new bootstrap.Modal(document.getElementById('successModal')).show();
+            if (data.message) {
+                document.getElementById('successMessage').innerHTML = data.message.replace(/\n/g, '<br>');
+                new bootstrap.Modal(document.getElementById('successModal')).show();
+            }
             
             // Sayfayı yenile
             setTimeout(() => location.reload(), 1500);
         } else {
             // Uyarı mesajını daha belirgin göster
-            alert('❌ ' + data.message);
+            alert('❌ ' + (data.error || data.message || 'Bir hata oluştu!'));
         }
     } catch (error) {
         console.error('Hata:', error);
-        alert('❌ Bir hata oluştu!');
+        alert('❌ Bir hata oluştu: ' + (error.message || 'Bilinmeyen hata'));
     }
 }
 
@@ -1493,6 +1500,5 @@ async function tekOgrenciEslestir(index, ogrenciId, kaynak, ogrenciAd) {
 </script>
 
 <%- include('../partials/footer') %>
-
 
 

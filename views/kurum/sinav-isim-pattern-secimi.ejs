@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İsim Pattern Seçimi - Otomatik Eşleştirme</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .main-card {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .content {
+            display: flex;
+            height: calc(100vh - 200px);
+        }
+        .pdf-preview {
+            flex: 1;
+            background: #f5f5f5;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: auto;
+        }
+        .pdf-preview iframe {
+            width: 100%;
+            max-width: 600px;
+            height: 800px;
+            border: 3px solid #667eea;
+            border-radius: 8px;
+            background: white;
+        }
+        .name-candidates {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+        .candidate-card {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .candidate-card:hover {
+            background: #e3f2fd;
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .candidate-card.selected {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+            transform: scale(1.02);
+        }
+        .candidate-text {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .candidate-info {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        .selected .candidate-info {
+            opacity: 1;
+        }
+        .action-buttons {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-top: 2px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+        .spinner-border {
+            width: 60px;
+            height: 60px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-card">
+    <div class="header">
+        <h2><i class="bi bi-magic"></i> Akıllı Otomatik Eşleştirme</h2>
+        <p class="mb-0">İlk PDF'deki öğrenci ismini seçin, gerisini ben hallederim!</p>
+    </div>
+
+    <div id="mainContent">
+        <div class="content">
+            <!-- Sol Panel: PDF Ön İzleme -->
+            <div class="pdf-preview">
+                <h5 class="mb-3"><i class="bi bi-file-pdf-fill text-danger"></i> İlk PDF Ön İzleme</h5>
+                <iframe src="/<%= ilkPdfPath.replace(/\\/g, '/') %>" id="pdfFrame"></iframe>
+            </div>
+
+            <!-- Sağ Panel: İsim Adayları -->
+            <div class="name-candidates">
+                <h4 class="mb-4"><i class="bi bi-list-check"></i> PDF'deki İsim Adayları</h4>
+                <p class="text-muted mb-4">
+                    Aşağıdaki seçeneklerden <strong>öğrenci adı ve soyadı</strong> hangisi? Tıklayarak seçin:
+                </p>
+
+                <div id="candidatesList">
+                    <% if (isimAdaylari && isimAdaylari.length > 0) { %>
+                        <% isimAdaylari.forEach((aday, index) => { %>
+                            <div class="candidate-card" data-index="<%= index %>" onclick="selectCandidate(<%= index %>, '<%= aday.text %>')">
+                                <div class="candidate-text">
+                                    <%= aday.text %>
+                                </div>
+                                <div class="candidate-info">
+                                    <i class="bi bi-info-circle"></i> 
+                                    Pattern: <%= aday.pattern %> | 
+                                    Satır: <%= aday.lineNumber %> |
+                                    Güven: %<%= aday.confidence %>
+                                </div>
+                            </div>
+                        <% }); %>
+                    <% } else { %>
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            PDF'den isim adayı çıkarılamadı. Lütfen PDF'i kontrol edin veya manuel eşleştirme yapın.
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <a href="/kurum/sinav-manuel-eslestirme/<%= sinavId %>" class="btn btn-secondary btn-lg">
+                <i class="bi bi-arrow-left"></i> Manuel Eşleştirmeye Geç
+            </a>
+            
+            <button id="startAutoMatchBtn" class="btn btn-primary btn-lg" disabled onclick="startAutoMatch()">
+                <i class="bi bi-lightning-charge-fill"></i> Otomatik Eşleştirmeyi Başlat
+            </button>
+        </div>
+    </div>
+
+    <div id="loadingDiv" class="loading">
+        <div class="spinner-border text-primary" role="status"></div>
+        <h4 class="mt-4">Otomatik Eşleştirme Yapılıyor...</h4>
+        <p class="text-muted" id="progressText">PDF'ler işleniyor...</p>
+        <div class="progress mt-3" style="max-width: 500px; margin: 0 auto;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" id="progressBar" 
+                 role="progressbar" style="width: 0%">0%</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SINAV_ID = <%= sinavId %>;
+    let selectedPattern = null;
+    let selectedText = null;
+
+    function selectCandidate(index, text) {
+        // Önceki seçimi kaldır
+        document.querySelectorAll('.candidate-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+
+        // Yeni seçimi işaretle
+        const card = document.querySelector(`[data-index="${index}"]`);
+        card.classList.add('selected');
+
+        selectedPattern = index;
+        selectedText = text;
+
+        // Butonu aktif et
+        document.getElementById('startAutoMatchBtn').disabled = false;
+    }
+
+    async function startAutoMatch() {
+        if (selectedPattern === null) {
+            alert('❌ Lütfen bir isim pattern\'i seçin!');
+            return;
+        }
+
+        // UI Değiştir
+        document.getElementById('mainContent').style.display = 'none';
+        document.getElementById('loadingDiv').style.display = 'block';
+
+        try {
+            const response = await fetch('/kurum/sinav-otomatik-eslestir-pattern', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sinav_id: SINAV_ID,
+                    pattern_index: selectedPattern,
+                    selected_text: selectedText
+                })
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                alert('❌ Hata: ' + data.error);
+                location.reload();
+                return;
+            }
+
+            // Sonuçları göster
+            const result = data.data;
+            let message = `🎯 Otomatik Eşleştirme Tamamlandı!\n\n`;
+            message += `✅ Başarılı: ${result.eslesen} öğrenci\n`;
+            message += `❌ Başarısız: ${result.eslesmeyen} sayfa\n\n`;
+
+            if (result.eslesmeyen > 0) {
+                message += `Manuel eşleştirme sayfasına yönlendiriliyorsunuz...`;
+            } else {
+                message += `Tüm öğrenciler eşleştirildi! 🎉\nSınav detay sayfasına yönlendiriliyorsunuz...`;
+            }
+
+            alert(message);
+
+            // Yönlendir
+            if (result.eslesmeyen > 0) {
+                // Sadece eşleşmeyen sayfaları göster
+                window.location.href = `/kurum/sinav-manuel-eslestirme/${SINAV_ID}?sadece_eslesmemis=1`;
+            } else {
+                window.location.href = `/kurum/sinav-detay/${SINAV_ID}`;
+            }
+
+        } catch (error) {
+            console.error('Hata:', error);
+            alert('❌ Bir hata oluştu: ' + error.message);
+            location.reload();
+        }
+    }
+
+    // İlerleme simülasyonu (gerçek backend'den progress alınabilir)
+    function simulateProgress() {
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += Math.random() * 15;
+            if (progress > 90) progress = 90;
+            
+            document.getElementById('progressBar').style.width = progress + '%';
+            document.getElementById('progressBar').textContent = Math.round(progress) + '%';
+        }, 500);
+
+        // Cleanup when page changes
+        window.addEventListener('beforeunload', () => clearInterval(interval));
+    }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
