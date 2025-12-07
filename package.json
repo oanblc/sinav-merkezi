@@ -17,17 +17,21 @@
   "dependencies": {
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.2",
+    "canvas": "^3.2.0",
     "csv-parser": "^3.0.0",
+    "dotenv": "^16.4.5",
     "ejs": "^3.1.9",
     "exceljs": "^4.4.0",
     "express": "^4.18.2",
     "express-rate-limit": "^8.2.1",
     "express-session": "^1.17.3",
+    "fuzzyset.js": "^1.0.7",
     "multer": "^1.4.5-lts.1",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^1.1.4",
     "pdfjs-dist": "^5.4.394",
     "sqlite3": "^5.1.7",
+    "tesseract.js": "^6.0.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

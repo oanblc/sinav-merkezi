@@ -286,15 +286,22 @@
 <script>
 const SINAV_ID = <%= sinav.id || 0 %>;
 const KATILIMCILAR = <%- JSON.stringify(katilimcilar || []) %>;
+const EXISTING_PDF = "<%- sinav.dosya_yolu ? sinav.dosya_yolu.replace(/\\/g, '/') : '' %>";
 let analysisData = null;
 let selectedName = null;
 let selectedLineNumber = null;
 
 // DOM hazır olunca başlat
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM hazir, event listenerlar ekleniyor...');
-    
-    initUploadForm();
+  console.log('DOM hazir, event listenerlar ekleniyor...');
+  
+  initUploadForm();
+  
+  // Eğer sınav için önceden yüklenmiş PDF varsa, doğrudan analizi başlat
+  if (EXISTING_PDF) {
+    console.log('Önceden yüklenmiş PDF bulundu, otomatik analiz başlıyor:', EXISTING_PDF);
+    autoAnalyzeExisting();
+  }
 });
 
 function initUploadForm() {
@@ -341,7 +348,7 @@ dropzone.addEventListener('drop', (e) => {
         return;
     }
     
-    uploadForm.addEventListener('submit', async function(e) {
+  uploadForm.addEventListener('submit', async function(e) {
     e.preventDefault();
     
     console.log('📋 Form submit edildi!');
@@ -782,13 +789,7 @@ function manuelEslestirBaslat(sayfaNo, extractedName, pdfYolu) {
                 <p class="text-muted small mb-2">
                     <i class="bi bi-file-text"></i> Çıkarılan isim: <strong>${extractedName || 'Bulunamadı'}</strong>
                 </p>
-                <label class="form-label"><strong>Öğrenci Seç:</strong></label>
-                <select class="form-select manuel-select" data-sayfa="${sayfaNo}" data-pdf="${fixedPdfPath}">
-                    <option value="">-- Öğrenci Seçin --</option>
-                    ${KATILIMCILAR.map(k => `
-                        <option value="${k.ogrenci_id}_${k.kaynak}">${k.ad_soyad} ${k.kaynak === 'veli' ? '[Veli]' : ''}</option>
-                    `).join('')}
-                </select>
+                ${buildManualSelector(sayfaNo, fixedPdfPath, extractedName)}
             </div>
         </div>
     `;
@@ -824,13 +825,7 @@ function topluManuelEslestir() {
                     <p class="text-muted small mb-2">
                         <i class="bi bi-file-text"></i> Çıkarılan isim: <strong>${r.extractedName || 'Bulunamadı'}</strong>
                     </p>
-                    <label class="form-label"><strong>Öğrenci Seç:</strong></label>
-                    <select class="form-select manuel-select" data-sayfa="${r.sayfaNo}" data-pdf="${fixedPdfPath}">
-                        <option value="">-- Öğrenci Seçin --</option>
-                        ${KATILIMCILAR.map(k => `
-                            <option value="${k.ogrenci_id}_${k.kaynak}">${k.ad_soyad} ${k.kaynak === 'veli' ? '[Veli]' : ''}</option>
-                        `).join('')}
-                    </select>
+                    ${buildManualSelector(r.sayfaNo, fixedPdfPath, r.extractedName)}
                 </div>
             </div>
         `;
@@ -838,6 +833,102 @@ function topluManuelEslestir() {
     
     list.innerHTML = html;
     modal.show();
+}
+
+// Hızlı filtreli öğrenci seçici
+function buildManualSelector(sayfaNo, pdfPath, extractedName = '') {
+    const placeholder = extractedName ? `Örn: ${extractedName}` : 'İsim yazın';
+    return `
+        <label class="form-label"><strong>Öğrenci Seç:</strong></label>
+        <input type="text" class="form-control form-control-sm manuel-search mb-2" data-sayfa="${sayfaNo}" data-pdf="${pdfPath}" placeholder="${placeholder}">
+        <select class="form-select manuel-select" data-sayfa="${sayfaNo}" data-pdf="${pdfPath}">
+            ${katilimciOptionsHTML(extractedName)}
+        </select>
+        <small class="text-muted">Yazdıkça liste filtrelenir; Enter ile seçili öğrenci kaydedilir.</small>
+    `;
+}
+
+function katilimciOptionsHTML(filterText = '') {
+    const q = (filterText || '').toUpperCase().trim();
+    let items = KATILIMCILAR.map(k => {
+        const name = (k.ad_soyad || '').toUpperCase();
+        let score = 0;
+        if (q && name.startsWith(q)) score += 3;
+        else if (q && name.includes(q)) score += 2;
+        if (!q) score = 1; // default eşit ağırlık
+        return { k, score };
+    });
+    
+    if (q) {
+        items = items.filter(i => i.score > 0);
+    }
+    
+    items.sort((a, b) => b.score - a.score || a.k.ad_soyad.localeCompare(b.k.ad_soyad));
+    const sliced = items.slice(0, 30);
+    
+    const options = sliced.map(({ k }) => `
+        <option value="${k.ogrenci_id}_${k.kaynak}">${k.ad_soyad} ${k.kaynak === 'veli' ? '[Veli]' : ''}</option>
+    `).join('');
+    
+    return `<option value="">-- Öğrenci Seçin --</option>${options}`;
+}
+
+// Arama kutusu ile dinamik filtre
+document.addEventListener('input', function(e) {
+    if (e.target.classList.contains('manuel-search')) {
+        const wrapper = e.target.closest('.card-body');
+        const select = wrapper.querySelector('.manuel-select');
+        select.innerHTML = katilimciOptionsHTML(e.target.value);
+    }
+});
+
+// Önceden yüklenmiş PDF ile otomatik analiz (ikinci kez yükleme yok)
+async function autoAnalyzeExisting() {
+  const uploadCard = document.getElementById('uploadCard');
+  const progressSection = document.getElementById('progressSection');
+  if (uploadCard) uploadCard.style.display = 'none';
+  if (progressSection) progressSection.style.display = 'block';
+  updateProgress(20, 'PDF analiz ediliyor...');
+  
+  try {
+    const formData = new FormData();
+    formData.append('sinav_id', SINAV_ID);
+    formData.append('pdfPath', EXISTING_PDF);
+    
+    const response = await fetch('/kurum/sinav-sonuc-yukle-analiz', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) {
+      const t = await response.text();
+      throw new Error('HTTP ' + response.status + ': ' + t);
+    }
+    
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || 'Bilinmeyen hata');
+    }
+    
+    analysisData = result.data;
+    updateProgress(40, 'İsim seçimi...');
+    
+    if (result.data.useAutoMode && result.data.autoSelectedPattern) {
+      selectedName = result.data.autoSelectedPattern.text;
+      selectedLineNumber = result.data.autoSelectedPattern.lineNumber;
+      confirmNameSelection();
+    } else {
+      showNameSelectionModal(result.data.potansiyelIsimler);
+    }
+  } catch (err) {
+    console.error('Otomatik analiz hatası:', err);
+    alert('Otomatik analiz başlatılamadı: ' + err.message);
+    // Gerekirse yükleme kartını geri göster
+    const uploadCard = document.getElementById('uploadCard');
+    const progressSection = document.getElementById('progressSection');
+    if (uploadCard) uploadCard.style.display = 'block';
+    if (progressSection) progressSection.style.display = 'none';
+  }
 }
 
 // 👁️ PDF Önizleme Göster

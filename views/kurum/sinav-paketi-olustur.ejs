@@ -121,10 +121,10 @@
         
         <!-- Sınav Seçimi -->
         <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 16px;">
-            <i class="bi bi-journals"></i> Sınavları Seçin
+            <i class="bi bi-journals"></i> Sınavları Seçin (Opsiyonel)
         </h4>
         <p style="color: #64748b; margin-bottom: 24px;">
-            Bu pakete eklemek istediğiniz sınavları seçin. Seçilen sınavlar pakete otomatik olarak eklenecektir.
+            Bu pakete eklemek istediğiniz sınavları seçin. Sınav seçmeden de paket oluşturabilirsiniz, sonradan sınav ekleyebilirsiniz.
         </p>
         
         <% if (sinavlar.length === 0) { %>
@@ -268,17 +268,18 @@ document.getElementById('paketForm').addEventListener('submit', async function(e
     const formData = new FormData(this);
     const sinavIds = Array.from(document.querySelectorAll('input[name="sinav_ids[]"]:checked')).map(cb => cb.value);
     
-    if (sinavIds.length === 0) {
-        alert('❌ En az 1 sınav seçmelisiniz!');
-        return;
-    }
+    // Sınav seçimi artık zorunlu değil - opsiyonel
+    // if (sinavIds.length === 0) {
+    //     alert('❌ En az 1 sınav seçmelisiniz!');
+    //     return;
+    // }
     
     const data = {
         ad: formData.get('ad'),
         aciklama: formData.get('aciklama'),
         sinif: formData.get('sinif'),
         fiyat: formData.get('fiyat'),
-        sinav_ids: sinavIds
+        sinav_ids: sinavIds // Boş array olabilir
     };
     
     const btn = this.querySelector('button[type="submit"]');

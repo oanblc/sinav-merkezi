@@ -1,0 +1,6 @@
+  db.run(`ALTER TABLE sinav_katilimcilari ADD COLUMN pdf_indirilme_sayisi INTEGER DEFAULT 0`, (err) => {
+    if (err && !err.message.includes('duplicate column')) console.log('ƒsÿ‹÷? pdf_indirilme_sayisi kolonu zaten var veya hata:', err.message);
+  });
+  db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_sinav_katilimci_unique ON sinav_katilimcilari (sinav_id, ogrenci_id, ogrenci_kaynak)`, (err) => {
+    if (err && !err.message.includes('already exists')) console.log('ƒsÿ‹÷? idx_sinav_katilimci_unique olusturulamadi:', err.message);
+  });

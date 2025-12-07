@@ -65,13 +65,20 @@
             <p class="text-muted">Tüm öğrencilerin sonuçlarını içeren tek bir PDF dosyası yükleyin</p>
         </div>
 
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle me-2"></i>
-            <strong>Nasıl Çalışır?</strong><br>
+        <div class="alert alert-success">
+            <i class="bi bi-robot me-2"></i>
+            <strong>🤖 Yeni! Otomatik Eşleştirme Aktif</strong><br>
             1️⃣ PDF'i yükleyin<br>
             2️⃣ Sistem sayfalara ayıracak<br>
-            3️⃣ Her sayfayı manuel olarak öğrenciyle eşleştireceksiniz<br>
-            4️⃣ Tümü eşleşince sonuçları yayınlayabilirsiniz
+            3️⃣ <strong>OCR ile otomatik isim okuma</strong> yapılacak<br>
+            4️⃣ %85+ eşleşenler otomatik atanır ✅<br>
+            5️⃣ Belirsiz olanlar için manuel onay istersiniz ⚠️<br>
+            6️⃣ Tümü eşleşince sonuçları yayınlayabilirsiniz
+        </div>
+        
+        <div class="alert alert-info">
+            <i class="bi bi-lightbulb me-2"></i>
+            <strong>İpucu:</strong> PDF'lerinizde öğrenci adı soyadı net görünüyorsa otomatik eşleştirme %90'dan fazla başarılı oluyor!
         </div>
 
         <form id="uploadForm" enctype="multipart/form-data">
@@ -195,11 +202,11 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
         
         updateProgress(100, 'Tamamlandı!');
         
-        alert(`✅ PDF başarıyla yüklendi!\n\n📄 ${data.data.sayfaSayisi} sayfa bulundu.\n\nŞimdi manuel eşleştirme ekranına yönlendiriliyorsunuz...`);
+        alert(`✅ PDF başarıyla yüklendi!\n\n📄 ${data.data.sayfaSayisi} sayfa bulundu.\n\nŞimdi akıllı eşleştirme için isim pattern'i seçimine yönlendiriliyorsunuz...`);
         
-        // Manuel eşleştirme ekranına yönlendir
+        // Pattern seçim sayfasına yönlendir
         setTimeout(() => {
-            window.location.href = `/kurum/sinav-manuel-eslestirme/${SINAV_ID}`;
+            window.location.href = data.data.redirectTo;
         }, 1500);
         
     } catch (error) {
