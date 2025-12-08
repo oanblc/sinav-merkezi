@@ -17,9 +17,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'sinav_merkezi.db');
-// SESSION_SECRET - Railway için geçici fallback (production'da mutlaka environment variable kullanın!)
-// NOT: Production'da bu fallback çalışmayacak, SESSION_SECRET mutlaka ayarlanmalı
-const SESSION_SECRET = process.env.SESSION_SECRET || (process.env.NODE_ENV !== 'production' ? 'dev-secret-key-change-in-production-' + Date.now() : null);
+// SESSION_SECRET - Railway için fallback (production'da mutlaka environment variable kullanın!)
+// Railway'de NODE_ENV otomatik production olmayabilir, bu yüzden fallback ekliyoruz
+const SESSION_SECRET = process.env.SESSION_SECRET || 'railway-temp-secret-' + Date.now() + '-change-this-in-production';
 const ENABLE_ADMIN_RESET = process.env.ENABLE_ADMIN_RESET === 'true';
 
 if (!SESSION_SECRET) {
