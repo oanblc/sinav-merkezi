@@ -2230,9 +2230,9 @@ app.post('/kurum/sinav-paketi-kaydet', requireAuth, requireRole(['kurum_yonetici
     const sinavIds = Array.isArray(sinav_ids) ? sinav_ids : [];
     const pkgFiyat = parseFloat(fiyat) || 0;
 
-    const result = await dbRunReturn(`INSERT INTO sinav_paketleri (ad, aciklama, sinif, toplam_sinav_sayisi, aktif, fiyat, kurum_id) VALUES (?, ?, ?, ?, 1, ?, ?)`,
+    const result = await dbRun(`INSERT INTO sinav_paketleri (ad, aciklama, sinif, toplam_sinav_sayisi, aktif, fiyat, kurum_id) VALUES (?, ?, ?, ?, 1, ?, ?)`,
       [ad.trim(), aciklama || null, sinif || null, sinavIds.length, pkgFiyat, req.session.userId || null]);
-    const paketId = result?.lastID;
+    const paketId = result.lastID;
 
     for (const sid of sinavIds) {
       await dbRun('INSERT INTO paket_sinavlari (paket_id, sinav_id) VALUES (?, ?)', [paketId, sid]);
