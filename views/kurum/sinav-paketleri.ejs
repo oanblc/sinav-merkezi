@@ -2,12 +2,12 @@
 
 <style>
     .page-header {
-        background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+        background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
         color: white;
         padding: 40px 0;
         margin: -30px -15px 40px;
         border-radius: 0 0 24px 24px;
-        box-shadow: 0 8px 32px rgba(236, 72, 153, 0.3);
+        box-shadow: 0 8px 32px rgba(37, 99, 235, 0.25);
     }
     
     .paket-card {
@@ -49,6 +49,79 @@
         border-radius: 20px;
         box-shadow: 0 4px 16px rgba(0,0,0,0.08);
     }
+
+    .status-active {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: #dcfce7;
+        color: #15803d;
+        padding: 8px 10px;
+        border-radius: 10px;
+        font-weight: 700;
+    }
+
+    .status-passive {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: #e2e8f0;
+        color: #475569;
+        padding: 8px 10px;
+        border-radius: 10px;
+        font-weight: 700;
+    }
+
+    .paket-icon {
+        width: 70px;
+        height: 70px;
+        background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+    }
+
+    .badge-sinav {
+        background: #e0f2fe;
+        color: #1d4ed8;
+    }
+
+    .badge-sinif {
+        background: #eef2ff;
+        color: #4338ca;
+    }
+
+    .badge-ogrenci {
+        background: #ecfdf3;
+        color: #15803d;
+    }
+
+    .price-primary {
+        font-weight: 800;
+        color: #1d4ed8;
+        margin: 0;
+    }
+
+    .btn-primary-gradient {
+        background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
+        border: none;
+        color: #fff;
+    }
+
+    .btn-edit-ghost {
+        background: #e0f2fe;
+        color: #0f172a;
+        border: none;
+    }
+
+    .btn-delete-soft {
+        background: #fee2e2;
+        color: #b91c1c;
+        border: none;
+    }
 </style>
 
 <!-- Page Header -->
@@ -59,7 +132,7 @@
         </h1>
         <p style="opacity: 0.9; margin: 0;">Birden fazla sınav içeren paketler oluşturun ve öğrencilere atayın</p>
         <div class="mt-3">
-            <a href="/kurum/sinav-paketi-olustur" class="btn btn-light text-pink-500" style="border-radius: 10px; font-weight: 700; border: 2px solid rgba(255,255,255,0.4); color: #fff;">
+            <a href="/kurum/sinav-paketi-olustur" class="btn" style="border-radius: 10px; font-weight: 700; border: none; background: #ffffff; color: #2563eb; padding: 12px 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.12);">
                 <i class="bi bi-plus-lg"></i> Yeni Paket Oluştur
             </a>
         </div>
@@ -89,7 +162,7 @@
         <i class="bi bi-list-ul"></i> Paket Listesi (<%= paketler.length %>)
     </h3>
     <% if (canManage) { %>
-    <a href="/kurum/sinav-paketi-olustur" class="btn btn-primary" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); border: none; border-radius: 12px; padding: 12px 24px; font-weight: 600;">
+    <a href="/kurum/sinav-paketi-olustur" class="btn btn-primary btn-primary-gradient" style="border-radius: 12px; padding: 12px 24px; font-weight: 600;">
         <i class="bi bi-plus-circle"></i> Yeni Paket Oluştur
     </a>
     <% } %>
@@ -101,7 +174,7 @@
     <i class="bi bi-box-seam" style="font-size: 4rem; color: #e2e8f0; margin-bottom: 20px;"></i>
     <h4 style="color: #64748b; margin-bottom: 16px;">Henüz Paket Oluşturulmamış</h4>
     <p style="color: #94a3b8; margin-bottom: 24px;">İlk sınav paketinizi oluşturarak başlayın</p>
-    <a href="/kurum/sinav-paketi-olustur" class="btn btn-primary btn-lg" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); border: none; border-radius: 12px;">
+    <a href="/kurum/sinav-paketi-olustur" class="btn btn-primary btn-lg btn-primary-gradient" style="border-radius: 12px;">
         <i class="bi bi-plus-circle"></i> Paket Oluştur
     </a>
 </div>
@@ -112,17 +185,17 @@
         <div class="paket-card">
             <!-- Durum Badge -->
             <% if (paket.aktif) { %>
-            <span class="badge bg-success" style="position: absolute; top: 20px; right: 20px;">
+            <span class="badge status-active">
                 <i class="bi bi-check-circle"></i> Aktif
             </span>
             <% } else { %>
-            <span class="badge bg-secondary" style="position: absolute; top: 20px; right: 20px;">
+            <span class="badge status-passive">
                 <i class="bi bi-x-circle"></i> Pasif
             </span>
             <% } %>
             
             <!-- Paket İkonu -->
-            <div style="width: 70px; height: 70px; background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+            <div class="paket-icon">
                 <i class="bi bi-box-seam" style="font-size: 2rem; color: white;"></i>
             </div>
             
@@ -140,20 +213,20 @@
             
             <!-- İstatistikler -->
             <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
-                <span class="paket-badge" style="background: #dbeafe; color: #1e40af;">
+                <span class="paket-badge badge-sinav">
                     <i class="bi bi-journals"></i> <%= paket.sinav_sayisi || 0 %> Sınav
                 </span>
-                <span class="paket-badge" style="background: #fef3c7; color: #92400e;">
+                <span class="paket-badge badge-sinif">
                     <%= paket.sinif %>. Sınıf
                 </span>
-                <span class="paket-badge" style="background: #d1fae5; color: #065f46;">
+                <span class="paket-badge badge-ogrenci">
                     <i class="bi bi-people"></i> <%= paket.ogrenci_sayisi || 0 %> Öğrenci
                 </span>
             </div>
             
             <!-- Fiyat -->
             <div style="margin-bottom: 20px;">
-                <h3 style="font-weight: 800; color: #ec4899; margin: 0;">
+                <h3 class="price-primary">
                     <%= paket.fiyat ? paket.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '0' %> ₺
                 </h3>
             </div>
@@ -166,19 +239,19 @@
             <!-- Butonlar -->
             <% if (canManage) { %>
             <div class="d-flex gap-2">
-                <a href="/kurum/sinav-paketi-detay/<%= paket.id %>" class="btn btn-primary btn-action flex-grow-1" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border: none;">
+                <a href="/kurum/sinav-paketi-detay/<%= paket.id %>" class="btn btn-primary btn-action flex-grow-1 btn-primary-gradient">
                     <i class="bi bi-eye"></i> Detay
                 </a>
-                <a href="/kurum/sinav-paketi-duzenle/<%= paket.id %>" class="btn btn-warning btn-action" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white;">
+                <a href="/kurum/sinav-paketi-duzenle/<%= paket.id %>" class="btn btn-warning btn-action btn-edit-ghost">
                     <i class="bi bi-pencil-square"></i>
                 </a>
-                <button class="btn btn-danger btn-action" onclick="paketSil(<%= paket.id %>, '<%= paket.ad %>')" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none;">
+                <button class="btn btn-danger btn-action btn-delete-soft" onclick="paketSil(<%= paket.id %>, '<%= paket.ad %>')">
                     <i class="bi bi-trash"></i>
                 </button>
             </div>
             <% } else { %>
             <div class="d-flex gap-2">
-                <a href="/kurum/sinav-paketi-detay/<%= paket.id %>" class="btn btn-primary btn-action flex-grow-1" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border: none;">
+                <a href="/kurum/sinav-paketi-detay/<%= paket.id %>" class="btn btn-primary btn-action flex-grow-1 btn-primary-gradient">
                     <i class="bi bi-eye"></i> Detay
                 </a>
             </div>

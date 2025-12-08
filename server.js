@@ -2183,18 +2183,21 @@ app.get('/kurum/sinav-paketleri-yonet', requireAuth, requireRole(['kurum_yonetic
       ORDER BY sp.olusturulma_tarihi DESC
     `, kurumId ? [kurumId] : []);
     
-    res.render('sinav-paketleri', {
-      sinavlar: sinavlar || [],
+    // Kurum yönetim listesi admin şablonunu kullan
+    res.render('kurum/sinav-paketleri', {
       paketler: paketler || [],
       user: { username: req.session.username, type: req.session.userType, id: req.session.userId },
+      success: null,
+      error: null,
       isYonetim: true
     });
   } catch (error) {
     console.error('Kurum sınav paketleri hatası:', error);
-    res.render('sinav-paketleri', {
-      sinavlar: [],
+    res.render('kurum/sinav-paketleri', {
       paketler: [],
       user: { username: req.session.username, type: req.session.userType, id: req.session.userId },
+      success: null,
+      error: 'Sınav paketleri alınamadı',
       isYonetim: true
     });
   }
