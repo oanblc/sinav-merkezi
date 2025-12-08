@@ -2167,8 +2167,8 @@ app.get('/sinav-paketleri', async (req, res) => {
   }
 });
 
-// Kurum - Sınav Paketleri (aynı sayfa, yetkili erişim)
-app.get('/kurum/sinav-paketleri', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
+// Kurum - Sınav Paketleri (yönetim listesi)
+app.get('/kurum/sinav-paketleri-yonet', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
   try {
     const sinavlar = await dbAll('SELECT * FROM sinavlar WHERE fiyat > 0 ORDER BY tarih ASC');
     const paketler = await dbAll(`
@@ -2194,6 +2194,11 @@ app.get('/kurum/sinav-paketleri', requireAuth, requireRole(['kurum_yonetici','ku
       user: { username: req.session.username, type: req.session.userType, id: req.session.userId }
     });
   }
+});
+
+// Eski kurum paketleri linki yeni yönetime yönlendir
+app.get('/kurum/sinav-paketleri', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), (req, res) => {
+  return res.redirect('/kurum/sinav-paketleri-yonet');
 });
 
 // Kurum - Yeni Sınav Paketi Oluştur (form sayfası)
