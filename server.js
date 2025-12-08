@@ -2171,15 +2171,17 @@ app.get('/sinav-paketleri', async (req, res) => {
 app.get('/kurum/sinav-paketleri-yonet', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
   try {
     const sinavlar = await dbAll('SELECT * FROM sinavlar WHERE fiyat > 0 ORDER BY tarih ASC');
+    const kurumId = req.session.userId || null;
     const paketler = await dbAll(`
       SELECT 
         sp.*,
         COUNT(DISTINCT ps.sinav_id) as sinav_sayisi
       FROM sinav_paketleri sp
       LEFT JOIN paket_sinavlari ps ON sp.id = ps.paket_id
+      ${kurumId ? 'WHERE sp.kurum_id = ?' : ''}
       GROUP BY sp.id
       ORDER BY sp.olusturulma_tarihi DESC
-    `);
+    `, kurumId ? [kurumId] : []);
     
     res.render('sinav-paketleri', {
       sinavlar: sinavlar || [],
