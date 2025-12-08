@@ -92,8 +92,8 @@
                 <label class="form-label">
                     <i class="bi bi-mortarboard"></i> Sınıf *
                 </label>
-                <select name="sinif" class="form-select" required>
-                    <option value="">Seçiniz</option>
+                <select name="sinif" class="form-select">
+                    <option value="">Seçiniz (opsiyonel)</option>
                     <% siniflar.forEach(function(sinif) { %>
                     <option value="<%= sinif %>"><%= sinif %>. Sınıf</option>
                     <% }); %>

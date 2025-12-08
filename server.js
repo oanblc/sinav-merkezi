@@ -2201,25 +2201,151 @@ app.get('/kurum/sinav-paketi-olustur', requireAuth, requireRole(['kurum_yonetici
   try {
     const sinavlar = await dbAll('SELECT * FROM sinavlar ORDER BY created_at DESC');
     const siniflar = Array.from(
-      new Set((sinavlar || []).map(s => s.sinif).filter(Boolean))
-    ).sort((a, b) => {
+      new Set([...(sinavlar || []).map(s => s.sinif).filter(Boolean), '3','4','5','6','7','8','9','10','11','12'])
+    ).filter(Boolean).sort((a, b) => {
       const na = parseInt(a, 10);
       const nb = parseInt(b, 10);
       if (isNaN(na) || isNaN(nb)) return String(a).localeCompare(String(b));
       return na - nb;
     });
-    const defaultSiniflar = ['4','5','6','7','8','9','10','11','12'];
-    const sinifList = siniflar.length ? siniflar : defaultSiniflar;
     res.render('kurum/sinav-paketi-olustur', {
       user: { username: req.session.username, type: req.session.userType, id: req.session.userId },
       sinavlar: sinavlar || [],
-      siniflar: sinifList,
+      siniflar,
       paket: null,
       error: null,
       success: null
     });
   } catch (error) {
     console.error('Sınav paketi oluştur sayfası hatası:', error);
+    res.redirect('/kurum/sinav-paketleri');
+  }
+});
+
+// Kurum - Sınav Paketi Kaydet
+app.post('/kurum/sinav-paketi-kaydet', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
+  try {
+    const { ad, aciklama, sinif, fiyat, sinav_ids } = req.body || {};
+    if (!ad) return res.status(400).json({ success: false, message: 'Paket adı zorunludur!' });
+    const sinavIds = Array.isArray(sinav_ids) ? sinav_ids : [];
+    const pkgFiyat = parseFloat(fiyat) || 0;
+
+    const result = await dbRunReturn(`INSERT INTO sinav_paketleri (ad, aciklama, sinif, toplam_sinav_sayisi, aktif, fiyat, kurum_id) VALUES (?, ?, ?, ?, 1, ?, ?)`,
+      [ad.trim(), aciklama || null, sinif || null, sinavIds.length, pkgFiyat, req.session.userId || null]);
+    const paketId = result?.lastID;
+
+    for (const sid of sinavIds) {
+      await dbRun('INSERT INTO paket_sinavlari (paket_id, sinav_id) VALUES (?, ?)', [paketId, sid]);
+    }
+
+    return res.json({ success: true, message: 'Paket oluşturuldu', paketId });
+  } catch (error) {
+    console.error('Sınav paketi kaydetme hatası:', error);
+    return res.status(500).json({ success: false, message: 'Paket oluşturulamadı' });
+  }
+});
+
+// Kurum - Sınav Paketi Düzenle (form)
+app.get('/kurum/sinav-paketi-duzenle/:id', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
+  try {
+    const paketId = req.params.id;
+    const paket = await dbGet('SELECT * FROM sinav_paketleri WHERE id = ?', [paketId]);
+    if (!paket) return res.redirect('/kurum/sinav-paketleri');
+
+    const sinavlar = await dbAll('SELECT * FROM sinavlar ORDER BY created_at DESC');
+    const siniflar = Array.from(
+      new Set([...(sinavlar || []).map(s => s.sinif).filter(Boolean), '3','4','5','6','7','8','9','10','11','12'])
+    ).filter(Boolean).sort((a, b) => {
+      const na = parseInt(a, 10);
+      const nb = parseInt(b, 10);
+      if (isNaN(na) || isNaN(nb)) return String(a).localeCompare(String(b));
+      return na - nb;
+    });
+
+    // Seçili sınavlar
+    const secili = await dbAll('SELECT sinav_id FROM paket_sinavlari WHERE paket_id = ?', [paketId]);
+    const seciliIds = new Set((secili || []).map(s => s.sinav_id));
+    const sinavlarWithFlag = (sinavlar || []).map(s => ({ ...s, selected: seciliIds.has(s.id) }));
+
+    res.render('kurum/sinav-paketi-duzenle', {
+      user: { username: req.session.username, type: req.session.userType, id: req.session.userId },
+      paket,
+      sinavlar: sinavlarWithFlag,
+      siniflar,
+      error: null,
+      success: null
+    });
+  } catch (error) {
+    console.error('Sınav paketi düzenle sayfası hatası:', error);
+    res.redirect('/kurum/sinav-paketleri');
+  }
+});
+
+// Kurum - Sınav Paketi Güncelle
+app.post('/kurum/sinav-paketi-guncelle/:id', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
+  try {
+    const paketId = req.params.id;
+    const { ad, aciklama, sinif, fiyat, sinav_ids } = req.body || {};
+    if (!ad) return res.status(400).json({ success: false, message: 'Paket adı zorunludur!' });
+    const sinavIds = Array.isArray(sinav_ids) ? sinav_ids : [];
+    const pkgFiyat = parseFloat(fiyat) || 0;
+
+    const paket = await dbGet('SELECT * FROM sinav_paketleri WHERE id = ?', [paketId]);
+    if (!paket) return res.status(404).json({ success: false, message: 'Paket bulunamadı!' });
+
+    await dbRun('UPDATE sinav_paketleri SET ad = ?, aciklama = ?, sinif = ?, fiyat = ?, toplam_sinav_sayisi = ? WHERE id = ?',
+      [ad.trim(), aciklama || null, sinif || null, pkgFiyat, sinavIds.length, paketId]);
+
+    await dbRun('DELETE FROM paket_sinavlari WHERE paket_id = ?', [paketId]);
+    for (const sid of sinavIds) {
+      await dbRun('INSERT INTO paket_sinavlari (paket_id, sinav_id) VALUES (?, ?)', [paketId, sid]);
+    }
+
+    return res.json({ success: true, message: 'Paket güncellendi' });
+  } catch (error) {
+    console.error('Sınav paketi güncelleme hatası:', error);
+    return res.status(500).json({ success: false, message: 'Paket güncellenemedi' });
+  }
+});
+
+// Kurum - Sınav Paketi Sil
+app.post('/kurum/sinav-paketi-sil/:id', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
+  try {
+    const paketId = req.params.id;
+    await dbRun('DELETE FROM sinav_paketleri WHERE id = ?', [paketId]);
+    return res.json({ success: true, message: 'Paket silindi' });
+  } catch (error) {
+    console.error('Sınav paketi silme hatası:', error);
+    return res.status(500).json({ success: false, message: 'Paket silinemedi' });
+  }
+});
+
+// Kurum - Sınav Paketi Detay
+app.get('/kurum/sinav-paketi-detay/:id', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
+  try {
+    const paketId = req.params.id;
+    const paket = await dbGet('SELECT * FROM sinav_paketleri WHERE id = ?', [paketId]);
+    if (!paket) return res.redirect('/kurum/sinav-paketleri');
+
+    const sinavlar = await dbAll(`
+      SELECT s.*
+      FROM paket_sinavlari ps
+      INNER JOIN sinavlar s ON s.id = ps.sinav_id
+      WHERE ps.paket_id = ?
+      ORDER BY ps.sira ASC, s.tarih ASC
+    `, [paketId]) || [];
+
+    // Öğrenci listesi ve atamalar karmaşık; şimdilik boş liste
+    const ogrenciler = [];
+
+    res.render('kurum/sinav-paketi-detay', {
+      user: { username: req.session.username, type: req.session.userType, id: req.session.userId },
+      paket,
+      sinavlar,
+      ogrenciler
+    });
+  } catch (error) {
+    console.error('Sınav paketi detay hatası:', error);
     res.redirect('/kurum/sinav-paketleri');
   }
 });

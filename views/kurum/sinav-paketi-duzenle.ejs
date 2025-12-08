@@ -92,8 +92,8 @@
                 <label class="form-label">
                     <i class="bi bi-mortarboard"></i> Sınıf *
                 </label>
-                <select name="sinif" class="form-select" required>
-                    <option value="">Seçiniz</option>
+                <select name="sinif" class="form-select">
+                    <option value="">Seçiniz (opsiyonel)</option>
                     <% siniflar.forEach(function(sinif) { %>
                     <option value="<%= sinif %>" <%= paket.sinif == sinif ? 'selected' : '' %>><%= sinif %>. Sınıf</option>
                     <% }); %>
@@ -273,10 +273,7 @@ document.getElementById('paketForm').addEventListener('submit', async function(e
     const formData = new FormData(this);
     const sinavIds = Array.from(document.querySelectorAll('input[name="sinav_ids[]"]:checked')).map(cb => cb.value);
     
-    if (sinavIds.length === 0) {
-        alert('❌ En az 1 sınav seçmelisiniz!');
-        return;
-    }
+    // Sınav seçimi opsiyonel
     
     const data = {
         ad: formData.get('ad'),
