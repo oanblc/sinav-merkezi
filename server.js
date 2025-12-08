@@ -17,7 +17,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'sinav_merkezi.db');
-const SESSION_SECRET = process.env.SESSION_SECRET;
+// SESSION_SECRET - Railway için fallback (production'da mutlaka environment variable kullanın!)
+const SESSION_SECRET = process.env.SESSION_SECRET || (process.env.NODE_ENV === 'production' ? null : 'dev-secret-key-change-in-production-' + Date.now());
 const ENABLE_ADMIN_RESET = process.env.ENABLE_ADMIN_RESET === 'true';
 
 if (!SESSION_SECRET) {
@@ -26,6 +27,7 @@ if (!SESSION_SECRET) {
   console.error('   Key: SESSION_SECRET');
   console.error('   Value: [güçlü bir secret key - en az 32 karakter]');
   console.error('💡 Örnek: openssl rand -hex 32');
+  console.error('⚠️  Production ortamında SESSION_SECRET mutlaka ayarlanmalıdır!');
   process.exit(1);
 }
 
@@ -1945,6 +1947,16 @@ function readCSVFile(filePath) {
       .on('error', reject);
   });
 }
+
+// Health check endpoint (Railway için)
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    port: PORT,
+    nodeEnv: process.env.NODE_ENV || 'development'
+  });
+});
 
 // Routes
 app.get('/', async (req, res) => {
