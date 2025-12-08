@@ -22,8 +22,8 @@ startup_log.txt
 Thumbs.db
 desktop.ini
 
-# Uploads (optional - uncomment if you want to exclude uploads)
-# uploads/
+# Uploads (excluded to reduce repository size)
+uploads/
 
 # IDE
 .vscode/
@@ -36,3 +36,14 @@ desktop.ini
 *.tmp
 temp/
 tmp/
+
+# Backup files
+*.bak
+*.bak2
+*.backup
+
+# Development/Test scripts (optional - uncomment if you want to exclude them)
+# test-*.js
+# modify*.js
+# autoMatcher.js
+# insertIndex.js
