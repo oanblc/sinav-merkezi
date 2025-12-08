@@ -2579,16 +2579,16 @@ app.post('/paket-talep-gonder', async (req, res) => {
     
     if (whatsappAyarlari && whatsappAyarlari.phone_number) {
       // Bildirim mesajÃƒÂ„Ã‚Â± oluştur
-      const mesaj = `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â¦ YENÃƒÂ„Ã‚Â° PAKET TALEBÃƒÂ„Ã‚Â°\n\n` +
-        `Merhaba,\n\n` +
-        `${veliDetay.ad_soyad || veliDetay.username} adlÃƒÂ„Ã‚Â± veli "${paket.ad}" paketi iÃƒÂƒÃ‚Â§in talep gÃƒÂƒÃ‚Â¶nderdi.\n\n` +
-        `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â¦ Paket: ${paket.ad}\n` +
-        `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Âš SÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â±f: ${paket.sinif || 'BelirtilmemiÃƒÂ…Ã‚ÂŸ'}\n` +
-        `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â Sınav SayÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±: ${paketSinavlari.length}\n` +
-        `${aciklama ? `ÃƒÂ°Ã‚ÂŸÃ‚Â’Ã‚Â¬ AÃƒÂƒÃ‚Â§ÃƒÂ„Ã‚Â±klama: ${aciklama}\n` : ''}\n` +
-        `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â Telefon: ${veliDetay.telefon || 'BelirtilmemiÃƒÂ…Ã‚ÂŸ'}\n` +
-        `ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â§ Email: ${veliDetay.email || 'BelirtilmemiÃƒÂ…Ã‚ÂŸ'}\n\n` +
-        `LÃƒÂƒÃ‚Â¼tfen kurum panelinden talebi deÃƒÂ„Ã‚ÂŸerlendirin.`;
+    const mesaj = `📥 YENİ PAKET TALEBİ\n\n` +
+      `Merhaba,\n\n` +
+      `${veliDetay.ad_soyad || veliDetay.username} adlı veli "${paket.ad}" paketi için talep gönderdi.\n\n` +
+      `📦 Paket: ${paket.ad}\n` +
+      `🎓 Sınıf: ${paket.sinif || 'Belirtilmemiş'}\n` +
+      `📑 Sınav Sayısı: ${paketSinavlari.length}\n` +
+      `${aciklama ? `📝 Açıklama: ${aciklama}\n` : ''}\n` +
+      `📞 Telefon: ${veliDetay.telefon || 'Belirtilmemiş'}\n` +
+      `✉️ Email: ${veliDetay.email || 'Belirtilmemiş'}\n\n` +
+      `Lütfen kurum panelinden talebi değerlendirin.`;
       
       // WhatsApp bildirimi gÃƒÂƒÃ‚Â¶nder (arka planda, hata olsa bile kullanıcıya başarılı dÃƒÂƒÃ‚Â¶n)
       whatsappBildirimGonder(whatsappAyarlari.phone_number, mesaj, 'paket_talebi')
@@ -2604,7 +2604,7 @@ app.post('/paket-talep-gonder', async (req, res) => {
     
     res.json({ 
       success: true, 
-      message: `${paket.ad} paketi iÃƒÂƒÃ‚Â§in ${olusturulanTalep} sınav talebi başarıyla gÃƒÂƒÃ‚Â¶nderildi! En kÃƒÂ„Ã‚Â±sa sÃƒÂƒÃ‚Â¼rede deÃƒÂ„Ã‚ÂŸerlendirilecektir.`,
+      message: `${paket.ad} paketi için ${olusturulanTalep} sınav talebi başarıyla gönderildi! En kısa sürede değerlendirilecektir.`,
       yeniHesap: (ad_soyad && email) ? true : false,
       veli_id: veli_id
     });
