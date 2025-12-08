@@ -2320,6 +2320,23 @@ app.post('/kurum/sinav-paketi-guncelle/:id', requireAuth, requireRole(['kurum_yo
   }
 });
 
+// Kurum - Sınav Paketi Aktif/Pasif
+app.post('/kurum/sinav-paketi-aktif/:id', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
+  try {
+    const paketId = req.params.id;
+    const { aktif } = req.body || {};
+
+    const paket = await dbGet('SELECT * FROM sinav_paketleri WHERE id = ? AND (kurum_id = ? OR ? IS NULL)', [paketId, req.session.userId || null, req.session.userId || null]);
+    if (!paket) return res.status(404).json({ success: false, message: 'Paket bulunamadı!' });
+
+    await dbRun('UPDATE sinav_paketleri SET aktif = ? WHERE id = ?', [aktif ? 1 : 0, paketId]);
+    return res.json({ success: true, message: `Paket ${aktif ? 'aktifleştirildi' : 'pasifleştirildi'}` });
+  } catch (error) {
+    console.error('Sınav paketi aktif/pasif hatası:', error);
+    return res.status(500).json({ success: false, message: 'Güncellenemedi' });
+  }
+});
+
 // Kurum - Sınav Paketi Sil
 app.post('/kurum/sinav-paketi-sil/:id', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
   try {

@@ -184,15 +184,10 @@
     <div class="col-md-6 col-lg-4">
         <div class="paket-card">
             <!-- Durum Badge -->
-            <% if (paket.aktif) { %>
-            <span class="badge status-active">
-                <i class="bi bi-check-circle"></i> Aktif
-            </span>
-            <% } else { %>
-            <span class="badge status-passive">
-                <i class="bi bi-x-circle"></i> Pasif
-            </span>
-            <% } %>
+            <% var statusClass = paket.aktif ? 'status-active' : 'status-passive'; %>
+            <button class="badge <%= statusClass %>" data-id="<%= paket.id %>" data-aktif="<%= paket.aktif ? 1 : 0 %>" onclick="toggleAktif(this)">
+                <i class="bi <%= paket.aktif ? 'bi-check-circle' : 'bi-x-circle' %>"></i> <%= paket.aktif ? 'Aktif' : 'Pasif' %>
+            </button>
             
             <!-- Paket İkonu -->
             <div class="paket-icon">
@@ -245,7 +240,7 @@
                 <a href="/kurum/sinav-paketi-duzenle/<%= paket.id %>" class="btn btn-warning btn-action btn-edit-ghost">
                     <i class="bi bi-pencil-square"></i>
                 </a>
-                <button class="btn btn-danger btn-action btn-delete-soft" onclick="paketSil(<%= paket.id %>, '<%= paket.ad %>')">
+                <button class="btn btn-danger btn-action btn-delete-soft" data-paket-id="<%= paket.id %>" data-paket-ad="<%= paket.ad %>" onclick="paketSil(this.dataset.paketId, this.dataset.paketAd)">
                     <i class="bi bi-trash"></i>
                 </button>
             </div>
@@ -285,6 +280,33 @@ function paketSil(paketId, paketAdi) {
     })
     .catch(error => {
         console.error('Silme hatası:', error);
+        alert('Bir hata oluştu!');
+    });
+}
+
+// Aktif/Pasif toggle
+function toggleAktif(btn) {
+    const paketId = btn.dataset.id;
+    const aktif = btn.dataset.aktif === '1';
+    const yeniDurum = !aktif;
+    fetch(`/kurum/sinav-paketi-aktif/${paketId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aktif: yeniDurum })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            btn.dataset.aktif = yeniDurum ? '1' : '0';
+            btn.classList.remove('status-active', 'status-passive');
+            btn.classList.add(yeniDurum ? 'status-active' : 'status-passive');
+            btn.innerHTML = `<i class="bi ${yeniDurum ? 'bi-check-circle' : 'bi-x-circle'}"></i> ${yeniDurum ? 'Aktif' : 'Pasif'}`;
+        } else {
+            alert('❌ ' + data.message);
+        }
+    })
+    .catch(err => {
+        console.error('Aktif/Pasif güncelleme hatası:', err);
         alert('Bir hata oluştu!');
     });
 }
