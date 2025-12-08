@@ -66,6 +66,8 @@
     </div>
 </div>
 
+<% const canManage = (typeof isYonetim !== 'undefined' && isYonetim) || (user && user.type && user.type.startsWith('kurum')); %>
+
 <!-- Success/Error Messages -->
 <% if (success) { %>
 <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -86,7 +88,7 @@
     <h3 style="font-weight: 700; color: #1e293b; margin: 0;">
         <i class="bi bi-list-ul"></i> Paket Listesi (<%= paketler.length %>)
     </h3>
-    <% if (isYonetim) { %>
+    <% if (canManage) { %>
     <a href="/kurum/sinav-paketi-olustur" class="btn btn-primary" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); border: none; border-radius: 12px; padding: 12px 24px; font-weight: 600;">
         <i class="bi bi-plus-circle"></i> Yeni Paket Oluştur
     </a>
@@ -162,7 +164,7 @@
             </p>
             
             <!-- Butonlar -->
-            <% if (isYonetim) { %>
+            <% if (canManage) { %>
             <div class="d-flex gap-2">
                 <a href="/kurum/sinav-paketi-detay/<%= paket.id %>" class="btn btn-primary btn-action flex-grow-1" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border: none;">
                     <i class="bi bi-eye"></i> Detay
