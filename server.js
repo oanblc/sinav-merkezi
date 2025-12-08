@@ -1866,6 +1866,10 @@ function requireRole(role) {
       return next();
     }
     req.session.error = 'Bu sayfaya erişim yetkiniz yok!';
+    // Kurum rolleri için kurum dashboard'a yönlendir, diğerleri ana sayfaya
+    if (req.session.userType && req.session.userType.startsWith('kurum')) {
+      return res.redirect('/kurum/dashboard');
+    }
     return res.redirect('/');
   };
 }
@@ -2173,7 +2177,6 @@ app.get('/kurum/sinav-paketleri', requireAuth, requireRole(['kurum_yonetici','ku
         COUNT(DISTINCT ps.sinav_id) as sinav_sayisi
       FROM sinav_paketleri sp
       LEFT JOIN paket_sinavlari ps ON sp.id = ps.paket_id
-      WHERE sp.aktif = 1
       GROUP BY sp.id
       ORDER BY sp.olusturulma_tarihi DESC
     `);
