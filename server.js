@@ -21,7 +21,11 @@ const SESSION_SECRET = process.env.SESSION_SECRET;
 const ENABLE_ADMIN_RESET = process.env.ENABLE_ADMIN_RESET === 'true';
 
 if (!SESSION_SECRET) {
-  console.error('SESSION_SECRET environment variable is required. Set it in your .env file.');
+  console.error('❌ HATA: SESSION_SECRET environment variable is required!');
+  console.error('📝 Railway Dashboard → Your Project → Variables → Add:');
+  console.error('   Key: SESSION_SECRET');
+  console.error('   Value: [güçlü bir secret key - en az 32 karakter]');
+  console.error('💡 Örnek: openssl rand -hex 32');
   process.exit(1);
 }
 
