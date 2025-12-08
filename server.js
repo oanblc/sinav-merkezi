@@ -2186,14 +2186,16 @@ app.get('/kurum/sinav-paketleri-yonet', requireAuth, requireRole(['kurum_yonetic
     res.render('sinav-paketleri', {
       sinavlar: sinavlar || [],
       paketler: paketler || [],
-      user: { username: req.session.username, type: req.session.userType, id: req.session.userId }
+      user: { username: req.session.username, type: req.session.userType, id: req.session.userId },
+      isYonetim: true
     });
   } catch (error) {
     console.error('Kurum sınav paketleri hatası:', error);
     res.render('sinav-paketleri', {
       sinavlar: [],
       paketler: [],
-      user: { username: req.session.username, type: req.session.userType, id: req.session.userId }
+      user: { username: req.session.username, type: req.session.userType, id: req.session.userId },
+      isYonetim: true
     });
   }
 });
