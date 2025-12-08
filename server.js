@@ -2196,6 +2196,23 @@ app.get('/kurum/sinav-paketleri', requireAuth, requireRole(['kurum_yonetici','ku
   }
 });
 
+// Kurum - Yeni Sınav Paketi Oluştur (form sayfası)
+app.get('/kurum/sinav-paketi-olustur', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
+  try {
+    const sinavlar = await dbAll('SELECT * FROM sinavlar ORDER BY created_at DESC');
+    res.render('kurum/sinav-paketi-olustur', {
+      user: { username: req.session.username, type: req.session.userType, id: req.session.userId },
+      sinavlar: sinavlar || [],
+      paket: null,
+      error: null,
+      success: null
+    });
+  } catch (error) {
+    console.error('Sınav paketi oluştur sayfası hatası:', error);
+    res.redirect('/kurum/sinav-paketleri');
+  }
+});
+
 // Sınav Talep GÃƒÂƒÃ‚Â¶nderme - GiriÃƒÂ…Ã‚ÂŸ Zorunlu DeÃƒÂ„Ã‚ÂŸil
 app.post('/sinav-talep-gonder', async (req, res) => {
   try {
