@@ -17,8 +17,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'sinav_merkezi.db');
-// SESSION_SECRET - Railway için fallback (production'da mutlaka environment variable kullanın!)
-const SESSION_SECRET = process.env.SESSION_SECRET || (process.env.NODE_ENV === 'production' ? null : 'dev-secret-key-change-in-production-' + Date.now());
+// SESSION_SECRET - Railway için geçici fallback (production'da mutlaka environment variable kullanın!)
+// NOT: Production'da bu fallback çalışmayacak, SESSION_SECRET mutlaka ayarlanmalı
+const SESSION_SECRET = process.env.SESSION_SECRET || (process.env.NODE_ENV !== 'production' ? 'dev-secret-key-change-in-production-' + Date.now() : null);
 const ENABLE_ADMIN_RESET = process.env.ENABLE_ADMIN_RESET === 'true';
 
 if (!SESSION_SECRET) {
@@ -8069,9 +8070,25 @@ app.post('/kurum/site-ayarlari', requireAuth, requireRole('kurum_yonetici'), asy
 });
 
 // Sunucuyu baÃƒÂ…Ã‚ÂŸlat
-app.listen(PORT, () => {
-  console.log(`ÃƒÂ°Ã‚ÂŸÃ‚ÂšÃ‚Â€ Sunucu ÃƒÂƒÃ‚Â§alÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸÃƒÂ„Ã‚Â±yor: http://localhost:${PORT}`);
-  console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â VeritabanÃƒÂ„Ã‚Â±: sinav_merkezi.db`);
+// Railway için 0.0.0.0 kullan (tüm network interface'lerde dinle)
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log('='.repeat(50));
+  console.log('✅ Sunucu başarıyla başlatıldı!');
+  console.log(`🌐 Port: ${PORT}`);
+  console.log(`🔗 URL: http://0.0.0.0:${PORT}`);
+  console.log(`📁 Veritabanı: ${DB_PATH}`);
+  console.log(`🌍 Environment: ${isProd ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+  console.log('='.repeat(50));
+});
+
+// Error handler for server
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} zaten kullanımda!`);
+  } else {
+    console.error('❌ Sunucu başlatma hatası:', err);
+  }
+  process.exit(1);
 });
 
 // Graceful shutdown
