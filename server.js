@@ -2984,11 +2984,7 @@ Bu bir test mesajÃƒÂ„Ã‚Â±dÃƒÂ„Ã‚Â±r.
 });
 
 // Kurum - Talep YÃƒÂƒÃ‚Â¶netimi
-app.get('/kurum/talepler', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
-  }
-  
+app.get('/kurum/talepler', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
   try {
     // Sınav Talepleri (Veli -> Kurum)
     const sinavTalepleri = await dbAll(`
@@ -3058,11 +3054,7 @@ app.get('/kurum/talepler', requireAuth, async (req, res) => {
 });
 
 // Kurum - Talep YÃƒÂƒÃ‚Â¶netimi (Alias - /kurum/talepler ile aynÃƒÂ„Ã‚Â±)
-app.get('/kurum/talep-yonetimi', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
-    return res.status(403).send('Bu sayfaya erişim yetkiniz yok!');
-  }
-  
+app.get('/kurum/talep-yonetimi', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
   try {
     const talepler = await dbAll(`
       SELECT 
