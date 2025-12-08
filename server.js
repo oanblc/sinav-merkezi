@@ -491,6 +491,34 @@ const pdfUpload = multer({
   }
 });
 
+// Cevap anahtarı upload (ayrı klasör)
+const answerKeyStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = './uploads/cevap-anahtarlari/';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  }
+});
+
+const answerKeyUpload = multer({
+  storage: answerKeyStorage,
+  limits: {
+    fileSize: 20 * 1024 * 1024 // 20MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Sadece PDF dosyası yükleyebilirsiniz!'), false);
+    }
+  }
+});
+
 // VeritabanÃƒÂ„Ã‚Â± baÃƒÂ„Ã‚ÂŸlantÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±
 const db = new sqlite3.Database(DB_PATH, (err) => {
   if (err) {
@@ -2134,6 +2162,36 @@ app.get('/sinav-paketleri', async (req, res) => {
   }
 });
 
+// Kurum - Sınav Paketleri (aynı sayfa, yetkili erişim)
+app.get('/kurum/sinav-paketleri', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+  try {
+    const sinavlar = await dbAll('SELECT * FROM sinavlar WHERE fiyat > 0 ORDER BY tarih ASC');
+    const paketler = await dbAll(`
+      SELECT 
+        sp.*,
+        COUNT(DISTINCT ps.sinav_id) as sinav_sayisi
+      FROM sinav_paketleri sp
+      LEFT JOIN paket_sinavlari ps ON sp.id = ps.paket_id
+      WHERE sp.aktif = 1
+      GROUP BY sp.id
+      ORDER BY sp.olusturulma_tarihi DESC
+    `);
+    
+    res.render('sinav-paketleri', {
+      sinavlar: sinavlar || [],
+      paketler: paketler || [],
+      user: { username: req.session.username, type: req.session.userType, id: req.session.userId }
+    });
+  } catch (error) {
+    console.error('Kurum sınav paketleri hatası:', error);
+    res.render('sinav-paketleri', {
+      sinavlar: [],
+      paketler: [],
+      user: { username: req.session.username, type: req.session.userType, id: req.session.userId }
+    });
+  }
+});
+
 // Sınav Talep GÃƒÂƒÃ‚Â¶nderme - GiriÃƒÂ…Ã‚ÂŸ Zorunlu DeÃƒÂ„Ã‚ÂŸil
 app.post('/sinav-talep-gonder', async (req, res) => {
   try {
@@ -3402,7 +3460,7 @@ app.post('/kurum/ogrenci-kayit-ekle', requireAuth, async (req, res) => {
        odeme_turu, edessis_kaydi, taksit]
     );
     
-    res.json({ success: true, message: 'Öğrenci kaydÃƒÂ„Ã‚Â± başarıyla eklendi!' });
+    res.json({ success: true, message: 'Öğrenci kaydı başarıyla eklendi!' });
   } catch (error) {
     console.error('Öğrenci kayıt ekleme hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'Kayıt eklenirken bir hata oluştu: ' + error.message });
@@ -3503,7 +3561,7 @@ app.post('/kurum/ogrenci-kayit-guncelle/:id', requireAuth, async (req, res) => {
        odeme_turu, edessis_kaydi, taksit, id]
     );
     
-    res.json({ success: true, message: 'Öğrenci kaydÃƒÂ„Ã‚Â± güncellendi!' });
+    res.json({ success: true, message: 'Öğrenci kaydı güncellendi!' });
   } catch (error) {
     console.error('Öğrenci kayıt gÃƒÂƒÃ‚Â¼ncelleme hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'GÃƒÂƒÃ‚Â¼ncelleme sırasında bir hata oluştu!' });
@@ -3519,7 +3577,7 @@ app.post('/kurum/ogrenci-kayit-sil/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     await dbRun('DELETE FROM ogrenci_kayitlari WHERE id = ?', [id]);
-    res.json({ success: true, message: 'Öğrenci kaydÃƒÂ„Ã‚Â± silindi!' });
+    res.json({ success: true, message: 'Öğrenci kaydı silindi!' });
   } catch (error) {
     console.error('Öğrenci kayıt silme hatasÃƒÂ„Ã‚Â±:', error);
     res.json({ success: false, message: 'Silme sırasında bir hata oluştu!' });
@@ -7844,6 +7902,53 @@ app.get('/kurum/sinav-detay/:id', requireAuth, requireRole('kurum_yonetici'), as
     console.error('Sınav detay hatasÃƒÂ½:', error);
     req.session.error = 'Sınav detaylarÃƒÂ½ yÃƒÂ¼klenirken bir hata oluştu!';
     res.redirect('/kurum/sinavlar');
+  }
+});
+
+// Kurum - Sınav durumu güncelle
+app.post('/kurum/sinav-durumu-guncelle/:id', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+  try {
+    const sinavId = req.params.id;
+    const { sinav_durumu } = req.body || {};
+
+    if (!sinav_durumu) {
+      return res.status(400).json({ success: false, message: 'Sınav durumu gerekli!' });
+    }
+
+    const sinav = await dbGet('SELECT id FROM sinavlar WHERE id = ?', [sinavId]);
+    if (!sinav) {
+      return res.status(404).json({ success: false, message: 'Sınav bulunamadı!' });
+    }
+
+    await dbRun('UPDATE sinavlar SET sinav_durumu = ? WHERE id = ?', [sinav_durumu, sinavId]);
+    return res.json({ success: true, message: 'Sınav durumu güncellendi!' });
+  } catch (error) {
+    console.error('Sınav durumu güncelleme hatası:', error);
+    return res.status(500).json({ success: false, message: 'Sınav durumu güncellenirken hata oluştu!' });
+  }
+});
+
+// Kurum - Cevap anahtarı yükle
+app.post('/kurum/cevap-anahtari-yukle/:id', requireAuth, requireRole('kurum_yonetici'), answerKeyUpload.single('cevapAnahtari'), async (req, res) => {
+  try {
+    const sinavId = req.params.id;
+
+    const sinav = await dbGet('SELECT id FROM sinavlar WHERE id = ?', [sinavId]);
+    if (!sinav) {
+      return res.status(404).json({ success: false, message: 'Sınav bulunamadı!' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'PDF dosyası gerekli!' });
+    }
+
+    const relativePath = req.file.path.replace(/^\.?\/?/, '');
+    await dbRun('UPDATE sinavlar SET cevap_anahtari_pdf = ? WHERE id = ?', [relativePath, sinavId]);
+
+    return res.json({ success: true, message: 'Cevap anahtarı yüklendi!' });
+  } catch (error) {
+    console.error('Cevap anahtarı yükleme hatası:', error);
+    return res.status(500).json({ success: false, message: 'Cevap anahtarı yüklenirken hata oluştu!' });
   }
 });
 
