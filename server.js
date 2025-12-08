@@ -2200,9 +2200,20 @@ app.get('/kurum/sinav-paketleri', requireAuth, requireRole(['kurum_yonetici','ku
 app.get('/kurum/sinav-paketi-olustur', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
   try {
     const sinavlar = await dbAll('SELECT * FROM sinavlar ORDER BY created_at DESC');
+    const siniflar = Array.from(
+      new Set((sinavlar || []).map(s => s.sinif).filter(Boolean))
+    ).sort((a, b) => {
+      const na = parseInt(a, 10);
+      const nb = parseInt(b, 10);
+      if (isNaN(na) || isNaN(nb)) return String(a).localeCompare(String(b));
+      return na - nb;
+    });
+    const defaultSiniflar = ['4','5','6','7','8','9','10','11','12'];
+    const sinifList = siniflar.length ? siniflar : defaultSiniflar;
     res.render('kurum/sinav-paketi-olustur', {
       user: { username: req.session.username, type: req.session.userType, id: req.session.userId },
       sinavlar: sinavlar || [],
+      siniflar: sinifList,
       paket: null,
       error: null,
       success: null
