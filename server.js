@@ -1859,13 +1859,14 @@ function requireAuth(req, res, next) {
 }
 
 function requireRole(role) {
+  // role: string | string[]
   return (req, res, next) => {
-    if (req.session.userType === role) {
-      next();
-    } else {
-      req.session.error = 'Bu sayfaya erişim yetkiniz yok!';
-      res.redirect('/');
+    const allowed = Array.isArray(role) ? role : [role];
+    if (allowed.includes(req.session.userType)) {
+      return next();
     }
+    req.session.error = 'Bu sayfaya erişim yetkiniz yok!';
+    return res.redirect('/');
   };
 }
 
@@ -2163,7 +2164,7 @@ app.get('/sinav-paketleri', async (req, res) => {
 });
 
 // Kurum - Sınav Paketleri (aynı sayfa, yetkili erişim)
-app.get('/kurum/sinav-paketleri', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+app.get('/kurum/sinav-paketleri', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
   try {
     const sinavlar = await dbAll('SELECT * FROM sinavlar WHERE fiyat > 0 ORDER BY tarih ASC');
     const paketler = await dbAll(`
@@ -7906,7 +7907,7 @@ app.get('/kurum/sinav-detay/:id', requireAuth, requireRole('kurum_yonetici'), as
 });
 
 // Kurum - Sınav durumu güncelle
-app.post('/kurum/sinav-durumu-guncelle/:id', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+app.post('/kurum/sinav-durumu-guncelle/:id', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
   try {
     const sinavId = req.params.id;
     const { sinav_durumu } = req.body || {};
@@ -7929,7 +7930,7 @@ app.post('/kurum/sinav-durumu-guncelle/:id', requireAuth, requireRole('kurum_yon
 });
 
 // Kurum - Cevap anahtarı yükle
-app.post('/kurum/cevap-anahtari-yukle/:id', requireAuth, requireRole('kurum_yonetici'), answerKeyUpload.single('cevapAnahtari'), async (req, res) => {
+app.post('/kurum/cevap-anahtari-yukle/:id', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), answerKeyUpload.single('cevapAnahtari'), async (req, res) => {
   try {
     const sinavId = req.params.id;
 
