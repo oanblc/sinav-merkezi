@@ -3773,8 +3773,8 @@ app.post('/kurum/ogrenci-kayitlari-tumunu-sil', requireAuth, async (req, res) =>
     const { onayKodu } = req.body;
     
     // GÃƒÂƒÃ‚Â¼venlik kontrolÃƒÂƒÃ‚Â¼: "SÃƒÂ„Ã‚Â°L" yazmasÃƒÂ„Ã‚Â± gerekiyor
-    if (onayKodu !== 'SÃƒÂ„Ã‚Â°L') {
-      return res.json({ success: false, message: 'Onay kodu hatalÃƒÂ„Ã‚Â±! "SÃƒÂ„Ã‚Â°L" yazmanÃƒÂ„Ã‚Â±z gerekiyor.' });
+    if (onayKodu !== 'SIL') {
+      return res.json({ success: false, message: 'Onay kodu hatali! "SIL" yazmaniz gerekiyor.' });
     }
     
     // KaÃƒÂƒÃ‚Â§ kayıt var?
