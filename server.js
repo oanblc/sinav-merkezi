@@ -2356,8 +2356,14 @@ app.get('/kurum/sinav-paketi-detay/:id', requireAuth, requireRole(['kurum_yoneti
       ORDER BY ps.sira ASC, s.tarih ASC
     `, [paketId]) || [];
 
-    // Öğrenci listesi ve atamalar karmaşık; şimdilik boş liste
-    const ogrenciler = [];
+    // Pakete atanan ogrencileri getir
+    const ogrenciler = await dbAll(`
+      SELECT pa.*, ok.ogrenci_adi_soyadi as ogrenci_adi, ok.sinif
+      FROM paket_atamalari pa
+      LEFT JOIN ogrenci_kayitlari ok ON ok.id = pa.ogrenci_id AND pa.ogrenci_kaynak = 'kurum'
+      WHERE pa.paket_id = ?
+      ORDER BY pa.atama_tarihi DESC
+    `, [paketId]) || [];
 
     res.render('kurum/sinav-paketi-detay', {
       user: { username: req.session.username, type: req.session.userType, id: req.session.userId },
@@ -2366,8 +2372,81 @@ app.get('/kurum/sinav-paketi-detay/:id', requireAuth, requireRole(['kurum_yoneti
       ogrenciler
     });
   } catch (error) {
-    console.error('Sınav paketi detay hatası:', error);
+    console.error('Sinav paketi detay hatasi:', error);
     res.redirect('/kurum/sinav-paketleri');
+  }
+});
+
+// Kurum - Pakete Ogrenci Ata
+app.post('/kurum/paket-ogrenci-ata', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
+  try {
+    const { paket_id, ogrenci_ids } = req.body;
+
+    if (!paket_id || !ogrenci_ids || ogrenci_ids.length === 0) {
+      return res.json({ success: false, message: 'Paket ve ogrenci secimi gerekli' });
+    }
+
+    // Paketi kontrol et
+    const paket = await dbGet('SELECT * FROM sinav_paketleri WHERE id = ?', [paket_id]);
+    if (!paket) {
+      return res.json({ success: false, message: 'Paket bulunamadi' });
+    }
+
+    let eklenenSayisi = 0;
+    let zatenVarSayisi = 0;
+
+    for (const ogrenciData of ogrenci_ids) {
+      // Format: "id_kaynak" (ornegin "5_kurum")
+      const [ogrenciId, kaynak] = ogrenciData.split('_');
+
+      // Daha once atanmis mi kontrol et
+      const mevcutAtama = await dbGet(
+        'SELECT id FROM paket_atamalari WHERE paket_id = ? AND ogrenci_id = ? AND ogrenci_kaynak = ?',
+        [paket_id, ogrenciId, kaynak || 'kurum']
+      );
+
+      if (mevcutAtama) {
+        zatenVarSayisi++;
+        continue;
+      }
+
+      // Pakete ata
+      await dbRun(
+        'INSERT INTO paket_atamalari (paket_id, ogrenci_id, ogrenci_kaynak, durum) VALUES (?, ?, ?, ?)',
+        [paket_id, ogrenciId, kaynak || 'kurum', 'aktif']
+      );
+      eklenenSayisi++;
+
+      // Paketteki tum sinavlara da kaydet
+      const paketSinavlari = await dbAll('SELECT sinav_id FROM paket_sinavlari WHERE paket_id = ?', [paket_id]);
+      for (const ps of paketSinavlari) {
+        // Ogrenci bilgisini al
+        const ogrenci = await dbGet('SELECT ogrenci_adi_soyadi, sinif FROM ogrenci_kayitlari WHERE id = ?', [ogrenciId]);
+        if (ogrenci) {
+          // sinav_katilimcilari tablosuna ekle (yoksa)
+          const mevcutKatilim = await dbGet(
+            'SELECT id FROM sinav_katilimcilari WHERE sinav_id = ? AND ogrenci_id = ?',
+            [ps.sinav_id, ogrenciId]
+          );
+          if (!mevcutKatilim) {
+            await dbRun(
+              'INSERT INTO sinav_katilimcilari (sinav_id, ogrenci_id, ogrenci_adi, sinif, durum) VALUES (?, ?, ?, ?, ?)',
+              [ps.sinav_id, ogrenciId, ogrenci.ogrenci_adi_soyadi, ogrenci.sinif, 'bekliyor']
+            );
+          }
+        }
+      }
+    }
+
+    let mesaj = eklenenSayisi + ' ogrenci pakete atandi';
+    if (zatenVarSayisi > 0) {
+      mesaj += ' (' + zatenVarSayisi + ' ogrenci zaten atanmisti)';
+    }
+
+    res.json({ success: true, message: mesaj });
+  } catch (error) {
+    console.error('Paket ogrenci atama hatasi:', error);
+    res.json({ success: false, message: 'Bir hata olustu: ' + error.message });
   }
 });
 
