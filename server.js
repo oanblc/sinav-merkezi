@@ -3714,9 +3714,9 @@ app.get('/kurum/veli-giris-bilgisi', requireAuth, async (req, res) => {
   }
 });
 
-// Kurum - Öğrenci Kayıt GÃƒÂƒÃ‚Â¼ncelle
+// Kurum - Öğrenci Kayıt Guncelle
 app.post('/kurum/ogrenci-kayit-guncelle/:id', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
+  if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
   }
   
@@ -3749,7 +3749,7 @@ app.post('/kurum/ogrenci-kayit-guncelle/:id', requireAuth, async (req, res) => {
 
 // Kurum - Öğrenci Kayıt Sil
 app.post('/kurum/ogrenci-kayit-sil/:id', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
+  if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
   }
   
@@ -3763,9 +3763,9 @@ app.post('/kurum/ogrenci-kayit-sil/:id', requireAuth, async (req, res) => {
   }
 });
 
-// Kurum - TÃƒÂƒÃ‚ÂœM Öğrenci KayıtlarÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± Sil
+// Kurum - TUM Ogrenci Kayitlarini Sil
 app.post('/kurum/ogrenci-kayitlari-tumunu-sil', requireAuth, async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
+  if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
   }
   
@@ -3799,7 +3799,7 @@ app.post('/kurum/ogrenci-kayitlari-tumunu-sil', requireAuth, async (req, res) =>
 
 // Kurum - Excel Import
 app.post('/kurum/ogrenci-import-excel', requireAuth, upload.single('excelFile'), async (req, res) => {
-  if (req.session.userType !== 'kurum_yonetici') {
+  if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
   }
   
