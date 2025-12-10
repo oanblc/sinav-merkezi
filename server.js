@@ -7335,17 +7335,12 @@ app.post('/kurum/sinav-eslestirme-kaldir', requireAuth, async (req, res) => {
     console.log(`   Sınav ID: ${sinav_id}`);
     console.log(`   Öğrenci ID: ${ogrenci_id} (${kaynak})`);
     
-    // pdf_path'i NULL yap ve sonuc_durumu'nu beklemede'ye ÃƒÂƒÃ‚Â§ek
-    const result = await new Promise((resolve, reject) => {
-      db.run(`
-        UPDATE sinav_katilimcilari 
-        SET pdf_path = NULL, sonuc_durumu = 'beklemede'
-        WHERE sinav_id = ? AND ogrenci_id = ? AND ogrenci_kaynak = ?
-      `, [sinav_id, ogrenci_id, kaynak], function(err) {
-        if (err) reject(err);
-        else resolve({ changes: this.changes });
-      });
-    });
+    // pdf_path'i NULL yap ve sonuc_durumu'nu beklemede'ye cek
+    const result = await dbRun(`
+      UPDATE sinav_katilimcilari
+      SET pdf_path = NULL, sonuc_durumu = 'beklemede'
+      WHERE sinav_id = ? AND ogrenci_id = ? AND ogrenci_kaynak = ?
+    `, [sinav_id, ogrenci_id, kaynak]);
     
     console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±: ${result.changes} satÃƒÂ„Ã‚Â±r güncellendi`);
     
