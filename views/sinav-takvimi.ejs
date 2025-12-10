@@ -34,152 +34,156 @@
     }
 
     /* ========================================
-       FILTER CARD - Full Responsive
+       COMPACT FILTER BAR - Inline Design
        ======================================== */
-    .filter-card {
+    .filter-bar {
         background: white;
-        border-radius: clamp(12px, 3vw, 20px);
-        padding: clamp(16px, 3vw, 24px);
-        margin-bottom: clamp(20px, 4vw, 30px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border-radius: 50px;
+        padding: 8px 12px;
+        margin-bottom: clamp(16px, 3vw, 24px);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
         border: 1px solid #e8ecf0;
-    }
-
-    .filter-header {
         display: flex;
         align-items: center;
-        gap: clamp(6px, 1.5vw, 10px);
-        font-size: clamp(0.95rem, 2vw, 1.1rem);
-        font-weight: 700;
-        color: var(--primary);
-        margin-bottom: clamp(14px, 3vw, 20px);
+        gap: 8px;
+        flex-wrap: wrap;
     }
 
-    .filter-header i {
-        font-size: clamp(1.1rem, 2.5vw, 1.3rem);
+    .filter-bar .filter-input {
+        flex: 1;
+        min-width: 120px;
+        position: relative;
     }
 
-    .filter-body {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-        gap: clamp(12px, 2vw, 16px);
-        align-items: end;
-    }
-
-    .filter-item {
-        display: flex;
-        flex-direction: column;
-        gap: clamp(6px, 1vw, 8px);
-    }
-
-    .filter-item label {
-        display: flex;
-        align-items: center;
-        gap: clamp(5px, 1vw, 8px);
-        font-weight: 600;
-        color: #475569;
-        font-size: clamp(0.8rem, 1.6vw, 0.9rem);
-    }
-
-    .filter-item label i {
-        color: var(--primary);
-        font-size: clamp(0.85rem, 1.8vw, 1rem);
-    }
-
-    .filter-item .form-control,
-    .filter-item .form-select {
-        border-radius: clamp(8px, 1.5vw, 12px);
-        border: 2px solid #e2e8f0;
-        padding: clamp(8px, 1.5vw, 10px) clamp(10px, 2vw, 14px);
-        font-size: clamp(0.85rem, 1.6vw, 0.95rem);
-        transition: all 0.3s ease;
+    .filter-bar .form-control,
+    .filter-bar .form-select {
+        border: none;
+        border-radius: 25px;
+        padding: 10px 16px 10px 38px;
+        font-size: 0.9rem;
         background: #f8fafc;
+        transition: all 0.2s ease;
+        height: 42px;
         width: 100%;
     }
 
-    .filter-item .form-control:focus,
-    .filter-item .form-select:focus {
-        border-color: var(--primary);
-        background: white;
-        box-shadow: 0 0 0 3px rgba(0, 59, 120, 0.1);
+    .filter-bar .form-control:focus,
+    .filter-bar .form-select:focus {
+        background: #f0f4ff;
+        box-shadow: none;
         outline: none;
     }
 
-    .filter-item .form-select {
+    .filter-bar .filter-icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--primary);
+        font-size: 0.95rem;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .filter-bar .form-select {
         cursor: pointer;
         appearance: none;
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23003b78' d='M8 11L3 6h10z'/%3E%3C/svg%3E");
         background-repeat: no-repeat;
-        background-position: right clamp(8px, 1.5vw, 12px) center;
-        background-size: clamp(10px, 1.5vw, 12px);
-        padding-right: clamp(28px, 4vw, 36px);
+        background-position: right 12px center;
+        background-size: 10px;
+        padding-right: 32px;
     }
 
-    .filter-actions {
-        display: flex;
-        align-items: flex-end;
-    }
-
-    .filter-actions .btn {
-        border-radius: clamp(8px, 1.5vw, 12px);
-        padding: clamp(8px, 1.5vw, 10px) clamp(14px, 2.5vw, 20px);
-        font-weight: 600;
+    .filter-bar .btn-clear {
+        background: none;
+        border: none;
+        color: #94a3b8;
+        padding: 8px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
         display: flex;
         align-items: center;
-        gap: clamp(5px, 1vw, 8px);
-        width: 100%;
-        justify-content: center;
-        transition: all 0.3s ease;
-        font-size: clamp(0.85rem, 1.6vw, 0.95rem);
+        gap: 4px;
+        white-space: nowrap;
     }
 
-    .filter-actions .btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(0, 59, 120, 0.2);
+    .filter-bar .btn-clear:hover {
+        color: var(--primary);
+        background: #f0f4ff;
+    }
+
+    /* Active filter indicator */
+    .filter-bar.has-filters {
+        border-color: var(--primary);
+        box-shadow: 0 2px 12px rgba(0, 59, 120, 0.1);
+    }
+
+    .filter-count {
+        background: var(--primary);
+        color: white;
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-weight: 600;
     }
 
     /* ========================================
-       VIEW TOGGLE - Full Responsive
+       VIEW TOGGLE - Compact Pills
        ======================================== */
     .view-toggle {
         display: flex;
-        gap: clamp(8px, 1.5vw, 12px);
-        justify-content: center;
-        margin-bottom: clamp(20px, 4vw, 30px);
-        flex-wrap: wrap;
+        background: #f1f5f9;
+        border-radius: 25px;
+        padding: 4px;
+        gap: 4px;
+        width: fit-content;
     }
 
     .view-btn {
-        background: white;
-        border: 2px solid #e8ecf0;
-        border-radius: clamp(10px, 2vw, 16px);
-        padding: clamp(10px, 1.5vw, 12px) clamp(16px, 3vw, 24px);
-        font-size: clamp(0.85rem, 1.8vw, 1rem);
+        background: transparent;
+        border: none;
+        border-radius: 20px;
+        padding: 8px 16px;
+        font-size: 0.85rem;
         font-weight: 600;
-        color: var(--text);
+        color: #64748b;
         cursor: pointer;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
         display: flex;
         align-items: center;
-        gap: clamp(5px, 1vw, 8px);
-        flex: 1;
-        max-width: 200px;
-        justify-content: center;
+        gap: 6px;
     }
 
     .view-btn:hover {
-        background: #f8fafc;
-        border-color: var(--primary);
+        color: var(--primary);
     }
 
     .view-btn.active {
-        background: var(--primary);
-        color: white;
-        border-color: var(--primary);
+        background: white;
+        color: var(--primary);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
 
     .view-btn i {
-        font-size: clamp(0.95rem, 2vw, 1.1rem);
+        font-size: 0.9rem;
+    }
+
+    /* Filter + View Wrapper */
+    .filter-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: clamp(16px, 3vw, 24px);
+        flex-wrap: wrap;
+    }
+
+    .filter-wrapper .filter-bar {
+        flex: 1;
+        margin-bottom: 0;
     }
 
     /* ========================================
@@ -436,17 +440,12 @@
        BREAKPOINT: TABLET (768px - 1024px)
        ======================================== */
     @media (min-width: 768px) and (max-width: 1024px) {
-        .filter-body {
-            grid-template-columns: repeat(2, 1fr);
+        .filter-bar {
+            padding: 10px 16px;
         }
 
-        .filter-actions {
-            grid-column: span 2;
-        }
-
-        .filter-actions .btn {
-            max-width: 300px;
-            margin: 0 auto;
+        .filter-bar .filter-input {
+            min-width: 140px;
         }
 
         .view-btn {
@@ -464,18 +463,55 @@
        BREAKPOINT: MOBILE (< 768px)
        ======================================== */
     @media (max-width: 767px) {
-        .filter-body {
-            grid-template-columns: 1fr;
+        .filter-wrapper {
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .filter-wrapper .filter-bar {
+            width: 100%;
+        }
+
+        .filter-wrapper .view-toggle {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .filter-bar {
+            border-radius: 16px;
+            padding: 10px;
+            gap: 6px;
+        }
+
+        .filter-bar .filter-input {
+            flex: 1 1 calc(50% - 3px);
+            min-width: unset;
+        }
+
+        .filter-bar .filter-input:first-child {
+            flex: 1 1 100%;
+        }
+
+        .filter-bar .form-control,
+        .filter-bar .form-select {
+            height: 40px;
+            font-size: 0.85rem;
+            padding-left: 34px;
+        }
+
+        .filter-bar .btn-clear {
+            flex: 1 1 100%;
+            justify-content: center;
+            margin-top: 4px;
         }
 
         .view-toggle {
-            flex-direction: row;
-            justify-content: stretch;
+            width: 100%;
         }
 
         .view-btn {
             flex: 1;
-            max-width: none;
+            justify-content: center;
         }
 
         .exam-row-1 {
@@ -533,6 +569,21 @@
             font-size: 2rem;
         }
 
+        .filter-bar .filter-input {
+            flex: 1 1 100%;
+        }
+
+        .filter-bar .form-control,
+        .filter-bar .form-select {
+            height: 38px;
+            font-size: 0.8rem;
+        }
+
+        .view-btn {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+
         .exam-left {
             flex-direction: column;
             align-items: flex-start;
@@ -545,14 +596,6 @@
 
         .exam-left .badge {
             align-self: flex-start;
-        }
-
-        .view-toggle {
-            flex-direction: column;
-        }
-
-        .view-btn {
-            width: 100%;
         }
 
         /* Super small calendar */
@@ -593,71 +636,57 @@
         <p>Yaklasan sinav tarihlerini goruntueleyin</p>
     </div>
 
-    <!-- Modern Filtre Alani -->
-    <div class="filter-card">
-        <div class="filter-header">
-            <i class="bi bi-funnel-fill"></i>
-            <span>Filtreler</span>
-        </div>
-        <div class="filter-body">
-            <div class="filter-item">
-                <label for="sinifFilter">
-                    <i class="bi bi-journal-text"></i>
-                    Sinif
-                </label>
+    <!-- Filtre ve Gorunum Alani -->
+    <div class="filter-wrapper">
+        <!-- Kompakt Filtre Cubugu -->
+        <div class="filter-bar" id="filterBar">
+            <div class="filter-input" style="flex: 2; min-width: 140px;">
+                <i class="bi bi-search filter-icon"></i>
+                <input type="text" id="aramaInput" class="form-control" placeholder="Sinav ara...">
+            </div>
+
+            <div class="filter-input" style="flex: 1; min-width: 110px;">
+                <i class="bi bi-mortarboard filter-icon"></i>
                 <select id="sinifFilter" class="form-select">
-                    <option value="">Tum Siniflar</option>
-                    <option value="1">1. Sinif</option>
-                    <option value="2">2. Sinif</option>
-                    <option value="3">3. Sinif</option>
-                    <option value="4">4. Sinif</option>
-                    <option value="5">5. Sinif</option>
-                    <option value="6">6. Sinif</option>
-                    <option value="7">7. Sinif</option>
-                    <option value="8">8. Sinif</option>
-                    <option value="9">9. Sinif</option>
-                    <option value="10">10. Sinif</option>
-                    <option value="11">11. Sinif</option>
-                    <option value="12">12. Sinif</option>
+                    <option value="">Sinif</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                    <option value="9">9</option>
+                    <option value="10">10</option>
+                    <option value="11">11</option>
+                    <option value="12">12</option>
                     <option value="Mezun">Mezun</option>
                 </select>
             </div>
 
-            <div class="filter-item">
-                <label for="sinavTarih">
-                    <i class="bi bi-calendar-event"></i>
-                    Sinav Tarihi
-                </label>
+            <div class="filter-input" style="flex: 1; min-width: 130px;">
+                <i class="bi bi-calendar-event filter-icon"></i>
                 <input type="date" id="sinavTarih" class="form-control">
             </div>
 
-            <div class="filter-item">
-                <label for="aramaInput">
-                    <i class="bi bi-search"></i>
-                    Sinav Ara
-                </label>
-                <input type="text" id="aramaInput" class="form-control" placeholder="Sinav adi...">
-            </div>
-
-            <div class="filter-actions">
-                <button class="btn btn-primary" onclick="filtreleriTemizle()">
-                    <i class="bi bi-arrow-clockwise"></i>
-                    Temizle
-                </button>
-            </div>
+            <button class="btn-clear" onclick="filtreleriTemizle()" id="clearBtn" style="display: none;">
+                <i class="bi bi-x-circle"></i>
+                Temizle
+            </button>
         </div>
-    </div>
 
-    <!-- Gorunum Toggle -->
-    <div class="view-toggle">
-        <button class="view-btn active" onclick="gorunumDegistir('liste')" id="listBtn">
-            <i class="bi bi-list-ul"></i>
-            <span>Liste</span>
-        </button>
-        <button class="view-btn" onclick="gorunumDegistir('takvim')" id="takvimBtn">
-            <i class="bi bi-calendar3"></i>
-            <span>Takvim</span>
-        </button>
+        <!-- Gorunum Toggle -->
+        <div class="view-toggle">
+            <button class="view-btn active" onclick="gorunumDegistir('liste')" id="listBtn">
+                <i class="bi bi-list-ul"></i>
+                Liste
+            </button>
+            <button class="view-btn" onclick="gorunumDegistir('takvim')" id="takvimBtn">
+                <i class="bi bi-calendar3"></i>
+                Takvim
+            </button>
+        </div>
     </div>
 
     <!-- Liste Gorunumu -->
@@ -747,7 +776,20 @@
         const aramaText = document.getElementById('aramaInput').value.toLowerCase().trim();
 
         const items = document.querySelectorAll('.exam-item');
+        const filterBar = document.getElementById('filterBar');
+        const clearBtn = document.getElementById('clearBtn');
         let gorunenSayisi = 0;
+
+        // Filtre aktif mi kontrol et
+        const hasFilters = sinifFilter || sinavTarih || aramaText;
+
+        if (hasFilters) {
+            filterBar.classList.add('has-filters');
+            clearBtn.style.display = 'flex';
+        } else {
+            filterBar.classList.remove('has-filters');
+            clearBtn.style.display = 'none';
+        }
 
         items.forEach(item => {
             const itemSinif = item.dataset.sinif;
