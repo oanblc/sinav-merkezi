@@ -84,54 +84,78 @@
         margin: 0;
     }
     
-    /* Duyuru Card */
+    /* Duyuru Card - Modern Compact */
     .content-card {
         background: white;
-        border-radius: 10px;
+        border-radius: 16px;
         overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        transition: all 0.3s ease;
-        border: 2px solid #f0f0f0;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid #e8ecf0;
+        position: relative;
     }
-    
+
+    .content-card::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
     .content-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(0,59,120,0.12);
         border-color: var(--primary);
     }
-    
+
+    .content-card:hover::before {
+        opacity: 1;
+    }
+
     .content-card-body {
-        padding: 24px;
+        padding: clamp(16px, 3vw, 24px);
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 16px;
     }
-    
+
     .content-card-title {
-        font-size: 1.2rem;
+        font-size: clamp(1rem, 2.5vw, 1.15rem);
         font-weight: 700;
         color: var(--primary);
-        margin-bottom: 12px;
+        margin-bottom: 8px;
         line-height: 1.4;
     }
-    
+
     .content-card-text {
         color: #666;
-        line-height: 1.7;
+        line-height: 1.6;
         margin: 0;
+        font-size: clamp(0.9rem, 2vw, 0.95rem);
     }
-    
+
     .content-card-meta {
         display: flex;
         align-items: center;
-        gap: 16px;
-        color: #999;
-        font-size: 0.9rem;
+        gap: 6px;
+        color: #666;
+        font-size: 0.85rem;
         white-space: nowrap;
+        background: #f8fafc;
+        padding: 8px 14px;
+        border-radius: 20px;
+        flex-shrink: 0;
     }
-    
+
     .content-card-meta i {
         color: var(--primary);
+        font-size: 0.9rem;
     }
     
     /* Empty State */
@@ -166,49 +190,64 @@
     @media (max-width: 768px) {
         .breadcrumb-container {
             padding: 12px 0;
+            margin-bottom: 20px;
         }
-        
+
         .breadcrumb {
             font-size: 0.85rem;
         }
-        
+
         .breadcrumb-item a i {
             font-size: 0.9rem;
         }
-        
+
         .page-header {
-            padding: 20px 0 15px;
+            padding: 16px 0 12px;
+            margin-bottom: 20px;
         }
-        
+
         .page-header h1 {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             gap: 8px;
         }
-        
+
         .page-header h1 i {
-            font-size: 1.4rem;
+            font-size: 1.3rem;
         }
-        
+
         .page-header p {
             font-size: 0.9rem;
         }
-        
+
+        .content-card {
+            border-radius: 12px;
+        }
+
+        .content-card::before {
+            display: none;
+        }
+
         .content-card-body {
             flex-direction: column;
             align-items: flex-start;
             gap: 12px;
+            padding: 16px;
         }
-        
+
         .content-card-meta {
-            width: 100%;
+            align-self: flex-start;
+            padding: 6px 12px;
+            font-size: 0.8rem;
         }
-        
-        .content-card-title {
-            font-size: 1.1rem;
+    }
+
+    @media (max-width: 480px) {
+        .page-header h1 {
+            font-size: 1.25rem;
         }
-        
-        .content-card-text {
-            font-size: 0.95rem;
+
+        .content-card-body {
+            padding: 14px;
         }
     }
 </style>

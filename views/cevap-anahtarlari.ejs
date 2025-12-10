@@ -358,124 +358,106 @@
         font-size: 0.95rem;
     }
     
-    /* Modern Filter Card */
-    .filter-card {
+    /* Compact Filter Bar */
+    .filter-bar {
         background: white;
-        border-radius: 20px;
-        padding: 24px;
-        margin-bottom: 30px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border-radius: 50px;
+        padding: 8px 16px;
+        margin-bottom: 24px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
         border: 1px solid #e8ecf0;
-    }
-    
-    .filter-header {
         display: flex;
         align-items: center;
         gap: 10px;
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: var(--primary);
-        margin-bottom: 20px;
+        flex-wrap: wrap;
     }
-    
-    .filter-header i {
-        font-size: 1.3rem;
+
+    .filter-bar .filter-input {
+        flex: 1;
+        min-width: 120px;
+        position: relative;
     }
-    
-    .filter-body {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
-        align-items: end;
-    }
-    
-    .filter-item {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-    
-    .filter-item label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: 600;
-        color: #475569;
+
+    .filter-bar .form-control,
+    .filter-bar .form-select {
+        border: none;
+        border-radius: 25px;
+        padding: 10px 16px 10px 38px;
         font-size: 0.9rem;
-    }
-    
-    .filter-item label i {
-        color: var(--primary);
-        font-size: 1rem;
-    }
-    
-    .filter-item .form-control,
-    .filter-item .form-select {
-        border-radius: 12px;
-        border: 2px solid #e2e8f0;
-        padding: 10px 14px;
-        font-size: 0.95rem;
-        transition: all 0.3s ease;
         background: #f8fafc;
+        height: 42px;
+        width: 100%;
     }
-    
-    .filter-item .form-control:focus,
-    .filter-item .form-select:focus {
-        border-color: var(--primary);
-        background: white;
-        box-shadow: 0 0 0 3px rgba(0, 59, 120, 0.1);
+
+    .filter-bar .form-control:focus,
+    .filter-bar .form-select:focus {
+        background: #f0f4ff;
+        box-shadow: none;
+        outline: none;
     }
-    
-    .filter-item .form-select {
+
+    .filter-bar .filter-icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--primary);
+        font-size: 0.95rem;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .filter-bar .btn-clear {
+        background: none;
+        border: none;
+        color: #94a3b8;
+        padding: 8px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
         cursor: pointer;
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23003b78' d='M8 11L3 6h10z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 12px center;
-        background-size: 12px;
-        padding-right: 36px;
+        display: none;
     }
-    
-    .filter-actions {
-        display: flex;
-        align-items: flex-end;
+
+    .filter-bar .btn-clear:hover {
+        color: var(--primary);
+        background: #f0f4ff;
     }
-    
-    .filter-actions .btn {
-        border-radius: 12px;
-        padding: 10px 20px;
-        font-weight: 600;
+
+    .filter-bar.has-filters {
+        border-color: var(--primary);
+    }
+
+    .filter-bar.has-filters .btn-clear {
         display: flex;
         align-items: center;
-        gap: 8px;
-        width: 100%;
-        justify-content: center;
-        transition: all 0.3s ease;
+        gap: 4px;
     }
-    
-    .filter-actions .btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(0, 59, 120, 0.2);
-    }
-    
-    .filter-actions .btn i {
-        font-size: 1rem;
-    }
-    
+
     /* Responsive */
     @media (max-width: 768px) {
-        .filter-card {
-            padding: 20px;
+        .filter-bar {
             border-radius: 16px;
+            padding: 10px;
         }
-        
-        .filter-body {
-            grid-template-columns: 1fr;
-            gap: 14px;
+
+        .filter-bar .filter-input {
+            flex: 1 1 calc(50% - 5px);
+            min-width: unset;
         }
-        
-        .filter-header {
-            font-size: 1rem;
+
+        .filter-bar .filter-input:first-child {
+            flex: 1 1 100%;
+        }
+
+        .filter-bar .form-control,
+        .filter-bar .form-select {
+            height: 40px;
+            font-size: 0.85rem;
+        }
+
+        .filter-bar .btn-clear {
+            flex: 1 1 100%;
+            justify-content: center;
         }
     }
     
@@ -610,59 +592,42 @@
 <!-- Main Content -->
 <div class="container" style="margin-bottom: 60px;">
     
-    <!-- Modern Filtre Alanı -->
-    <div class="filter-card">
-        <div class="filter-header">
-            <i class="bi bi-funnel-fill"></i>
-            <span>Filtreler</span>
+    <!-- Kompakt Filtre Cubugu -->
+    <div class="filter-bar" id="filterBar">
+        <div class="filter-input" style="flex: 2; min-width: 150px;">
+            <i class="bi bi-search filter-icon"></i>
+            <input type="text" id="aramaInput" class="form-control" placeholder="Cevap anahtari ara...">
         </div>
-        <div class="filter-body">
-            <div class="filter-item">
-                <label for="sinifFilter">
-                    <i class="bi bi-journal-text"></i>
-                    Sınıf
-                </label>
-                <select id="sinifFilter" class="form-select">
-                    <option value="">Tüm Sınıflar</option>
-                    <option value="1">1. Sınıf</option>
-                    <option value="2">2. Sınıf</option>
-                    <option value="3">3. Sınıf</option>
-                    <option value="4">4. Sınıf</option>
-                    <option value="5">5. Sınıf</option>
-                    <option value="6">6. Sınıf</option>
-                    <option value="7">7. Sınıf</option>
-                    <option value="8">8. Sınıf</option>
-                    <option value="9">9. Sınıf</option>
-                    <option value="10">10. Sınıf</option>
-                    <option value="11">11. Sınıf</option>
-                    <option value="12">12. Sınıf</option>
-                    <option value="Mezun">Mezun</option>
-                </select>
-            </div>
-            
-            <div class="filter-item">
-                <label for="sinavTarih">
-                    <i class="bi bi-calendar-event"></i>
-                    Sınav Tarihi
-                </label>
-                <input type="date" id="sinavTarih" class="form-control">
-            </div>
-            
-            <div class="filter-item">
-                <label for="aramaInput">
-                    <i class="bi bi-search"></i>
-                    Sınav Ara
-                </label>
-                <input type="text" id="aramaInput" class="form-control" placeholder="Sınav adı...">
-            </div>
-            
-            <div class="filter-actions">
-                <button class="btn btn-primary" onclick="filtreleriTemizle()">
-                    <i class="bi bi-arrow-clockwise"></i>
-                    Temizle
-                </button>
-            </div>
+
+        <div class="filter-input" style="flex: 1; min-width: 110px;">
+            <i class="bi bi-mortarboard filter-icon"></i>
+            <select id="sinifFilter" class="form-select">
+                <option value="">Sinif</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+                <option value="11">11</option>
+                <option value="12">12</option>
+                <option value="Mezun">Mezun</option>
+            </select>
         </div>
+
+        <div class="filter-input" style="flex: 1; min-width: 130px;">
+            <i class="bi bi-calendar-event filter-icon"></i>
+            <input type="date" id="sinavTarih" class="form-control">
+        </div>
+
+        <button class="btn-clear" onclick="filtreleriTemizle()" id="clearBtn">
+            <i class="bi bi-x-circle"></i>
+            Temizle
+        </button>
     </div>
 
     <!-- Answer Keys -->
@@ -745,9 +710,18 @@
         const sinifFilter = document.getElementById('sinifFilter').value;
         const sinavTarih = document.getElementById('sinavTarih').value;
         const aramaText = document.getElementById('aramaInput').value.toLowerCase().trim();
-        
+
         const items = document.querySelectorAll('.answer-item');
+        const filterBar = document.getElementById('filterBar');
         let gorunenSayisi = 0;
+
+        // Filtre aktif mi kontrol et
+        const hasFilters = sinifFilter || sinavTarih || aramaText;
+        if (hasFilters) {
+            filterBar.classList.add('has-filters');
+        } else {
+            filterBar.classList.remove('has-filters');
+        }
         
         items.forEach(item => {
             const itemSinif = item.dataset.sinif;
