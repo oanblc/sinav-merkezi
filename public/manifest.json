@@ -1,6 +1,6 @@
 {
-  "name": "Sınav Merkezi - Veli Paneli",
-  "short_name": "Sınav Merkezi",
+  "name": "Adana Sınav Kulübü - Veli Paneli",
+  "short_name": "Adana Sınav Kulübü",
   "description": "Öğrencilerinizin sınav sonuçlarını takip edin",
   "start_url": "/veli/dashboard",
   "display": "standalone",
