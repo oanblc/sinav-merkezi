@@ -49,7 +49,7 @@
                 </p>
             </div>
             <div class="d-flex gap-2">
-                <button class="btn btn-light" onclick="document.getElementById('ogrenciAtaModal').classList.add('show'); document.getElementById('ogrenciAtaModal').style.display='block';" style="border-radius: 12px; font-weight: 600;">
+                <button class="btn btn-light" onclick="ogrenciAtaModalAc()" style="border-radius: 12px; font-weight: 600;">
                     <i class="bi bi-person-plus"></i> Öğrenci Ata
                 </button>
                 <a href="/kurum/sinav-paketleri" class="btn btn-light" style="border-radius: 12px; font-weight: 600;">
@@ -139,7 +139,7 @@
     <% if (ogrenciler.length === 0) { %>
     <div class="alert alert-info">
         <i class="bi bi-info-circle"></i> Bu pakete henüz öğrenci atanmamış.
-        <button class="btn btn-primary btn-sm ms-3" onclick="document.getElementById('ogrenciAtaModal').classList.add('show'); document.getElementById('ogrenciAtaModal').style.display='block';">
+        <button class="btn btn-primary btn-sm ms-3" onclick="ogrenciAtaModalAc()">
             <i class="bi bi-person-plus"></i> Öğrenci Ata
         </button>
     </div>
@@ -191,7 +191,7 @@
                 <h5 class="modal-title">
                     <i class="bi bi-person-plus"></i> Pakete Öğrenci Ata
                 </h5>
-                <button type="button" class="btn-close btn-close-white" onclick="document.getElementById('ogrenciAtaModal').classList.remove('show'); document.getElementById('ogrenciAtaModal').style.display='none';"></button>
+                <button type="button" class="btn-close btn-close-white" onclick="ogrenciAtaModalKapat()"></button>
             </div>
             <div class="modal-body">
                 <p class="text-muted">Bu pakete atamak istediğiniz öğrencileri seçin. Seçilen öğrenciler paketteki tüm sınavlara otomatik olarak kaydedilecektir.</p>
@@ -226,7 +226,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="document.getElementById('ogrenciAtaModal').classList.remove('show'); document.getElementById('ogrenciAtaModal').style.display='none';">İptal</button>
+                <button type="button" class="btn btn-secondary" onclick="ogrenciAtaModalKapat()">İptal</button>
                 <button type="button" class="btn btn-primary" onclick="ogrencileriAta()" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); border: none;">
                     <i class="bi bi-check-circle"></i> Seçilenleri Ata
                 </button>
@@ -237,141 +237,168 @@
 
 <script>
 let tumOgrenciler = [];
+let ogrenciYuklendi = false;
 
-// Modal açıldığında öğrencileri yükle
-document.addEventListener('DOMContentLoaded', function() {
+// Modal ac fonksiyonu
+function ogrenciAtaModalAc() {
     const modal = document.getElementById('ogrenciAtaModal');
-    if (modal) {
-        modal.addEventListener('show.bs.modal', function() {
-            console.log('Modal acildi, ogrenciler yukleniyor...');
-            ogrencileriYukle();
-        });
-    }
-});
+    modal.classList.add('show');
+    modal.style.display = 'block';
+    document.body.classList.add('modal-open');
 
+    // Backdrop ekle
+    if (!document.querySelector('.modal-backdrop')) {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop fade show';
+        document.body.appendChild(backdrop);
+    }
+
+    // Ogrencileri yukle
+    if (!ogrenciYuklendi) {
+        ogrencileriYukle();
+    }
+}
+
+// Modal kapat fonksiyonu
+function ogrenciAtaModalKapat() {
+    const modal = document.getElementById('ogrenciAtaModal');
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+
+    // Backdrop kaldir
+    const backdrop = document.querySelector('.modal-backdrop');
+    if (backdrop) backdrop.remove();
+}
+
+// Ogrencileri yukle
 async function ogrencileriYukle() {
-    console.log('ogrencileriYukle fonksiyonu cagrildi');
     const yukleniyorDiv = document.getElementById('ogrenciYukleniyor');
     const listeDiv = document.getElementById('ogrenciListesi');
 
+    // Loading goster
+    yukleniyorDiv.style.display = 'block';
+    listeDiv.style.display = 'none';
+
     try {
-        console.log('API istegi gonderiliyor...');
         const res = await fetch('/kurum/ogrenci-kayitlari-api');
-        console.log('API yanit status:', res.status);
 
         if (!res.ok) {
-            throw new Error('API yanit hatasi: ' + res.status);
+            throw new Error('API hatasi: ' + res.status);
         }
 
         const data = await res.json();
-        console.log('API yanit data:', data.length, 'kayit');
 
-        tumOgrenciler = data.map(o => ({
-            id: o.id,
-            ad_soyad: o.ogrenci_adi_soyadi,
-            sinif: o.sinif,
-            tc_no: o.tc_kimlik_no,
-            kaynak: 'kurum'
-        }));
+        tumOgrenciler = data.map(function(o) {
+            return {
+                id: o.id,
+                ad_soyad: o.ogrenci_adi_soyadi || '',
+                sinif: o.sinif || '',
+                tc_no: o.tc_kimlik_no || ''
+            };
+        });
 
-        console.log('tumOgrenciler:', tumOgrenciler.length);
+        ogrenciYuklendi = true;
         ogrenciListesiniGoster();
+
     } catch (error) {
-        console.error('Ogrenci yukleme hatasi:', error);
-        if (yukleniyorDiv) {
-            yukleniyorDiv.innerHTML = '<div class="alert alert-danger">Ogrenciler yuklenirken hata olustu: ' + error.message + '</div>';
-        }
+        yukleniyorDiv.innerHTML = '<div class="alert alert-danger">Ogrenciler yuklenirken hata: ' + error.message + '</div>';
     }
 }
 
+// Listeyi goster
 function ogrenciListesiniGoster() {
     const liste = document.getElementById('ogrenciListesi');
-    
+    const yukleniyorDiv = document.getElementById('ogrenciYukleniyor');
+
     if (tumOgrenciler.length === 0) {
-        liste.innerHTML = '<div class="alert alert-info">Henüz öğrenci kaydı bulunmuyor.</div>';
+        liste.innerHTML = '<div class="alert alert-info">Henuz ogrenci kaydi bulunmuyor.</div>';
         liste.style.display = 'block';
-        document.getElementById('ogrenciYukleniyor').style.display = 'none';
+        yukleniyorDiv.style.display = 'none';
         return;
     }
-    
+
     let html = '';
-    tumOgrenciler.forEach(ogrenci => {
-        const id = ogrenci.id;
-        const ad = ogrenci.ad_soyad || ogrenci.ogrenci_adi_soyadi || '-';
+    for (let i = 0; i < tumOgrenciler.length; i++) {
+        const ogrenci = tumOgrenciler[i];
+        const ad = ogrenci.ad_soyad || '-';
         const sinif = ogrenci.sinif || '-';
-        const badge = 'bg-primary';
-        const kaynakText = 'Kurum';
-        
-        html += `
-            <div class="form-check p-3 mb-2" style="background: #f8fafc; border-radius: 12px;" data-sinif="${sinif}" data-ad="${(ad || '').toLowerCase()}">
-                <input class="form-check-input" type="checkbox" value="${id}_${ogrenci.kaynak}" id="ogr_${id}_${ogrenci.kaynak}">
-                <label class="form-check-label flex-grow-1" for="ogr_${id}_${ogrenci.kaynak}" style="cursor: pointer;">
-                    <strong>${ad}</strong>
-                    <span class="badge ${badge} ms-2">${kaynakText}</span>
-                    <span class="badge bg-secondary ms-1">${sinif}</span>
-                </label>
-            </div>
-        `;
-    });
-    
+        const adLower = ad.toLowerCase();
+
+        html += '<div class="form-check p-3 mb-2" style="background: #f8fafc; border-radius: 12px;" data-sinif="' + sinif + '" data-ad="' + adLower + '">';
+        html += '<input class="form-check-input" type="checkbox" value="' + ogrenci.id + '_kurum" id="ogr_' + ogrenci.id + '">';
+        html += '<label class="form-check-label flex-grow-1" for="ogr_' + ogrenci.id + '" style="cursor: pointer;">';
+        html += '<strong>' + ad + '</strong>';
+        html += '<span class="badge bg-primary ms-2">Kurum</span>';
+        html += '<span class="badge bg-secondary ms-1">' + sinif + '</span>';
+        html += '</label></div>';
+    }
+
     liste.innerHTML = html;
     liste.style.display = 'block';
-    document.getElementById('ogrenciYukleniyor').style.display = 'none';
-    
-    // Filtre uygula
+    yukleniyorDiv.style.display = 'none';
+
     ogrenciFiltreUygula();
 }
 
+// Filtre uygula
 function ogrenciFiltreUygula() {
-    const aramaMetni = document.getElementById('ogrenciAra').value.toLowerCase();
-    const sinifFiltre = document.getElementById('sinifFiltre').value;
-    
-    document.querySelectorAll('#ogrenciListesi .form-check').forEach(item => {
-        const ad = item.dataset.ad;
-        const sinif = item.dataset.sinif;
-        
-        const aramaUygun = !aramaMetni || ad.includes(aramaMetni);
+    const aramaInput = document.getElementById('ogrenciAra');
+    const sinifSelect = document.getElementById('sinifFiltre');
+
+    const aramaMetni = aramaInput ? aramaInput.value.toLowerCase() : '';
+    const sinifFiltre = sinifSelect ? sinifSelect.value : '';
+
+    const items = document.querySelectorAll('#ogrenciListesi .form-check');
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const ad = item.getAttribute('data-ad') || '';
+        const sinif = item.getAttribute('data-sinif') || '';
+
+        const aramaUygun = !aramaMetni || ad.indexOf(aramaMetni) >= 0;
         const sinifUygun = !sinifFiltre || sinif === sinifFiltre;
-        
+
         item.style.display = (aramaUygun && sinifUygun) ? 'block' : 'none';
-    });
+    }
 }
 
+// Ogrencileri ata
 async function ogrencileriAta() {
-    const secilenler = Array.from(document.querySelectorAll('#ogrenciListesi input:checked')).map(cb => cb.value);
-    
+    const checkboxlar = document.querySelectorAll('#ogrenciListesi input:checked');
+    const secilenler = [];
+    for (let i = 0; i < checkboxlar.length; i++) {
+        secilenler.push(checkboxlar[i].value);
+    }
+
     if (secilenler.length === 0) {
-        alert('❌ En az 1 öğrenci seçmelisiniz!');
+        alert('En az 1 ogrenci secmelisiniz!');
         return;
     }
-    
-    if (!confirm(`${secilenler.length} öğrenci pakete atanacak ve tüm sınavlara kaydedilecek. Onaylıyor musunuz?`)) {
+
+    if (!confirm(secilenler.length + ' ogrenci pakete atanacak. Onayliyor musunuz?')) {
         return;
     }
-    
+
     try {
         const response = await fetch('/kurum/paket-ogrenci-ata', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 paket_id: <%= paket.id %>,
                 ogrenci_ids: secilenler
             })
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
-            alert('✅ ' + result.message);
+            alert(result.message);
             location.reload();
         } else {
-            alert('❌ ' + result.message);
+            alert(result.message);
         }
     } catch (error) {
-        console.error('Atama hatası:', error);
-        alert('Bir hata oluştu!');
+        alert('Bir hata olustu!');
     }
 }
 </script>
