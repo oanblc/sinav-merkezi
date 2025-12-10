@@ -6082,10 +6082,11 @@ app.get('/rehber/profil', requireAuth, requireRole('rehber_ogretmen'), async (re
     }
     
     res.render('rehber_profil', {
-      user: { username: req.session.username },
+      user: { username: req.session.username, type: req.session.userType },
       kullanici: kullanici,
       error: error,
-      success: req.session.success
+      success: req.session.success,
+      activePage: 'profil'
     });
     
     // Session'daki error ve success'i temizle
@@ -6139,8 +6140,9 @@ app.get('/rehber/veliler', requireAuth, requireRole('rehber_ogretmen'), async (r
     
     if (veliIds.length === 0) {
       return res.render('veli_listesi', {
-        user: { username: req.session.username },
-        veliler: []
+        user: { username: req.session.username, type: req.session.userType },
+        veliler: [],
+        activePage: 'veliler'
       });
     }
     
@@ -6207,8 +6209,9 @@ app.get('/rehber/veliler', requireAuth, requireRole('rehber_ogretmen'), async (r
     });
     
     res.render('veli_listesi', {
-      user: { username: req.session.username },
-      veliler: veliler || []
+      user: { username: req.session.username, type: req.session.userType },
+      veliler: veliler || [],
+      activePage: 'veliler'
     });
   } catch (error) {
     console.error('Veli listesi hatasÃƒÂ„Ã‚Â±:', error);
