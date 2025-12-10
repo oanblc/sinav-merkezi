@@ -3665,7 +3665,12 @@ app.get('/kurum/veli-giris-bilgisi', requireAuth, async (req, res) => {
     
     // ÃƒÂ„Ã‚Â°lk şifre hash'i
     const ilkSifreHash = '$2b$10$';  // bcrypt baÃƒÂ…Ã‚ÂŸlangÃƒÂ„Ã‚Â±cÃƒÂ„Ã‚Â±
-    const defaultPassword = 'Veli2024!';
+    // Ilk sifre = TC Kimlik No (username) - onemli degisiklik
+    let usernameTemizForPassword = veli.username.toString();
+    if (usernameTemizForPassword.endsWith('.0')) {
+      usernameTemizForPassword = usernameTemizForPassword.replace('.0', '');
+    }
+    const defaultPassword = usernameTemizForPassword;
     
     // ÃƒÂ…Ã‚Âifre deÃƒÂ„Ã‚ÂŸiÃƒÂ…Ã‚ÂŸtirilmiÃƒÂ…Ã‚ÂŸ mi kontrol et
     // (Basit kontrol: created_at ile password_hash hash'i aynÃƒÂ„Ã‚Â± zamanda mÃƒÂ„Ã‚Â± oluşturulmuÃƒÂ…Ã‚ÂŸ)
