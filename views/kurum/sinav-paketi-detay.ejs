@@ -276,14 +276,14 @@ function ogrenciListesiniGoster() {
     
     let html = '';
     tumOgrenciler.forEach(ogrenci => {
-        const id = ogrenci.kaynak === 'kurum' ? ogrenci.id : ogrenci.id;
-        const ad = ogrenci.kaynak === 'kurum' ? ogrenci.ogrenci_adi_soyadi : ogrenci.ad_soyad;
+        const id = ogrenci.id;
+        const ad = ogrenci.ad_soyad || ogrenci.ogrenci_adi_soyadi || '-';
         const sinif = ogrenci.sinif || '-';
-        const badge = ogrenci.kaynak === 'kurum' ? 'bg-primary' : 'bg-success';
-        const kaynakText = ogrenci.kaynak === 'kurum' ? 'Kurum' : 'Veli';
+        const badge = 'bg-primary';
+        const kaynakText = 'Kurum';
         
         html += `
-            <div class="form-check p-3 mb-2" style="background: #f8fafc; border-radius: 12px;" data-sinif="${sinif}" data-ad="${ad.toLowerCase()}">
+            <div class="form-check p-3 mb-2" style="background: #f8fafc; border-radius: 12px;" data-sinif="${sinif}" data-ad="${(ad || '').toLowerCase()}">
                 <input class="form-check-input" type="checkbox" value="${id}_${ogrenci.kaynak}" id="ogr_${id}_${ogrenci.kaynak}">
                 <label class="form-check-label flex-grow-1" for="ogr_${id}_${ogrenci.kaynak}" style="cursor: pointer;">
                     <strong>${ad}</strong>
