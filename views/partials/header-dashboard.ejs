@@ -430,6 +430,9 @@
                                     <li><a class="dropdown-item" href="/rehber/profil"><i class="bi bi-person-circle me-2"></i>Profilim</a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item" href="/rehber/ogrenciler"><i class="bi bi-people me-2"></i>Öğrencilerim</a></li>
+                                    <li><a class="dropdown-item" href="/rehber/veliler"><i class="bi bi-person-lines-fill me-2"></i>Veli İletişim</a></li>
+                                    <li><a class="dropdown-item" href="/rehber/sinav-sonuclari"><i class="bi bi-file-earmark-pdf me-2"></i>Sınav Sonuçları</a></li>
+                                    <li><a class="dropdown-item" href="/rehber/talepler"><i class="bi bi-inbox me-2"></i>Talepler</a></li>
                                 <% } else if (typeof user.type !== 'undefined' && user.type === 'kurum_yonetici') { %>
                                     <li><a class="dropdown-item" href="/kurum/dashboard"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
                                     <li><hr class="dropdown-divider"></li>
@@ -514,6 +517,18 @@
                             <a href="/rehber/ogrenciler" class="list-group-item list-group-item-action py-3 border-0">
                                 <i class="bi bi-people me-3 text-success" style="font-size: 1.2rem;"></i>
                                 <span style="font-weight: 600;">Öğrencilerim</span>
+                            </a>
+                            <a href="/rehber/veliler" class="list-group-item list-group-item-action py-3 border-0">
+                                <i class="bi bi-person-lines-fill me-3 text-info" style="font-size: 1.2rem;"></i>
+                                <span style="font-weight: 600;">Veli İletişim</span>
+                            </a>
+                            <a href="/rehber/sinav-sonuclari" class="list-group-item list-group-item-action py-3 border-0">
+                                <i class="bi bi-file-earmark-pdf me-3 text-warning" style="font-size: 1.2rem;"></i>
+                                <span style="font-weight: 600;">Sınav Sonuçları</span>
+                            </a>
+                            <a href="/rehber/talepler" class="list-group-item list-group-item-action py-3 border-0">
+                                <i class="bi bi-inbox me-3 text-secondary" style="font-size: 1.2rem;"></i>
+                                <span style="font-weight: 600;">Talepler</span>
                             </a>
                         <% } else if (typeof user.type !== 'undefined' && user.type === 'kurum_yonetici') { %>
                             <a href="/kurum/dashboard" class="list-group-item list-group-item-action py-3 border-0">
