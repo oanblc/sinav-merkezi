@@ -7632,7 +7632,7 @@ app.post('/kurum/sinav-sonuc-yukle-sayfalara-ayir', requireAuth, uploadLimiter, 
 });
 
 // Kurum - İsim Pattern Seçimi
-app.get('/kurum/sinav-isim-pattern-secimi/:id', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+app.get('/kurum/sinav-isim-pattern-secimi/:id', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
   try {
     const sinavId = req.params.id;
     
@@ -7679,7 +7679,7 @@ app.get('/kurum/sinav-isim-pattern-secimi/:id', requireAuth, requireRole('kurum_
 });
 
 // Kurum - Otomatik Eşleştirme (Pattern Seçiminden Sonra)
-app.post('/kurum/sinav-otomatik-eslestir-pattern', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+app.post('/kurum/sinav-otomatik-eslestir-pattern', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
   try {
     const { sinav_id, pattern_index, selected_text } = req.body;
     
@@ -8000,7 +8000,7 @@ async function extractNameCandidates(pdfPath) {
 }
 
 // Kurum - Sınav listesi (koleksiyon sayfasÃƒÂ½)
-app.get('/kurum/sinavlar', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+app.get('/kurum/sinavlar', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
   try {
     const sinavlar = await dbAll('SELECT * FROM sinavlar ORDER BY created_at DESC');
     
@@ -8020,7 +8020,7 @@ app.get('/kurum/sinavlar', requireAuth, requireRole('kurum_yonetici'), async (re
 });
 
 // Kurum - Sınav detay
-app.get('/kurum/sinav-detay/:id', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+app.get('/kurum/sinav-detay/:id', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
   try {
     const sinavId = req.params.id;
     const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinavId]);
@@ -8167,7 +8167,7 @@ app.post('/kurum/cevap-anahtari-yukle/:id', requireAuth, requireRole(['kurum_yon
 });
 
 // Kurum - Sınav ekle
-app.post('/kurum/sinav-ekle', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+app.post('/kurum/sinav-ekle', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
   try {
     const { ad, tarih, sinif, aciklama } = req.body;
     if (!ad || !tarih) {
@@ -8190,8 +8190,8 @@ app.post('/kurum/sinav-ekle', requireAuth, requireRole('kurum_yonetici'), async 
   }
 });
 
-// Kurum - Sınav katÃƒÂ½lÃƒÂ½mcÃƒÂ½sÃƒÂ½ ekle (ÃƒÂ§oklu)
-app.post('/kurum/sinav-katilimci-ekle', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+// Kurum - Sinav katilimcisi ekle (coklu)
+app.post('/kurum/sinav-katilimci-ekle', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
   try {
     const { sinav_id, ogrenci_ids } = req.body;
     if (!sinav_id || !Array.isArray(ogrenci_ids) || ogrenci_ids.length === 0) {
@@ -8266,8 +8266,8 @@ app.post('/kurum/sinav-katilimci-ekle', requireAuth, requireRole('kurum_yonetici
   }
 });
 
-// Kurum - Sınav katÃƒÂ½lÃƒÂ½mcÃƒÂ½ sil
-app.post('/kurum/sinav-katilimci-sil/:id', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+// Kurum - Sinav katilimci sil
+app.post('/kurum/sinav-katilimci-sil/:id', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
   try {
     const katilimciId = req.params.id;
     const kayit = await dbGet('SELECT sinav_id FROM sinav_katilimcilari WHERE id = ?', [katilimciId]);
@@ -8285,8 +8285,8 @@ app.post('/kurum/sinav-katilimci-sil/:id', requireAuth, requireRole('kurum_yonet
   }
 });
 
-// Kurum - Sınav sil
-app.post('/kurum/sinav-sil/:id', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+// Kurum - Sinav sil
+app.post('/kurum/sinav-sil/:id', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
   try {
     const sinavId = req.params.id;
     await dbRun('DELETE FROM sinavlar WHERE id = ?', [sinavId]);
@@ -8302,7 +8302,7 @@ app.post('/kurum/sinav-sil/:id', requireAuth, requireRole('kurum_yonetici'), asy
 // ============================================
 
 // Kurumsal Sayfalar Listesi
-app.get('/kurum/kurumsal-sayfalar', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+app.get('/kurum/kurumsal-sayfalar', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
   try {
     const sayfalar = await dbAll('SELECT * FROM kurumsal_sayfalar ORDER BY sira ASC');
     
@@ -8322,7 +8322,7 @@ app.get('/kurum/kurumsal-sayfalar', requireAuth, requireRole('kurum_yonetici'), 
 });
 
 // Kurumsal Sayfa DÃƒÂƒÃ‚Â¼zenle (GET)
-app.get('/kurum/kurumsal-sayfa-duzenle/:id', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+app.get('/kurum/kurumsal-sayfa-duzenle/:id', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
   try {
     const sayfa = await dbGet('SELECT * FROM kurumsal_sayfalar WHERE id = ?', [req.params.id]);
     
@@ -8343,7 +8343,7 @@ app.get('/kurum/kurumsal-sayfa-duzenle/:id', requireAuth, requireRole('kurum_yon
 });
 
 // Site Ayarları SayfasÃƒÂ„Ã‚Â± (GET)
-app.get('/kurum/site-ayarlari', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+app.get('/kurum/site-ayarlari', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
   try {
     const ayarlar = await dbAll('SELECT * FROM site_ayarlari ORDER BY anahtar ASC');
     
@@ -8368,7 +8368,7 @@ app.get('/kurum/site-ayarlari', requireAuth, requireRole('kurum_yonetici'), asyn
 });
 
 // Site Ayarları GÃƒÂƒÃ‚Â¼ncelle (POST)
-app.post('/kurum/site-ayarlari', requireAuth, requireRole('kurum_yonetici'), async (req, res) => {
+app.post('/kurum/site-ayarlari', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
   try {
     const { site_adi, site_adres, site_telefon, site_email, site_aciklama } = req.body;
     
