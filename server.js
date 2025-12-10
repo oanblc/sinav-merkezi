@@ -7459,17 +7459,12 @@ app.post('/kurum/sinav-sayfa-eslestir', requireAuth, async (req, res) => {
     console.log(`   Öğrenci ID: ${ogrenci_id} (${kaynak})`);
     console.log(`   Sayfa Yolu: ${sayfa_yolu}`);
     
-    // sinav_katilimcilari tablosunu gÃƒÂƒÃ‚Â¼ncelle
-    const result = await new Promise((resolve, reject) => {
-      db.run(`
-        UPDATE sinav_katilimcilari 
-        SET pdf_path = ?, sonuc_durumu = 'yuklendi'
-        WHERE sinav_id = ? AND ogrenci_id = ? AND ogrenci_kaynak = ?
-      `, [sayfa_yolu, sinav_id, ogrenci_id, kaynak], function(err) {
-        if (err) reject(err);
-        else resolve({ changes: this.changes });
-      });
-    });
+    // sinav_katilimcilari tablosunu guncelle
+    const result = await dbRun(`
+      UPDATE sinav_katilimcilari
+      SET pdf_path = ?, sonuc_durumu = 'yuklendi'
+      WHERE sinav_id = ? AND ogrenci_id = ? AND ogrenci_kaynak = ?
+    `, [sayfa_yolu, sinav_id, ogrenci_id, kaynak]);
     
     console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… BaÃƒÂ…Ã‚ÂŸarÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±: ${result.changes} satÃƒÂ„Ã‚Â±r güncellendi`);
     
