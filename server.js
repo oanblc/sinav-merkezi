@@ -5716,7 +5716,7 @@ app.get('/veli/dashboard', requireAuth, requireRole('veli'), async (req, res) =>
     console.log(`🔍 TC Kimlik No: ${tcKimlikNo} (username: ${req.session.username}, telefon: ${kullanici.telefon})`);
     
     // TEK TABLO SISTEMI: Sadece ogrenci_kayitlari tablosundan cek
-    // veli_id ile bagli olanlar VEYA TC/telefon eslesmesi ile
+    // Sadece veli_id ile bagli olanlar (TC eslesmesi migration sirasinda yapildi)
     const ogrenciler = await dbAll(`
       SELECT
         id,
@@ -5727,9 +5727,7 @@ app.get('/veli/dashboard', requireAuth, requireRole('veli'), async (req, res) =>
         'kurum' as kaynak
       FROM ogrenci_kayitlari
       WHERE veli_id = ?
-         OR REPLACE(CAST(tc_kimlik_no AS TEXT), '.0', '') = REPLACE(?, '.0', '')
-         OR (veli_telefon IS NOT NULL AND REPLACE(CAST(veli_telefon AS TEXT), '.0', '') = REPLACE(?, '.0', ''))
-    `, [req.session.userId, tcKimlikNo, kullanici.telefon ? kullanici.telefon.toString().replace(/\D/g, '') : '']);
+    `, [req.session.userId]);
     console.log('Tek tablo sisteminden ' + ogrenciler.length + ' ogrenci bulundu');
     console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚ÂŠ TOPLAM ${ogrenciler.length} ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci`);
     
