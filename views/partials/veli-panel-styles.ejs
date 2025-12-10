@@ -1,0 +1,661 @@
+<style>
+/* ============================================
+   VELI PANELI - UNIFIED DESIGN SYSTEM
+   Mobile-First, %90 Mobil Kullanici
+   ============================================ */
+
+/* RENK PALETI - Tutarli Renkler */
+:root {
+    /* Ana Renkler */
+    --vp-primary: #2563eb;          /* Mavi - Ana Renk */
+    --vp-primary-light: #3b82f6;    /* Acik Mavi */
+    --vp-primary-dark: #1d4ed8;     /* Koyu Mavi */
+    --vp-primary-bg: #eff6ff;       /* Mavi Arka Plan */
+
+    /* Durum Renkleri */
+    --vp-success: #10b981;          /* Yesil - Basarili */
+    --vp-success-bg: #d1fae5;
+    --vp-warning: #f59e0b;          /* Turuncu - Uyari */
+    --vp-warning-bg: #fef3c7;
+    --vp-danger: #ef4444;           /* Kirmizi - Hata */
+    --vp-danger-bg: #fee2e2;
+    --vp-info: #06b6d4;             /* Cyan - Bilgi */
+    --vp-info-bg: #cffafe;
+
+    /* Notr Renkler */
+    --vp-text: #1e293b;             /* Ana Metin */
+    --vp-text-secondary: #64748b;   /* Ikincil Metin */
+    --vp-text-muted: #94a3b8;       /* Soluk Metin */
+    --vp-border: #e2e8f0;           /* Kenar */
+    --vp-bg: #f8fafc;               /* Arka Plan */
+    --vp-card: #ffffff;             /* Kart */
+
+    /* Spacing */
+    --vp-space-xs: 4px;
+    --vp-space-sm: 8px;
+    --vp-space-md: 16px;
+    --vp-space-lg: 24px;
+    --vp-space-xl: 32px;
+
+    /* Border Radius */
+    --vp-radius-sm: 8px;
+    --vp-radius-md: 12px;
+    --vp-radius-lg: 16px;
+    --vp-radius-xl: 20px;
+
+    /* Shadows */
+    --vp-shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --vp-shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    --vp-shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+/* ============================================
+   MOBILE-FIRST BASE STYLES
+   ============================================ */
+
+/* Page Header - Kompakt Mobil Tasarim */
+.vp-page-header {
+    background: linear-gradient(135deg, var(--vp-primary) 0%, var(--vp-primary-light) 100%);
+    color: white;
+    padding: clamp(16px, 4vw, 24px) 0;
+    margin: -30px -15px clamp(16px, 4vw, 24px);
+    border-radius: 0 0 var(--vp-radius-lg) var(--vp-radius-lg);
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.25);
+}
+
+.vp-page-header h1,
+.vp-page-header h2 {
+    font-size: clamp(1.25rem, 4vw, 1.5rem);
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.vp-page-header p {
+    font-size: clamp(0.85rem, 2.5vw, 0.95rem);
+    opacity: 0.9;
+    margin: 0;
+}
+
+.vp-page-header i {
+    font-size: clamp(1.2rem, 3.5vw, 1.4rem);
+}
+
+/* ============================================
+   CARDS - Dokunmatik Optimize
+   ============================================ */
+.vp-card {
+    background: var(--vp-card);
+    border-radius: var(--vp-radius-lg);
+    box-shadow: var(--vp-shadow-md);
+    border: 1px solid var(--vp-border);
+    margin-bottom: var(--vp-space-md);
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.vp-card:active {
+    transform: scale(0.98);
+}
+
+.vp-card-body {
+    padding: clamp(16px, 4vw, 24px);
+}
+
+.vp-card-header {
+    background: var(--vp-bg);
+    padding: clamp(14px, 3vw, 20px) clamp(16px, 4vw, 24px);
+    border-bottom: 1px solid var(--vp-border);
+    font-weight: 600;
+    color: var(--vp-text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.vp-card-header i {
+    color: var(--vp-primary);
+    font-size: 1.1rem;
+}
+
+/* Renkli Kart Varyantlari */
+.vp-card-primary {
+    background: linear-gradient(135deg, var(--vp-primary) 0%, var(--vp-primary-light) 100%);
+    color: white;
+    border: none;
+}
+
+.vp-card-success {
+    background: linear-gradient(135deg, var(--vp-success) 0%, #059669 100%);
+    color: white;
+    border: none;
+}
+
+.vp-card-warning {
+    background: linear-gradient(135deg, var(--vp-warning) 0%, #d97706 100%);
+    color: white;
+    border: none;
+}
+
+.vp-card-info {
+    background: linear-gradient(135deg, var(--vp-info) 0%, #0891b2 100%);
+    color: white;
+    border: none;
+}
+
+/* ============================================
+   BUTTONS - Buyuk Dokunma Alanlari
+   ============================================ */
+.vp-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: clamp(12px, 3vw, 14px) clamp(20px, 5vw, 28px);
+    border-radius: var(--vp-radius-md);
+    font-weight: 600;
+    font-size: clamp(0.9rem, 2.5vw, 1rem);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    min-height: 48px; /* Mobil dokunma min boyutu */
+    white-space: nowrap;
+}
+
+.vp-btn:active {
+    transform: scale(0.96);
+}
+
+.vp-btn-primary {
+    background: linear-gradient(135deg, var(--vp-primary) 0%, var(--vp-primary-light) 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.vp-btn-primary:hover {
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+    color: white;
+}
+
+.vp-btn-success {
+    background: linear-gradient(135deg, var(--vp-success) 0%, #059669 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.vp-btn-danger {
+    background: linear-gradient(135deg, var(--vp-danger) 0%, #dc2626 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.vp-btn-outline {
+    background: white;
+    color: var(--vp-primary);
+    border: 2px solid var(--vp-primary);
+}
+
+.vp-btn-outline:hover {
+    background: var(--vp-primary-bg);
+}
+
+.vp-btn-block {
+    width: 100%;
+}
+
+.vp-btn-sm {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    min-height: 40px;
+}
+
+.vp-btn-lg {
+    padding: 16px 32px;
+    font-size: 1.1rem;
+    min-height: 56px;
+}
+
+/* ============================================
+   QUICK ACTION CARDS - Hizli Erisim
+   ============================================ */
+.vp-quick-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: clamp(20px, 5vw, 28px);
+    border-radius: var(--vp-radius-lg);
+    text-decoration: none;
+    color: white;
+    transition: all 0.2s ease;
+    min-height: clamp(100px, 20vw, 120px);
+    box-shadow: var(--vp-shadow-md);
+}
+
+.vp-quick-action:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--vp-shadow-lg);
+    color: white;
+}
+
+.vp-quick-action:active {
+    transform: scale(0.96);
+}
+
+.vp-quick-action i {
+    font-size: clamp(2rem, 6vw, 2.5rem);
+    margin-bottom: 10px;
+}
+
+.vp-quick-action span {
+    font-size: clamp(0.85rem, 2.5vw, 1rem);
+    font-weight: 600;
+}
+
+/* ============================================
+   FORM ELEMENTS - Mobil Optimize
+   ============================================ */
+.vp-form-group {
+    margin-bottom: var(--vp-space-md);
+}
+
+.vp-form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--vp-text);
+    margin-bottom: var(--vp-space-sm);
+    font-size: clamp(0.9rem, 2.5vw, 0.95rem);
+}
+
+.vp-form-control {
+    width: 100%;
+    padding: clamp(12px, 3vw, 14px) clamp(14px, 3.5vw, 16px);
+    border: 2px solid var(--vp-border);
+    border-radius: var(--vp-radius-md);
+    font-size: 16px; /* iOS zoom engeller */
+    color: var(--vp-text);
+    background: white;
+    transition: all 0.2s ease;
+    min-height: 48px;
+}
+
+.vp-form-control:focus {
+    outline: none;
+    border-color: var(--vp-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.vp-form-control::placeholder {
+    color: var(--vp-text-muted);
+}
+
+/* Input with Icon */
+.vp-input-group {
+    position: relative;
+}
+
+.vp-input-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--vp-text-muted);
+    font-size: 1.1rem;
+    pointer-events: none;
+}
+
+.vp-input-group .vp-form-control {
+    padding-left: 48px;
+}
+
+/* ============================================
+   LIST ITEMS - Ogrenci/Sinav Listesi
+   ============================================ */
+.vp-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.vp-list-item {
+    display: flex;
+    align-items: center;
+    gap: clamp(12px, 3vw, 16px);
+    padding: clamp(14px, 3.5vw, 18px);
+    background: white;
+    border-bottom: 1px solid var(--vp-border);
+    transition: all 0.2s ease;
+}
+
+.vp-list-item:last-child {
+    border-bottom: none;
+}
+
+.vp-list-item:active {
+    background: var(--vp-bg);
+}
+
+.vp-list-avatar {
+    width: clamp(44px, 12vw, 52px);
+    height: clamp(44px, 12vw, 52px);
+    border-radius: var(--vp-radius-md);
+    background: linear-gradient(135deg, var(--vp-primary) 0%, var(--vp-primary-light) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: clamp(1.1rem, 3.5vw, 1.3rem);
+    flex-shrink: 0;
+}
+
+.vp-list-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.vp-list-title {
+    font-weight: 600;
+    color: var(--vp-text);
+    font-size: clamp(0.95rem, 2.8vw, 1.05rem);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vp-list-subtitle {
+    color: var(--vp-text-secondary);
+    font-size: clamp(0.8rem, 2.2vw, 0.9rem);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.vp-list-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* ============================================
+   BADGES
+   ============================================ */
+.vp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: clamp(0.75rem, 2vw, 0.8rem);
+    font-weight: 600;
+}
+
+.vp-badge-primary {
+    background: var(--vp-primary-bg);
+    color: var(--vp-primary);
+}
+
+.vp-badge-success {
+    background: var(--vp-success-bg);
+    color: #059669;
+}
+
+.vp-badge-warning {
+    background: var(--vp-warning-bg);
+    color: #d97706;
+}
+
+.vp-badge-danger {
+    background: var(--vp-danger-bg);
+    color: var(--vp-danger);
+}
+
+.vp-badge-info {
+    background: var(--vp-info-bg);
+    color: #0891b2;
+}
+
+/* ============================================
+   EMPTY STATE
+   ============================================ */
+.vp-empty {
+    text-align: center;
+    padding: clamp(40px, 10vw, 60px) clamp(20px, 5vw, 32px);
+    background: var(--vp-bg);
+    border-radius: var(--vp-radius-lg);
+    border: 2px dashed var(--vp-border);
+}
+
+.vp-empty-icon {
+    width: clamp(80px, 20vw, 100px);
+    height: clamp(80px, 20vw, 100px);
+    background: white;
+    border-radius: var(--vp-radius-xl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto clamp(16px, 4vw, 24px);
+    box-shadow: var(--vp-shadow-sm);
+}
+
+.vp-empty-icon i {
+    font-size: clamp(2.5rem, 7vw, 3rem);
+    color: var(--vp-text-muted);
+}
+
+.vp-empty h4 {
+    font-weight: 700;
+    color: var(--vp-text);
+    margin-bottom: 8px;
+    font-size: clamp(1rem, 3vw, 1.2rem);
+}
+
+.vp-empty p {
+    color: var(--vp-text-secondary);
+    margin-bottom: clamp(16px, 4vw, 24px);
+    font-size: clamp(0.9rem, 2.5vw, 1rem);
+}
+
+/* ============================================
+   SECTION TITLE
+   ============================================ */
+.vp-section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: clamp(16px, 4vw, 24px);
+}
+
+.vp-section-title-icon {
+    width: clamp(40px, 10vw, 48px);
+    height: clamp(40px, 10vw, 48px);
+    background: linear-gradient(135deg, var(--vp-primary) 0%, var(--vp-primary-light) 100%);
+    border-radius: var(--vp-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: clamp(1.1rem, 3vw, 1.3rem);
+}
+
+.vp-section-title span {
+    font-weight: 700;
+    color: var(--vp-text);
+    font-size: clamp(1.1rem, 3vw, 1.25rem);
+}
+
+/* ============================================
+   ALERTS
+   ============================================ */
+.vp-alert {
+    padding: clamp(14px, 3.5vw, 18px);
+    border-radius: var(--vp-radius-md);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: clamp(0.9rem, 2.5vw, 0.95rem);
+}
+
+.vp-alert i {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.vp-alert-success {
+    background: var(--vp-success-bg);
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.vp-alert-warning {
+    background: var(--vp-warning-bg);
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.vp-alert-danger {
+    background: var(--vp-danger-bg);
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.vp-alert-info {
+    background: var(--vp-info-bg);
+    color: #0e7490;
+    border: 1px solid #a5f3fc;
+}
+
+/* ============================================
+   STATS BOX
+   ============================================ */
+.vp-stat {
+    text-align: center;
+    padding: clamp(16px, 4vw, 24px);
+}
+
+.vp-stat-number {
+    font-size: clamp(2rem, 6vw, 2.5rem);
+    font-weight: 800;
+    color: var(--vp-primary);
+    line-height: 1;
+    margin-bottom: 6px;
+}
+
+.vp-stat-label {
+    font-size: clamp(0.8rem, 2.2vw, 0.9rem);
+    color: var(--vp-text-secondary);
+    font-weight: 500;
+}
+
+/* ============================================
+   ICON BUTTONS (Edit/Delete)
+   ============================================ */
+.vp-icon-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--vp-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1.1rem;
+}
+
+.vp-icon-btn:active {
+    transform: scale(0.9);
+}
+
+.vp-icon-btn-edit {
+    color: var(--vp-warning);
+    border-color: var(--vp-warning-bg);
+}
+
+.vp-icon-btn-edit:hover {
+    background: var(--vp-warning);
+    color: white;
+}
+
+.vp-icon-btn-delete {
+    color: var(--vp-danger);
+    border-color: var(--vp-danger-bg);
+}
+
+.vp-icon-btn-delete:hover {
+    background: var(--vp-danger);
+    color: white;
+}
+
+/* ============================================
+   MOBILE SPECIFIC OVERRIDES
+   ============================================ */
+@media (max-width: 768px) {
+    .vp-page-header {
+        margin: -30px -16px clamp(16px, 4vw, 24px);
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .vp-card-body {
+        padding: 16px;
+    }
+
+    /* Yatay scroll engelle */
+    .vp-list-item {
+        flex-wrap: wrap;
+    }
+
+    .vp-list-actions {
+        width: 100%;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--vp-border);
+        justify-content: flex-end;
+    }
+
+    /* Butonlar tam genislik */
+    .vp-btn-mobile-block {
+        width: 100%;
+    }
+
+    /* Modaller tam ekran */
+    .modal-dialog {
+        margin: 0;
+        max-width: 100%;
+        min-height: 100vh;
+    }
+
+    .modal-content {
+        border-radius: 0;
+        min-height: 100vh;
+    }
+}
+
+/* ============================================
+   UTILITIES
+   ============================================ */
+.vp-text-center { text-align: center; }
+.vp-text-right { text-align: right; }
+.vp-fw-600 { font-weight: 600; }
+.vp-fw-700 { font-weight: 700; }
+.vp-mt-1 { margin-top: var(--vp-space-sm); }
+.vp-mt-2 { margin-top: var(--vp-space-md); }
+.vp-mt-3 { margin-top: var(--vp-space-lg); }
+.vp-mb-1 { margin-bottom: var(--vp-space-sm); }
+.vp-mb-2 { margin-bottom: var(--vp-space-md); }
+.vp-mb-3 { margin-bottom: var(--vp-space-lg); }
+.vp-gap-1 { gap: var(--vp-space-sm); }
+.vp-gap-2 { gap: var(--vp-space-md); }
+.vp-d-flex { display: flex; }
+.vp-flex-wrap { flex-wrap: wrap; }
+.vp-align-center { align-items: center; }
+.vp-justify-between { justify-content: space-between; }
+</style>

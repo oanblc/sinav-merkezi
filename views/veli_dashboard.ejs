@@ -1,237 +1,198 @@
 <%- include('partials/header-dashboard', { title: 'Veli Paneli - Sınav Merkezi', user: user, activePage: 'dashboard' }) %>
+<%- include('partials/veli-panel-styles') %>
 
 <style>
-    .dashboard-header {
-        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+    /* Dashboard Header - Mobil Oncelikli */
+    .vp-dashboard-header {
+        background: var(--vp-gradient-primary);
         color: white;
-        padding: 24px 0;
-        margin: -30px -15px 24px;
-        border-radius: 0 0 24px 24px;
-        box-shadow: 0 8px 24px rgba(6, 182, 212, 0.3);
+        padding: clamp(16px, 4vw, 24px) 0;
+        margin: -20px -12px clamp(16px, 4vw, 24px);
+        border-radius: 0 0 var(--vp-radius-lg) var(--vp-radius-lg);
     }
-    
-    .welcome-card {
+
+    .vp-dashboard-header h2 {
+        font-size: clamp(1.1rem, 4vw, 1.4rem);
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+
+    .vp-dashboard-header p {
+        font-size: clamp(0.85rem, 3vw, 0.95rem);
+        opacity: 0.9;
+        margin: 0;
+    }
+
+    /* Ogrenci Karti - Mobil Oncelikli */
+    .vp-student-card {
         background: white;
-        border-radius: 20px;
-        padding: 32px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        margin-bottom: 40px;
+        border-radius: var(--vp-radius-lg);
+        padding: clamp(14px, 3vw, 20px);
+        margin-bottom: 12px;
+        box-shadow: var(--vp-shadow);
+        border: 1px solid var(--vp-border);
     }
-    
-    .stat-card {
-        background: white;
-        border-radius: 20px;
-        padding: 24px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-        transition: all 0.3s ease;
-        height: 100%;
-    }
-    
-    .stat-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-    }
-    
-    .stat-card.cyan {
-        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
-        color: white;
-    }
-    
-    .stat-card.purple {
-        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-        color: white;
-    }
-    
-    .section-title {
-        font-weight: 800;
-        color: #1e293b;
-        margin-bottom: 24px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    
-    .section-title i {
-        width: 48px;
-        height: 48px;
-        background: linear-gradient(135deg, #06b6d4, #3b82f6);
-        border-radius: 12px;
+
+    .vp-student-avatar {
+        width: clamp(44px, 10vw, 52px);
+        height: clamp(44px, 10vw, 52px);
+        background: var(--vp-gradient-primary);
+        border-radius: var(--vp-radius);
         display: flex;
         align-items: center;
         justify-content: center;
+        font-size: clamp(1.1rem, 4vw, 1.4rem);
+        font-weight: 700;
         color: white;
-        font-size: 1.3rem;
+        flex-shrink: 0;
     }
-    
-    .empty-state {
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        border-radius: 24px;
-        padding: 60px 40px;
-        text-align: center;
-        border: 2px dashed #cbd5e1;
+
+    .vp-student-info {
+        flex: 1;
+        min-width: 0;
     }
-    
-    .empty-state i {
-        font-size: 5rem;
-        color: #94a3b8;
-        margin-bottom: 20px;
+
+    .vp-student-name {
+        font-weight: 700;
+        color: var(--vp-text);
+        font-size: clamp(0.95rem, 3.5vw, 1.05rem);
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
-    
-    .table-hover tbody tr:hover {
-        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
-        cursor: default;
+
+    .vp-student-meta {
+        font-size: clamp(0.75rem, 2.8vw, 0.85rem);
+        color: var(--vp-text-muted);
     }
-    
-    .btn-group .btn:hover {
-        transform: translateY(-2px) scale(1.05);
-        z-index: 10;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+
+    /* Aksiyon Butonlari - 48px touch target */
+    .vp-student-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--vp-border);
     }
-    
-    .btn-group {
-        gap: 6px;
+
+    .vp-student-actions .vp-btn {
+        flex: 1;
+        justify-content: center;
+    }
+
+    /* Desktop: Butonlar yatay hizada */
+    @media (min-width: 576px) {
+        .vp-student-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .vp-student-actions {
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
+            flex: 0 0 auto;
+            margin-left: auto;
+        }
+
+        .vp-student-actions .vp-btn {
+            flex: none;
+        }
     }
 </style>
 
 <!-- Dashboard Header -->
-<div class="dashboard-header">
+<div class="vp-dashboard-header">
     <div class="container">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h2 style="font-weight: 700; margin-bottom: 4px; font-size: 1.5rem;">
-                    <i class="bi bi-house-heart-fill"></i> Veli Paneli
-                </h2>
-                <p style="opacity: 0.9; margin: 0; font-size: 0.95rem;">
-                    <%= ogrenciler.length %> Öğrenci
-                </p>
-            </div>
+        <h2><i class="bi bi-house-heart-fill"></i> Veli Paneli</h2>
+        <p><%= ogrenciler.length %> Ogrenci</p>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Hizli Erisim Butonlari -->
+    <div class="row g-3 mb-4">
+        <div class="col-6">
+            <a href="/veli/tum-sinav-takvimi" class="vp-quick-action" style="--action-color: #8b5cf6;">
+                <i class="bi bi-calendar-event"></i>
+                <span>Sinav Takvimi</span>
+            </a>
+        </div>
+        <div class="col-6">
+            <a href="/veli/sinav-sonuclari" class="vp-quick-action" style="--action-color: #10b981;">
+                <i class="bi bi-file-earmark-text-fill"></i>
+                <span>Sinav Sonuclari</span>
+            </a>
         </div>
     </div>
-</div>
 
-<!-- Hızlı Erişim Butonları -->
-<div class="row g-3 mb-5">
-    <div class="col-md-6">
-        <a href="/veli/tum-sinav-takvimi" class="stat-card" style="display: block; text-decoration: none; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white;">
-            <div class="text-center">
-                <i class="bi bi-calendar-event" style="font-size: 2.5rem; margin-bottom: 12px;"></i>
-                <h6 style="margin: 0; font-weight: 700;">Sınav Takvimi</h6>
-            </div>
-        </a>
+    <!-- Ogrenciler Bolumu -->
+    <div class="vp-section-title">
+        <i class="bi bi-people"></i>
+        <span>Ogrencilerim</span>
     </div>
-    <div class="col-md-6">
-        <a href="/veli/sinav-sonuclari" class="stat-card" style="display: block; text-decoration: none; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
-            <div class="text-center">
-                <i class="bi bi-file-earmark-text-fill" style="font-size: 2.5rem; margin-bottom: 12px;"></i>
-                <h6 style="margin: 0; font-weight: 700;">Sınav Sonuçları</h6>
+
+    <% if (ogrenciler && ogrenciler.length > 0) { %>
+        <% ogrenciler.forEach(function(ogrenci) { %>
+        <div class="vp-student-card">
+            <div class="d-flex align-items-center gap-3 flex-grow-1" style="min-width: 0;">
+                <div class="vp-student-avatar">
+                    <%= ogrenci.ad_soyad.charAt(0).toUpperCase() %>
+                </div>
+                <div class="vp-student-info">
+                    <div class="vp-student-name"><%= ogrenci.ad_soyad %></div>
+                    <div class="vp-student-meta">
+                        <% if (ogrenci.ogrenci_no) { %>
+                            <span class="vp-badge vp-badge-primary">No: <%= ogrenci.ogrenci_no %></span>
+                        <% } %>
+                        <% if (ogrenci.tc_no) { %>
+                            <i class="bi bi-card-text"></i> <%= ogrenci.tc_no %>
+                        <% } %>
+                    </div>
+                </div>
             </div>
-        </a>
-    </div>
-</div>
-
-<!-- Öğrenciler Bölümü -->
-<div class="section-title">
-    <i class="bi bi-people"></i>
-    <span>Öğrencilerim</span>
-</div>
-
-<div class="row">
-    <div class="col-12">
-        <% if (ogrenciler && ogrenciler.length > 0) { %>
-        <!-- Modern Tablo -->
-        <div style="background: white; border-radius: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.08); overflow: hidden;">
-            <div class="table-responsive">
-                <table class="table table-hover" style="margin: 0;">
-                    <thead style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-bottom: 2px solid #e2e8f0;">
-                        <tr>
-                            <th style="padding: 20px 30px; font-weight: 700; color: #1e293b; width: 70%;">Öğrenci</th>
-                            <th style="padding: 20px 30px; font-weight: 700; color: #1e293b; text-align: right; width: 30%;">İşlemler</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% ogrenciler.forEach(function(ogrenci) { %>
-                        <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s ease;">
-                            <!-- Öğrenci Bilgileri + PDF Sonuçları -->
-                            <td style="padding: 24px 30px; vertical-align: middle;">
-                                <div class="d-flex align-items-center gap-3">
-                                    <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; color: white; box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3); flex-shrink: 0;">
-                                        <%= ogrenci.ad_soyad.charAt(0).toUpperCase() %>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <div style="font-weight: 700; color: #1e293b; font-size: 1.05rem; margin-bottom: 6px;">
-                                            <%= ogrenci.ad_soyad %>
-                                        </div>
-                                        <div style="color: #64748b; font-size: 0.9rem;">
-                                            <% if (ogrenci.ogrenci_no) { %>
-                                                <span class="badge" style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); color: white; padding: 4px 10px; font-size: 0.8rem; margin-right: 8px;">
-                                                    No: <%= ogrenci.ogrenci_no %>
-                                                </span>
-                                            <% } %>
-                                            <i class="bi bi-card-text"></i> <%= ogrenci.tc_no || 'Belirtilmemiş' %>
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
-
-                            <!-- İşlem Butonları -->
-                            <td style="padding: 24px 30px; vertical-align: middle; text-align: right;">
-                                <div class="btn-group" role="group">
-                                    <a href="/veli/ogrenci-duzenle/<%= ogrenci.id %>" class="btn btn-sm" 
-                                       style="background: white; color: #f59e0b; padding: 10px 16px; border: 2px solid #fef3c7; border-radius: 10px; font-weight: 600; margin-right: 6px; transition: all 0.2s ease;"
-                                       onmouseover="this.style.background='linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'; this.style.color='white'; this.style.borderColor='#f59e0b';"
-                                       onmouseout="this.style.background='white'; this.style.color='#f59e0b'; this.style.borderColor='#fef3c7';"
-                                       title="Düzenle">
-                                        <i class="bi bi-pencil-square" style="font-size: 1.1rem;"></i>
-                                    </a>
-                                    <button class="btn btn-sm" 
-                                            style="background: white; color: #ef4444; padding: 10px 16px; border: 2px solid #fee2e2; border-radius: 10px; font-weight: 600; transition: all 0.2s ease;"
-                                            onmouseover="this.style.background='linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'; this.style.color='white'; this.style.borderColor='#ef4444';"
-                                            onmouseout="this.style.background='white'; this.style.color='#ef4444'; this.style.borderColor='#fee2e2';"
-                                            onclick="silOnayi(<%= ogrenci.id %>, '<%= ogrenci.ad_soyad %>')"
-                                            title="Sil">
-                                        <i class="bi bi-trash3" style="font-size: 1.1rem;"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        <% }); %>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <% } else { %>
-            <div class="empty-state">
-                <i class="bi bi-person-x"></i>
-                <h4 style="font-weight: 700; color: #64748b; margin-bottom: 12px;">
-                    Henüz Öğrenci Yok
-                </h4>
-                <p style="color: #94a3b8; margin-bottom: 24px; font-size: 1.05rem;">
-                    Henüz kayıtlı öğrenciniz bulunmamaktadır. Aşağıdaki butonla kendiniz öğrenci ekleyebilir veya rehber öğretmenin talebini onaylayabilirsiniz.
-                </p>
-                <a href="/veli/ogrenci-ekle" class="btn btn-lg" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border-radius: 12px; font-weight: 600; padding: 14px 32px;">
-                    <i class="bi bi-person-plus-fill"></i> İlk Öğrenciyi Ekle
+            <div class="vp-student-actions">
+                <a href="/veli/ogrenci-duzenle/<%= ogrenci.id %>" class="vp-btn vp-btn-warning vp-btn-sm">
+                    <i class="bi bi-pencil-square"></i>
+                    <span class="d-none d-sm-inline">Duzenle</span>
                 </a>
+                <button type="button" class="vp-btn vp-btn-danger vp-btn-sm" onclick="silOnayi(<%= ogrenci.id %>, '<%= ogrenci.ad_soyad %>')">
+                    <i class="bi bi-trash3"></i>
+                    <span class="d-none d-sm-inline">Sil</span>
+                </button>
             </div>
-        <% } %>
-    </div>
+        </div>
+        <% }); %>
+    <% } else { %>
+        <div class="vp-empty">
+            <i class="bi bi-person-x"></i>
+            <h4>Henuz Ogrenci Yok</h4>
+            <p>Henuz kayitli ogrenci bulunmamaktadir. Asagidaki butonla ogrenci ekleyebilirsiniz.</p>
+            <a href="/veli/ogrenci-ekle" class="vp-btn vp-btn-success">
+                <i class="bi bi-person-plus-fill"></i> Ilk Ogrenciyi Ekle
+            </a>
+        </div>
+    <% } %>
 </div>
 
 <!-- Silme Onay Modal -->
 <div class="modal fade" id="silModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content" style="border-radius: 20px; border: none;">
-            <div class="modal-header" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none;">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle"></i> Öğrenci Sil</h5>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: var(--vp-radius-lg); border: none;">
+            <div class="modal-header" style="background: var(--vp-danger); color: white; border: none; border-radius: var(--vp-radius-lg) var(--vp-radius-lg) 0 0;">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle"></i> Ogrenci Sil</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" style="padding: 24px;">
-                <p style="font-size: 1.1rem;" id="silMesaj"></p>
-                <p style="color: #64748b;">Bu işlem geri alınamaz!</p>
+                <p style="font-size: 1rem;" id="silMesaj"></p>
+                <p style="color: var(--vp-text-muted); font-size: 0.9rem;">Bu islem geri alinamaz!</p>
             </div>
-            <div class="modal-footer" style="border: none;">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+            <div class="modal-footer" style="border: none; gap: 8px;">
+                <button type="button" class="vp-btn vp-btn-secondary" data-bs-dismiss="modal">Iptal</button>
                 <form id="silForm" method="POST" style="display: inline;">
-                    <button type="submit" class="btn btn-danger">
+                    <button type="submit" class="vp-btn vp-btn-danger">
                         <i class="bi bi-trash-fill"></i> Evet, Sil
                     </button>
                 </form>
@@ -242,8 +203,8 @@
 
 <script>
 function silOnayi(ogrenciId, ogrenciAd) {
-    document.getElementById('silMesaj').textContent = `${ogrenciAd} öğrencisini silmek istediğinizden emin misiniz?`;
-    document.getElementById('silForm').action = `/veli/ogrenci-sil/${ogrenciId}`;
+    document.getElementById('silMesaj').textContent = ogrenciAd + ' ogrencisini silmek istediginizden emin misiniz?';
+    document.getElementById('silForm').action = '/veli/ogrenci-sil/' + ogrenciId;
     const modal = new bootstrap.Modal(document.getElementById('silModal'));
     modal.show();
 }

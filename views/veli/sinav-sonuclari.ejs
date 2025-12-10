@@ -1,376 +1,338 @@
 <%- include('../partials/header-dashboard', { title: 'Sınav Sonuçları - Veli Paneli', user: user, activePage: 'sonuclar' }) %>
+<%- include('../partials/veli-panel-styles') %>
 
 <style>
-    .page-header {
+    /* Indigo tema header */
+    .vp-sonuc-header {
         background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
         color: white;
-        padding: 40px 0;
-        margin: -30px -15px 40px;
-        border-radius: 0 0 24px 24px;
-        box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+        padding: clamp(16px, 4vw, 24px) 0;
+        margin: -20px -12px clamp(16px, 4vw, 24px);
+        border-radius: 0 0 var(--vp-radius-lg) var(--vp-radius-lg);
     }
-    
-    .sonuc-card {
-        background: white;
-        border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        border-left: 5px solid #6366f1;
-        transition: all 0.3s ease;
-    }
-    
-    .sonuc-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-    }
-    
-    .sonuc-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: start;
-        margin-bottom: 16px;
-    }
-    
-    .sinav-bilgi {
-        flex: 1;
-    }
-    
-    .sinav-baslik {
-        font-size: 1.25rem;
+
+    .vp-sonuc-header h2 {
+        font-size: clamp(1.1rem, 4vw, 1.4rem);
         font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 8px;
+        margin-bottom: 4px;
     }
-    
-    .sinav-detay {
+
+    .vp-sonuc-header p {
+        font-size: clamp(0.8rem, 3vw, 0.9rem);
+        opacity: 0.9;
+        margin: 0;
+    }
+
+    /* Filtre Alani */
+    .vp-filter-box {
+        background: white;
+        border-radius: var(--vp-radius);
+        padding: clamp(12px, 3vw, 16px);
+        margin-bottom: 16px;
+        border: 1px solid var(--vp-border);
+    }
+
+    .vp-filter-box label {
+        font-weight: 600;
+        font-size: clamp(0.75rem, 2.8vw, 0.85rem);
+        color: var(--vp-text);
+        margin-bottom: 6px;
+        display: block;
+    }
+
+    .vp-filter-box select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 2px solid var(--vp-border);
+        border-radius: var(--vp-radius);
+        font-size: clamp(0.85rem, 3vw, 0.95rem);
+        background: white;
+        color: var(--vp-text);
+    }
+
+    .vp-filter-box select:focus {
+        border-color: var(--vp-primary);
+        outline: none;
+    }
+
+    /* Sonuc Karti */
+    .vp-sonuc-card {
+        background: white;
+        border-radius: var(--vp-radius);
+        padding: clamp(14px, 3vw, 20px);
+        margin-bottom: 12px;
+        border: 1px solid var(--vp-border);
+        border-left: 4px solid #6366f1;
+    }
+
+    .vp-ogrenci-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        background: #f1f5f9;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: clamp(0.75rem, 2.8vw, 0.85rem);
+        color: #475569;
+        margin-bottom: 10px;
+    }
+
+    .vp-ogrenci-tag i {
+        margin-right: 6px;
+        color: #6366f1;
+    }
+
+    .vp-sinav-title {
+        font-weight: 700;
+        color: var(--vp-text);
+        font-size: clamp(0.95rem, 3.5vw, 1.1rem);
+        margin-bottom: 6px;
+    }
+
+    .vp-sinav-meta {
+        font-size: clamp(0.75rem, 2.8vw, 0.85rem);
+        color: var(--vp-text-muted);
         display: flex;
-        gap: 16px;
         flex-wrap: wrap;
-        color: #64748b;
-        font-size: 0.9rem;
+        gap: 12px;
     }
-    
-    .sinav-detay span {
+
+    .vp-sinav-meta span {
         display: flex;
         align-items: center;
         gap: 4px;
     }
-    
-    .ogrenci-tag {
-        display: inline-flex;
+
+    /* Durum Badge */
+    .vp-durum-box {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--vp-border);
+        display: flex;
+        flex-wrap: wrap;
         align-items: center;
-        padding: 8px 16px;
-        background: #f1f5f9;
-        border-radius: 20px;
-        font-weight: 600;
-        color: #475569;
-        margin-bottom: 12px;
+        justify-content: space-between;
+        gap: 10px;
     }
-    
-    .ogrenci-tag i {
-        margin-right: 6px;
-        color: #6366f1;
-    }
-    
-    .durum-badge {
-        padding: 8px 16px;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 0.9rem;
-    }
-    
-    .durum-yuklendi {
+
+    .vp-durum-yuklendi {
         background: #dbeafe;
         color: #1e40af;
     }
-    
-    .durum-bildirildi {
+
+    .vp-durum-bildirildi {
         background: #d1fae5;
         color: #065f46;
     }
-    
-    .indir-btn {
+
+    .vp-durum-incelendi {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    /* PDF Indir Butonu */
+    .vp-pdf-btn {
         background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
         color: white;
         border: none;
-        padding: 12px 24px;
-        border-radius: 10px;
+        padding: 10px 16px;
+        border-radius: var(--vp-radius);
         font-weight: 600;
-        display: flex;
+        font-size: clamp(0.8rem, 3vw, 0.9rem);
+        display: inline-flex;
         align-items: center;
-        gap: 8px;
-        transition: all 0.3s ease;
+        gap: 6px;
         text-decoration: none;
+        min-height: 44px;
     }
-    
-    .indir-btn:hover {
-        transform: scale(1.05);
-        box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3);
+
+    .vp-pdf-btn:hover {
         color: white;
+        transform: scale(1.02);
     }
-    
-    .indir-btn i {
-        font-size: 1.2rem;
-    }
-    
-    .empty-state {
-        text-align: center;
-        padding: 80px 20px;
-        background: white;
-        border-radius: 16px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-    
-    .empty-state i {
-        font-size: 5rem;
-        color: #cbd5e1;
-        margin-bottom: 24px;
-    }
-    
-    .empty-state h4 {
-        color: #64748b;
-        margin-bottom: 12px;
-    }
-    
-    .empty-state p {
-        color: #94a3b8;
-        max-width: 500px;
-        margin: 0 auto;
-    }
-    
-    .filter-section {
-        background: white;
-        border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 30px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-    
-    .filter-section .form-select {
-        border-radius: 10px;
-        border: 2px solid #e2e8f0;
-    }
-    
-    /* Mobil Optimizasyonlar */
-    @media (max-width: 768px) {
-        .page-header {
-            margin: -30px -16px 24px !important;
-            padding: 24px 16px !important;
-        }
-        
-        .page-header h1 {
-            font-size: 1.5rem !important;
-        }
-        
-        .page-header p {
-            font-size: 0.9rem !important;
-        }
-        
-        .page-header .btn {
-            padding: 8px 16px !important;
-            font-size: 0.9rem !important;
-        }
-        
-        .filter-section {
-            padding: 16px !important;
-        }
-        
-        .filter-section .col-md-4 {
-            margin-bottom: 12px;
-        }
-        
-        .sonuc-header {
+
+    /* Mobil: Kart dikey duzende */
+    @media (max-width: 576px) {
+        .vp-durum-box {
             flex-direction: column;
-            align-items: stretch !important;
+            align-items: stretch;
         }
-        
-        .sonuc-header .text-end {
-            text-align: left !important;
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid #e2e8f0;
-        }
-        
-        .indir-btn {
-            width: 100% !important;
+        .vp-pdf-btn {
+            width: 100%;
             justify-content: center;
         }
     }
 </style>
 
-<div class="container mt-4">
-    <!-- Page Header -->
-    <div class="page-header">
-        <div class="container">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="mb-2"><i class="bi bi-file-earmark-text"></i> Sınav Sonuçları</h1>
-                    <p class="mb-0 opacity-75">Öğrencilerinizin sınav sonuçlarını görüntüleyin</p>
-                </div>
-                <div>
-                    <a href="/veli/dashboard" class="btn btn-light">
-                        <i class="bi bi-arrow-left"></i> Dashboard
-                    </a>
-                </div>
-            </div>
-        </div>
+<!-- Page Header -->
+<div class="vp-sonuc-header">
+    <div class="container">
+        <h2><i class="bi bi-file-earmark-text"></i> Sinav Sonuclari</h2>
+        <p>Ogrencilerinizin sinav sonuclarini goruntuleyiniz</p>
     </div>
+</div>
 
+<div class="container">
     <% if (error) { %>
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i><%= error %>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+        <i class="bi bi-exclamation-triangle"></i> <%= error %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
     <% } %>
+
     <% if (success) { %>
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i><%= success %>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+        <i class="bi bi-check-circle"></i> <%= success %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
     <% } %>
 
     <% if (sonuclar.length === 0) { %>
-        <!-- Empty State -->
-        <div class="empty-state">
+        <div class="vp-empty">
             <i class="bi bi-inbox"></i>
-            <h4>Henüz sınav sonucu yok</h4>
-            <p>Öğrencilerinizin sınav sonuçları açıklandığında buradan görüntüleyebileceksiniz.</p>
+            <h4>Henuz sonuc yok</h4>
+            <p>Ogrencilerinizin sinav sonuclari aciklandiginda buradan goruntuleyebileceksiniz.</p>
         </div>
     <% } else { %>
-        <!-- Filter Section -->
-        <div class="filter-section">
-            <div class="row">
-                <div class="col-md-4">
-                    <label class="form-label fw-bold">Öğrenci</label>
-                    <select id="ogrenciFiltre" class="form-select">
-                        <option value="">Tüm Öğrenciler</option>
-                        <% 
+        <!-- Filtreler -->
+        <div class="vp-filter-box">
+            <div class="row g-3">
+                <div class="col-12 col-md-4">
+                    <label>Ogrenci</label>
+                    <select id="ogrenciFiltre">
+                        <option value="">Tum Ogrenciler</option>
+                        <%
                         const uniqueOgrenciler = [...new Set(sonuclar.map(s => s.ogrenci_adi_soyadi))];
-                        uniqueOgrenciler.forEach(o => { 
+                        uniqueOgrenciler.forEach(o => {
                         %>
                             <option value="<%= o %>"><%= o %></option>
                         <% }) %>
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold">Sınav</label>
-                    <select id="sinavFiltre" class="form-select">
-                        <option value="">Tüm Sınavlar</option>
-                        <% 
+                <div class="col-12 col-md-4">
+                    <label>Sinav</label>
+                    <select id="sinavFiltre">
+                        <option value="">Tum Sinavlar</option>
+                        <%
                         const uniqueSinavlar = [...new Set(sonuclar.map(s => s.sinav_adi))];
-                        uniqueSinavlar.forEach(s => { 
+                        uniqueSinavlar.forEach(s => {
                         %>
                             <option value="<%= s %>"><%= s %></option>
                         <% }) %>
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold">Durum</label>
-                    <select id="durumFiltre" class="form-select">
-                        <option value="">Tüm Durumlar</option>
-                        <option value="yuklendi">Yüklendi</option>
+                <div class="col-12 col-md-4">
+                    <label>Durum</label>
+                    <select id="durumFiltre">
+                        <option value="">Tum Durumlar</option>
+                        <option value="yuklendi">Yuklendi</option>
                         <option value="bildirildi">Bildirildi</option>
                     </select>
                 </div>
             </div>
         </div>
 
-        <!-- Sonuç Listesi -->
+        <!-- Sonuc Listesi -->
         <div id="sonucListesi">
             <% sonuclar.forEach(sonuc => { %>
-                <div class="sonuc-card" 
-                     data-ogrenci="<%= sonuc.ogrenci_adi_soyadi %>" 
-                     data-sinav="<%= sonuc.sinav_adi %>"
-                     data-durum="<%= sonuc.sonuc_durumu %>">
-                    
-                    <div class="ogrenci-tag">
-                        <i class="bi bi-person-fill"></i>
-                        <%= sonuc.ogrenci_adi_soyadi %>
-                        <% if (sonuc.ogrenci_sinif) { %>
-                            <span class="ms-2 opacity-75">(<%= sonuc.ogrenci_sinif %>)</span>
+            <div class="vp-sonuc-card"
+                 data-ogrenci="<%= sonuc.ogrenci_adi_soyadi %>"
+                 data-sinav="<%= sonuc.sinav_adi %>"
+                 data-durum="<%= sonuc.sonuc_durumu %>">
+
+                <div class="vp-ogrenci-tag">
+                    <i class="bi bi-person-fill"></i>
+                    <%= sonuc.ogrenci_adi_soyadi %>
+                    <% if (sonuc.ogrenci_sinif) { %>
+                        <span style="margin-left: 6px; opacity: 0.7;">(<%= sonuc.ogrenci_sinif %>)</span>
+                    <% } %>
+                </div>
+
+                <div class="vp-sinav-title">
+                    <i class="bi bi-journal-text" style="color: #6366f1;"></i>
+                    <%= sonuc.sinav_adi %>
+                </div>
+
+                <div class="vp-sinav-meta">
+                    <span>
+                        <i class="bi bi-calendar3"></i>
+                        <%= new Date(sonuc.sinav_tarihi).toLocaleDateString('tr-TR') %>
+                    </span>
+                    <% if (sonuc.sinif) { %>
+                    <span>
+                        <i class="bi bi-mortarboard"></i>
+                        <%= sonuc.sinif %>
+                    </span>
+                    <% } %>
+                    <% if (sonuc.ders) { %>
+                    <span>
+                        <i class="bi bi-book"></i>
+                        <%= sonuc.ders %>
+                    </span>
+                    <% } %>
+                </div>
+
+                <div class="vp-durum-box">
+                    <div>
+                        <% if (sonuc.pdf_goruldu) { %>
+                            <span class="vp-badge vp-durum-incelendi">
+                                <i class="bi bi-eye-fill"></i> Incelendi
+                            </span>
+                            <div class="vp-sinav-meta" style="margin-top: 4px;">
+                                <span>
+                                    <i class="bi bi-clock"></i>
+                                    <%= new Date(sonuc.pdf_gorunme_tarihi).toLocaleString('tr-TR', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    }) %>
+                                </span>
+                                <% if (sonuc.pdf_indirilme_sayisi > 1) { %>
+                                <span>
+                                    <i class="bi bi-download"></i> <%= sonuc.pdf_indirilme_sayisi %> kez
+                                </span>
+                                <% } %>
+                            </div>
+                        <% } else if (sonuc.sonuc_durumu === 'bildirildi') { %>
+                            <span class="vp-badge vp-durum-bildirildi">
+                                <i class="bi bi-check-circle"></i> Bildirildi
+                            </span>
+                        <% } else { %>
+                            <span class="vp-badge vp-durum-yuklendi">
+                                <i class="bi bi-upload"></i> Yuklendi
+                            </span>
                         <% } %>
                     </div>
-                    
-                    <div class="sonuc-header">
-                        <div class="sinav-bilgi">
-                            <div class="sinav-baslik">
-                                <i class="bi bi-journal-text text-primary me-2"></i>
-                                <%= sonuc.sinav_adi %>
-                            </div>
-                            <div class="sinav-detay">
-                                <span>
-                                    <i class="bi bi-calendar3"></i>
-                                    <%= new Date(sonuc.sinav_tarihi).toLocaleDateString('tr-TR') %>
-                                </span>
-                                <% if (sonuc.sinif) { %>
-                                    <span>
-                                        <i class="bi bi-mortarboard"></i>
-                                        <%= sonuc.sinif %>
-                                    </span>
-                                <% } %>
-                                <% if (sonuc.ders) { %>
-                                    <span>
-                                        <i class="bi bi-book"></i>
-                                        <%= sonuc.ders %>
-                                    </span>
-                                <% } %>
-                            </div>
-                        </div>
-                        
-                        <div class="text-end">
-                            <% if (sonuc.pdf_goruldu) { %>
-                                <div class="durum-badge mb-2" style="background: #dcfce7; color: #166534;">
-                                    <i class="bi bi-eye-fill"></i> İncelendi
-                                </div>
-                                <div class="text-muted small mb-2">
-                                    <i class="bi bi-clock"></i>
-                                    <%= new Date(sonuc.pdf_gorunme_tarihi).toLocaleString('tr-TR', { 
-                                        day: '2-digit', 
-                                        month: '2-digit', 
-                                        year: 'numeric', 
-                                        hour: '2-digit', 
-                                        minute: '2-digit' 
-                                    }) %>
-                                </div>
-                                <% if (sonuc.pdf_indirilme_sayisi > 1) { %>
-                                    <div class="text-muted small mb-2">
-                                        <i class="bi bi-download"></i> <%= sonuc.pdf_indirilme_sayisi %> kez indirildi
-                                    </div>
-                                <% } %>
-                            <% } else if (sonuc.sonuc_durumu === 'bildirildi') { %>
-                                <div class="durum-badge durum-bildirildi mb-2">
-                                    <i class="bi bi-check-circle"></i> Bildirildi
-                                </div>
-                            <% } else { %>
-                                <div class="durum-badge durum-yuklendi mb-2">
-                                    <i class="bi bi-upload"></i> Yüklendi
-                                </div>
-                            <% } %>
-                            
-                            <% if (sonuc.pdf_path) { %>
-                                <a href="/veli/sinav-sonuc-indir/<%= sonuc.id %>" class="indir-btn">
-                                    <i class="bi bi-file-pdf"></i>
-                                    PDF İndir
-                                </a>
-                            <% } else { %>
-                                <span class="text-muted small">PDF hazırlanıyor...</span>
-                            <% } %>
-                        </div>
-                    </div>
+
+                    <% if (sonuc.pdf_path) { %>
+                        <a href="/veli/sinav-sonuc-indir/<%= sonuc.id %>" class="vp-pdf-btn">
+                            <i class="bi bi-file-pdf"></i>
+                            PDF Indir
+                        </a>
+                    <% } else { %>
+                        <span style="color: var(--vp-text-muted); font-size: 0.8rem;">PDF hazirlaniyor...</span>
+                    <% } %>
                 </div>
+            </div>
             <% }) %>
         </div>
-        
-        <div id="noResultsMessage" class="alert alert-info" style="display: none;">
-            <i class="bi bi-info-circle me-2"></i>
-            Seçilen filtrelere uygun sonuç bulunamadı.
+
+        <div id="noResultsMessage" class="alert alert-info" style="display: none; border-radius: var(--vp-radius);">
+            <i class="bi bi-info-circle"></i> Secilen filtrelere uygun sonuc bulunamadi.
         </div>
     <% } %>
+
+    <!-- Geri Butonu -->
+    <div class="mt-4">
+        <a href="/veli/dashboard" class="vp-btn vp-btn-secondary">
+            <i class="bi bi-arrow-left"></i> Dashboard
+        </a>
+    </div>
 </div>
 
 <script>
-// Filtreleme
 document.getElementById('ogrenciFiltre')?.addEventListener('change', filterResults);
 document.getElementById('sinavFiltre')?.addEventListener('change', filterResults);
 document.getElementById('durumFiltre')?.addEventListener('change', filterResults);
@@ -379,19 +341,19 @@ function filterResults() {
     const ogrenciFiltre = document.getElementById('ogrenciFiltre')?.value.toLowerCase() || '';
     const sinavFiltre = document.getElementById('sinavFiltre')?.value.toLowerCase() || '';
     const durumFiltre = document.getElementById('durumFiltre')?.value.toLowerCase() || '';
-    
-    const cards = document.querySelectorAll('.sonuc-card');
+
+    const cards = document.querySelectorAll('.vp-sonuc-card');
     let visibleCount = 0;
-    
+
     cards.forEach(card => {
         const ogrenci = card.dataset.ogrenci.toLowerCase();
         const sinav = card.dataset.sinav.toLowerCase();
         const durum = card.dataset.durum.toLowerCase();
-        
+
         const ogrenciMatch = !ogrenciFiltre || ogrenci.includes(ogrenciFiltre);
         const sinavMatch = !sinavFiltre || sinav.includes(sinavFiltre);
         const durumMatch = !durumFiltre || durum === durumFiltre;
-        
+
         if (ogrenciMatch && sinavMatch && durumMatch) {
             card.style.display = 'block';
             visibleCount++;
@@ -399,37 +361,12 @@ function filterResults() {
             card.style.display = 'none';
         }
     });
-    
+
     const noResultsMsg = document.getElementById('noResultsMessage');
     if (noResultsMsg) {
         noResultsMsg.style.display = visibleCount === 0 ? 'block' : 'none';
     }
 }
-
-// Highlight eğer URL'de highlight parametresi varsa
-const urlParams = new URLSearchParams(window.location.search);
-const highlightId = urlParams.get('highlight');
-if (highlightId) {
-    setTimeout(() => {
-        const card = document.querySelector(`.sonuc-card[data-sinav-id="${highlightId}"]`);
-        if (card) {
-            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            card.style.animation = 'pulse 1s ease-in-out 3';
-        }
-    }, 500);
-}
 </script>
 
-<style>
-@keyframes pulse {
-    0%, 100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.02);
-    }
-}
-</style>
-
 <%- include('../partials/footer-dashboard', { user: user, activePage: 'sonuclar' }) %>
-

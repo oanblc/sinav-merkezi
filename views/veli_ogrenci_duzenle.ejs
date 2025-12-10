@@ -1,327 +1,352 @@
 <%- include('partials/header-dashboard', { title: 'Öğrenci Düzenle - Sınav Merkezi', user: user }) %>
+<%- include('partials/veli-panel-styles') %>
 
 <style>
-    .page-header {
+    /* Sayfa Header - Turuncu tema */
+    .vp-edit-header {
         background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
         color: white;
-        padding: 40px 0;
-        margin: -30px -15px 40px;
-        border-radius: 0 0 24px 24px;
-        box-shadow: 0 8px 32px rgba(245, 158, 11, 0.3);
+        padding: clamp(16px, 4vw, 24px) 0;
+        margin: -20px -12px clamp(16px, 4vw, 24px);
+        border-radius: 0 0 var(--vp-radius-lg) var(--vp-radius-lg);
     }
-    
-    .form-card {
-        background: white;
-        border-radius: 24px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.08);
-        overflow: hidden;
+
+    .vp-edit-header h2 {
+        font-size: clamp(1.1rem, 4vw, 1.4rem);
+        font-weight: 700;
+        margin-bottom: 4px;
     }
-    
-    .form-body {
-        padding: 40px;
+
+    .vp-edit-header p {
+        font-size: clamp(0.85rem, 3vw, 0.95rem);
+        opacity: 0.9;
+        margin: 0;
     }
-    
-    .form-label {
-        font-weight: 600;
-        color: #1e293b;
-        margin-bottom: 12px;
-        font-size: 0.95rem;
-    }
-    
-    .form-control-modern {
-        border: 2px solid #e8ecf0;
-        border-radius: 12px;
-        padding: 14px 20px;
-        font-size: 1rem;
-        transition: all 0.3s ease;
-    }
-    
-    .form-control-modern:focus {
-        border-color: #f59e0b;
-        box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.1);
-        outline: none;
-    }
-    
-    .btn-submit {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-        padding: 14px 40px;
-        border-radius: 12px;
-        font-weight: 600;
-        font-size: 1.1rem;
-        color: white;
-        transition: all 0.3s ease;
-    }
-    
-    .btn-submit:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);
-        color: white;
-    }
-    
-    .info-card {
+
+    /* Ogrenci No Karti */
+    .vp-student-no-card {
         background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
         border: 2px solid #93c5fd;
-        border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 20px;
+        border-radius: var(--vp-radius);
+        padding: clamp(12px, 3vw, 16px);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .vp-student-no-card i {
+        font-size: clamp(1.5rem, 5vw, 2rem);
+        color: #1e40af;
+    }
+
+    .vp-student-no-card .label {
+        font-weight: 700;
+        color: #1e40af;
+        font-size: clamp(0.75rem, 2.8vw, 0.85rem);
+    }
+
+    .vp-student-no-card .value {
+        font-size: clamp(1rem, 4vw, 1.3rem);
+        font-weight: 800;
+        color: #1e40af;
+        font-family: monospace;
+    }
+
+    /* Rehber Ogretmen Karti */
+    .vp-teacher-card {
+        background: white;
+        border: 1px solid var(--vp-border);
+        border-radius: var(--vp-radius);
+        padding: clamp(12px, 3vw, 16px);
+        margin-bottom: 12px;
+    }
+
+    .vp-teacher-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .vp-teacher-name {
+        font-weight: 700;
+        color: var(--vp-text);
+        font-size: clamp(0.9rem, 3.2vw, 1rem);
+    }
+
+    .vp-teacher-branch {
+        color: #8b5cf6;
+        font-weight: 600;
+        font-size: clamp(0.75rem, 2.8vw, 0.85rem);
+    }
+
+    .vp-teacher-info {
+        font-size: clamp(0.75rem, 2.8vw, 0.85rem);
+        color: var(--vp-text-muted);
+        margin-bottom: 10px;
+    }
+
+    /* Yetki Durumu Kutusu */
+    .vp-permission-box {
+        padding: 10px;
+        border-radius: 8px;
+        font-size: clamp(0.75rem, 2.8vw, 0.85rem);
+    }
+
+    .vp-permission-active {
+        background: #f0fdf4;
+        border: 2px solid #86efac;
+    }
+
+    .vp-permission-inactive {
+        background: #fef2f2;
+        border: 2px solid #fecaca;
+    }
+
+    /* Info Box Sari */
+    .vp-info-yellow {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border: 2px solid #fbbf24;
+        border-radius: var(--vp-radius);
+        padding: clamp(14px, 3vw, 20px);
+        margin-bottom: 16px;
+    }
+
+    .vp-info-yellow h5 {
+        color: #92400e;
+        font-weight: 700;
+        font-size: clamp(0.9rem, 3.2vw, 1rem);
+        margin-bottom: 8px;
+    }
+
+    .vp-info-yellow p {
+        color: #92400e;
+        margin: 0;
+        font-size: clamp(0.8rem, 3vw, 0.9rem);
+    }
+
+    /* Mor Header */
+    .vp-purple-header {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: white;
+        padding: clamp(14px, 3vw, 20px);
+        border-radius: var(--vp-radius) var(--vp-radius) 0 0;
+    }
+
+    .vp-purple-header h5 {
+        font-weight: 700;
+        margin: 0;
+        font-size: clamp(0.9rem, 3.2vw, 1rem);
     }
 </style>
 
 <!-- Page Header -->
-<div class="page-header">
+<div class="vp-edit-header">
     <div class="container">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1 style="font-weight: 800; margin-bottom: 8px;">
-                    <i class="bi bi-pencil-square"></i> Öğrenci Düzenle
-                </h1>
-                <p style="opacity: 0.9; margin: 0;">Öğrenci bilgilerini güncelleyin</p>
-            </div>
-            <a href="/veli/dashboard" class="btn btn-light btn-lg" style="border-radius: 12px; font-weight: 600;">
-                <i class="bi bi-arrow-left"></i> İptal
-            </a>
-        </div>
+        <h2><i class="bi bi-pencil-square"></i> Ogrenci Duzenle</h2>
+        <p>Ogrenci bilgilerini guncelleyin</p>
     </div>
 </div>
 
-<% if (error) { %>
-<div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: 12px;">
-    <i class="bi bi-exclamation-triangle"></i> <%= error %>
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-<% } %>
+<div class="container">
+    <% if (error) { %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+        <i class="bi bi-exclamation-triangle"></i> <%= error %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <% } %>
 
-<% if (success) { %>
-<div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 12px;">
-    <i class="bi bi-check-circle"></i> <%= success %>
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-<% } %>
+    <% if (success) { %>
+    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+        <i class="bi bi-check-circle"></i> <%= success %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <% } %>
 
-<div class="row">
-    <!-- Form -->
-    <div class="col-lg-8">
-        <!-- Öğrenci No Kartı -->
-        <% if (ogrenci.ogrenci_no) { %>
-        <div class="alert" style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border: 2px solid #93c5fd; border-radius: 16px; margin-bottom: 24px;">
-            <div class="d-flex align-items-center gap-3">
-                <i class="bi bi-person-badge" style="font-size: 2rem; color: #1e40af;"></i>
-                <div>
-                    <div style="font-weight: 700; color: #1e40af; margin-bottom: 4px;">Öğrenci Numarası</div>
-                    <div style="font-size: 1.3rem; font-weight: 800; color: #1e40af; font-family: monospace;">
-                        <%= ogrenci.ogrenci_no %>
-                    </div>
+    <div class="row">
+        <!-- Mobilde bilgi kartlari uste cikar -->
+        <div class="col-lg-4 order-lg-2 mb-4">
+            <!-- Rehber Ogretmenler -->
+            <div class="vp-card" style="padding: 0; overflow: hidden;">
+                <div class="vp-purple-header">
+                    <h5><i class="bi bi-people-fill"></i> Rehber Ogretmenler</h5>
+                </div>
+                <div style="padding: clamp(14px, 3vw, 20px);">
+                    <% if (rehberOgretmenler && rehberOgretmenler.length > 0) { %>
+                        <% rehberOgretmenler.forEach(function(ogretmen) { %>
+                        <div class="vp-teacher-card" id="ogretmen-<%= ogretmen.talep_id %>">
+                            <div class="vp-teacher-header">
+                                <div>
+                                    <div class="vp-teacher-name"><%= ogretmen.ad_soyad %></div>
+                                    <div class="vp-teacher-branch">
+                                        <i class="bi bi-bookmark-fill"></i> <%= ogretmen.brans %>
+                                    </div>
+                                </div>
+                                <button onclick="yetkiKaldir(<%= ogretmen.talep_id %>)"
+                                        class="vp-btn vp-btn-danger vp-btn-sm" style="padding: 6px 10px;">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </div>
+                            <div class="vp-teacher-info">
+                                <div><i class="bi bi-building"></i> <%= ogretmen.kurum %></div>
+                                <% if (ogretmen.telefon) { %>
+                                <div><i class="bi bi-telephone"></i> <%= ogretmen.telefon %></div>
+                                <% } %>
+                            </div>
+
+                            <!-- Yetki Durumu -->
+                            <div class="vp-permission-box <%= ogretmen.sonuc_goruntuleme_aktif == 1 ? 'vp-permission-active' : 'vp-permission-inactive' %>">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="bi bi-<%= ogretmen.sonuc_goruntuleme_aktif == 1 ? 'eye-fill' : 'eye-slash-fill' %>"
+                                           style="color: <%= ogretmen.sonuc_goruntuleme_aktif == 1 ? '#16a34a' : '#dc2626' %>"></i>
+                                        <strong style="color: <%= ogretmen.sonuc_goruntuleme_aktif == 1 ? '#16a34a' : '#dc2626' %>;">
+                                            Sonuclar <%= ogretmen.sonuc_goruntuleme_aktif == 1 ? 'Aktif' : 'Pasif' %>
+                                        </strong>
+                                    </div>
+                                </div>
+                                <div style="font-size: 0.7rem; color: #64748b; margin-top: 4px;">
+                                    Kurum yoneticisi tarafindan yonetilir
+                                </div>
+                            </div>
+                        </div>
+                        <% }); %>
+                    <% } else { %>
+                        <div class="text-center" style="padding: 24px 12px; color: #94a3b8;">
+                            <i class="bi bi-person-x" style="font-size: 2.5rem; margin-bottom: 8px; display: block;"></i>
+                            <div style="font-weight: 600; font-size: 0.9rem;">Henuz rehber ogretmen yok</div>
+                        </div>
+                    <% } %>
                 </div>
             </div>
+
+            <div class="vp-info-yellow">
+                <h5><i class="bi bi-exclamation-triangle-fill"></i> Dikkat</h5>
+                <p>Ogrenci bilgilerini guncelledikten sonra sinav sonuclari etkilenmeyecektir.</p>
+            </div>
         </div>
-        <% } %>
-        
-        <div class="form-card">
-            <div class="form-body">
+
+        <!-- Form -->
+        <div class="col-lg-8 order-lg-1">
+            <!-- Ogrenci No -->
+            <% if (ogrenci.ogrenci_no) { %>
+            <div class="vp-student-no-card">
+                <i class="bi bi-person-badge"></i>
+                <div>
+                    <div class="label">Ogrenci Numarasi</div>
+                    <div class="value"><%= ogrenci.ogrenci_no %></div>
+                </div>
+            </div>
+            <% } %>
+
+            <div class="vp-card">
                 <form method="POST" action="/veli/ogrenci-duzenle/<%= ogrenci.id %>">
                     <div class="row">
-                        <div class="col-md-6 mb-4">
-                            <label class="form-label">
-                                <i class="bi bi-person"></i> Öğrenci Adı Soyadı <span class="text-danger">*</span>
-                            </label>
-                            <input type="text" name="ad_soyad" class="form-control form-control-modern" 
-                                   value="<%= ogrenci.ad_soyad %>" placeholder="Örn: Ahmet Yılmaz" required>
+                        <div class="col-md-6">
+                            <div class="vp-form-group">
+                                <label><i class="bi bi-person"></i> Ogrenci Adi Soyadi *</label>
+                                <input type="text" name="ad_soyad" class="vp-form-control"
+                                       value="<%= ogrenci.ad_soyad %>" placeholder="Orn: Ahmet Yilmaz" required>
+                            </div>
                         </div>
 
-                        <div class="col-md-6 mb-4">
-                            <label class="form-label">
-                                <i class="bi bi-card-text"></i> T.C. Kimlik No
-                            </label>
-                            <input type="text" name="tc_no" class="form-control form-control-modern" 
-                                   value="<%= ogrenci.tc_no || '' %>" placeholder="11 haneli TC No" maxlength="11">
-                            <small class="text-muted">Opsiyonel</small>
+                        <div class="col-md-6">
+                            <div class="vp-form-group">
+                                <label><i class="bi bi-card-text"></i> T.C. Kimlik No</label>
+                                <input type="text" name="tc_no" class="vp-form-control"
+                                       value="<%= ogrenci.tc_no || '' %>" placeholder="11 haneli TC No" maxlength="11">
+                                <small style="color: var(--vp-text-muted); font-size: 0.75rem;">Opsiyonel</small>
+                            </div>
                         </div>
 
-                        <div class="col-md-6 mb-4">
-                            <label class="form-label">
-                                <i class="bi bi-phone"></i> Öğrenci Cep Telefonu
-                            </label>
-                            <input type="tel" name="telefon" class="form-control form-control-modern" 
-                                   value="<%= ogrenci.telefon || '' %>" placeholder="0555 555 55 55">
-                            <small class="text-muted">Opsiyonel</small>
+                        <div class="col-md-6">
+                            <div class="vp-form-group">
+                                <label><i class="bi bi-phone"></i> Ogrenci Cep Telefonu</label>
+                                <input type="tel" name="telefon" class="vp-form-control"
+                                       value="<%= ogrenci.telefon || '' %>" placeholder="0555 555 55 55">
+                                <small style="color: var(--vp-text-muted); font-size: 0.75rem;">Opsiyonel</small>
+                            </div>
                         </div>
 
-                        <div class="col-md-6 mb-4">
-                            <label class="form-label">
-                                <i class="bi bi-building"></i> Okul / Mezun Bilgisi <span class="text-danger">*</span>
-                            </label>
-                            <input type="text" name="okul" class="form-control form-control-modern" 
-                                   value="<%= ogrenci.okul || '' %>" placeholder="Örn: Atatürk Lisesi" required>
+                        <div class="col-md-6">
+                            <div class="vp-form-group">
+                                <label><i class="bi bi-building"></i> Okul / Mezun Bilgisi *</label>
+                                <input type="text" name="okul" class="vp-form-control"
+                                       value="<%= ogrenci.okul || '' %>" placeholder="Orn: Ataturk Lisesi" required>
+                            </div>
                         </div>
 
-                        <div class="col-md-12 mb-4">
-                            <label class="form-label">
-                                <i class="bi bi-book"></i> Sınıf <span class="text-danger">*</span>
-                            </label>
-                            <select name="sinif" class="form-control form-control-modern" required>
-                                <option value="">Seçiniz...</option>
-                                <option value="9. Sınıf" <%= ogrenci.sinif === '9. Sınıf' ? 'selected' : '' %>>9. Sınıf</option>
-                                <option value="10. Sınıf" <%= ogrenci.sinif === '10. Sınıf' ? 'selected' : '' %>>10. Sınıf</option>
-                                <option value="11. Sınıf" <%= ogrenci.sinif === '11. Sınıf' ? 'selected' : '' %>>11. Sınıf</option>
-                                <option value="12. Sınıf" <%= ogrenci.sinif === '12. Sınıf' ? 'selected' : '' %>>12. Sınıf</option>
-                                <option value="Mezun" <%= ogrenci.sinif === 'Mezun' ? 'selected' : '' %>>Mezun</option>
-                            </select>
+                        <div class="col-12">
+                            <div class="vp-form-group">
+                                <label><i class="bi bi-book"></i> Sinif *</label>
+                                <select name="sinif" class="vp-form-control" required>
+                                    <option value="">Seciniz...</option>
+                                    <option value="9. Sinif" <%= ogrenci.sinif === '9. Sınıf' || ogrenci.sinif === '9. Sinif' ? 'selected' : '' %>>9. Sinif</option>
+                                    <option value="10. Sinif" <%= ogrenci.sinif === '10. Sınıf' || ogrenci.sinif === '10. Sinif' ? 'selected' : '' %>>10. Sinif</option>
+                                    <option value="11. Sinif" <%= ogrenci.sinif === '11. Sınıf' || ogrenci.sinif === '11. Sinif' ? 'selected' : '' %>>11. Sinif</option>
+                                    <option value="12. Sinif" <%= ogrenci.sinif === '12. Sınıf' || ogrenci.sinif === '12. Sinif' ? 'selected' : '' %>>12. Sinif</option>
+                                    <option value="Mezun" <%= ogrenci.sinif === 'Mezun' ? 'selected' : '' %>>Mezun</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="d-flex gap-3 mt-4">
-                        <button type="submit" class="btn btn-submit flex-grow-1">
-                            <i class="bi bi-check-circle"></i> Değişiklikleri Kaydet
+                    <div class="d-flex gap-2 flex-wrap mt-3">
+                        <button type="submit" class="vp-btn vp-btn-warning flex-grow-1">
+                            <i class="bi bi-check-circle"></i> Degisiklikleri Kaydet
                         </button>
-                        <a href="/veli/dashboard" class="btn btn-outline-secondary" style="padding: 14px 32px; border-radius: 12px; font-weight: 600;">
-                            İptal
+                        <a href="/veli/dashboard" class="vp-btn vp-btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Iptal
                         </a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-
-    <!-- Bilgi Kartı -->
-    <div class="col-lg-4">
-        <!-- Rehber Öğretmenler Listesi -->
-        <div class="form-card mb-4">
-            <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 20px;">
-                <h5 style="font-weight: 700; margin: 0;">
-                    <i class="bi bi-people-fill"></i> Rehber Öğretmenler
-                </h5>
-            </div>
-            <div style="padding: 24px;">
-                <% if (rehberOgretmenler && rehberOgretmenler.length > 0) { %>
-                    <div class="list-group list-group-flush" style="margin: -8px;">
-                        <% rehberOgretmenler.forEach(function(ogretmen) { %>
-                        <div class="list-group-item" style="border: 2px solid #f1f5f9; border-radius: 12px; margin-bottom: 12px; padding: 16px;" id="ogretmen-<%= ogretmen.talep_id %>">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div>
-                                    <div style="font-weight: 700; color: #1e293b; font-size: 1rem;">
-                                        <%= ogretmen.ad_soyad %>
-                                    </div>
-                                    <div style="color: #8b5cf6; font-weight: 600; font-size: 0.85rem;">
-                                        <i class="bi bi-bookmark-fill"></i> <%= ogretmen.brans %>
-                                    </div>
-                                </div>
-                                <button onclick="yetkiKaldir(<%= ogretmen.talep_id %>)" 
-                                        class="btn btn-sm btn-outline-danger" 
-                                        style="border-radius: 8px; font-size: 0.8rem; padding: 4px 12px;">
-                                    <i class="bi bi-x-circle"></i> Kaldır
-                                </button>
-                            </div>
-                            <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 12px;">
-                                <div><i class="bi bi-building"></i> <%= ogretmen.kurum %></div>
-                                <% if (ogretmen.telefon) { %>
-                                <div><i class="bi bi-telephone"></i> <%= ogretmen.telefon %></div>
-                                <% } %>
-                            </div>
-                            
-                            <!-- Sınav Sonucu Görme Yetkisi (Sadece Görüntüleme) -->
-                            <div style="background: <%= ogretmen.sonuc_goruntuleme_aktif == 1 ? '#f0fdf4' : '#fef2f2' %>; padding: 10px; border-radius: 8px; border: 2px solid <%= ogretmen.sonuc_goruntuleme_aktif == 1 ? '#86efac' : '#fecaca' %>;">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div style="font-size: 0.85rem;">
-                                        <i class="bi bi-<%= ogretmen.sonuc_goruntuleme_aktif == 1 ? 'eye-fill' : 'eye-slash-fill' %>" style="color: <%= ogretmen.sonuc_goruntuleme_aktif == 1 ? '#16a34a' : '#dc2626' %>"></i>
-                                        <strong style="color: <%= ogretmen.sonuc_goruntuleme_aktif == 1 ? '#16a34a' : '#dc2626' %>;">
-                                            Sınav Sonuçları <%= ogretmen.sonuc_goruntuleme_aktif == 1 ? 'Aktif' : 'Pasif' %>
-                                        </strong>
-                                    </div>
-                                    <span style="font-size: 0.75rem; color: #64748b; font-style: italic;">
-                                        (Kurum yöneticisi tarafından yönetilir)
-                                    </span>
-                                </div>
-                                <div style="font-size: 0.75rem; color: #64748b; margin-top: 6px;">
-                                    <%= ogretmen.sonuc_goruntuleme_aktif == 1 ? 'Rehber öğretmen sınav sonuçlarını görebilir' : 'Rehber öğretmen sınav sonuçlarını göremez' %>
-                                </div>
-                            </div>
-                        </div>
-                        <% }); %>
-                    </div>
-                <% } else { %>
-                    <div class="text-center" style="padding: 32px 16px; color: #94a3b8;">
-                        <i class="bi bi-person-x" style="font-size: 3rem; margin-bottom: 12px; display: block;"></i>
-                        <div style="font-weight: 600;">Henüz rehber öğretmen yok</div>
-                        <div style="font-size: 0.9rem;">Rehber öğretmen talep geldiğinde burada görünecek</div>
-                    </div>
-                <% } %>
-            </div>
-        </div>
-        
-        <div class="info-card">
-            <h5 style="color: #1e40af; font-weight: 700; margin-bottom: 16px;">
-                <i class="bi bi-info-circle-fill"></i> Zorunlu Alanlar
-            </h5>
-            <ul style="color: #1e40af; margin: 0; padding-left: 20px;">
-                <li class="mb-2"><strong>Öğrenci Adı Soyadı</strong> - Zorunlu</li>
-                <li class="mb-2"><strong>Okul / Mezun Bilgisi</strong> - Zorunlu</li>
-                <li class="mb-2"><strong>Sınıf</strong> - Zorunlu</li>
-            </ul>
-        </div>
-        
-        <div class="info-card" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-color: #fbbf24;">
-            <h5 style="color: #92400e; font-weight: 700; margin-bottom: 16px;">
-                <i class="bi bi-exclamation-triangle-fill"></i> Dikkat
-            </h5>
-            <p style="color: #92400e; margin: 0;">
-                Öğrenci bilgilerini güncelledikten sonra sınav sonuçları etkilenmeyecektir.
-            </p>
-        </div>
-    </div>
 </div>
 
-<!-- Onay Modalı -->
+<!-- Onay Modali -->
 <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border: none; border-radius: 20px; overflow: hidden;">
-            <div class="modal-body text-center" style="padding: 48px 32px;">
-                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); 
-                            border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center;
-                            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);">
-                    <i class="bi bi-exclamation-triangle" style="font-size: 3rem; color: white;"></i>
+        <div class="modal-content" style="border: none; border-radius: var(--vp-radius-lg); overflow: hidden;">
+            <div class="modal-body text-center" style="padding: clamp(24px, 6vw, 48px) clamp(16px, 4vw, 32px);">
+                <div style="width: 60px; height: 60px; background: var(--vp-danger);
+                            border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-exclamation-triangle" style="font-size: 2rem; color: white;"></i>
                 </div>
-                
-                <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 16px;">Yetkiyi Kaldır</h4>
-                <p id="confirmMessage" style="color: #64748b; font-size: 1.05rem; margin-bottom: 32px;">
-                    Bu rehber öğretmenin yetkisini kaldırmak istediğinize emin misiniz?
+
+                <h4 style="font-weight: 700; color: var(--vp-text); margin-bottom: 12px; font-size: clamp(1rem, 4vw, 1.2rem);">Yetkiyi Kaldir</h4>
+                <p id="confirmMessage" style="color: var(--vp-text-muted); font-size: clamp(0.85rem, 3vw, 1rem); margin-bottom: 20px;">
+                    Bu rehber ogretmenin yetkisini kaldirmak istediginize emin misiniz?
                 </p>
-                
-                <div class="d-flex gap-3 justify-content-center">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
-                            style="padding: 12px 32px; border-radius: 12px; font-weight: 600;">
-                        İptal
-                    </button>
-                    <button type="button" class="btn btn-danger" id="confirmButton"
-                            style="padding: 12px 32px; border-radius: 12px; font-weight: 600;">
-                        Yetkiyi Kaldır
-                    </button>
+
+                <div class="d-flex gap-2 justify-content-center flex-wrap">
+                    <button type="button" class="vp-btn vp-btn-secondary" data-bs-dismiss="modal">Iptal</button>
+                    <button type="button" class="vp-btn vp-btn-danger" id="confirmButton">Yetkiyi Kaldir</button>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Başarı Modalı -->
+<!-- Basari Modali -->
 <div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border: none; border-radius: 20px; overflow: hidden;">
-            <div class="modal-body text-center" style="padding: 48px 32px;">
-                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
-                            border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center;
-                            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);">
-                    <i class="bi bi-check-lg" style="font-size: 3rem; color: white;"></i>
+        <div class="modal-content" style="border: none; border-radius: var(--vp-radius-lg); overflow: hidden;">
+            <div class="modal-body text-center" style="padding: clamp(24px, 6vw, 48px) clamp(16px, 4vw, 32px);">
+                <div style="width: 60px; height: 60px; background: var(--vp-success);
+                            border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-check-lg" style="font-size: 2rem; color: white;"></i>
                 </div>
-                
-                <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 16px;">İşlem Başarılı!</h4>
-                <p id="successMessage" style="color: #64748b; font-size: 1.05rem; margin-bottom: 32px;">
-                    Rehber öğretmen yetkisi kaldırıldı!
+
+                <h4 style="font-weight: 700; color: var(--vp-text); margin-bottom: 12px; font-size: clamp(1rem, 4vw, 1.2rem);">Islem Basarili!</h4>
+                <p id="successMessage" style="color: var(--vp-text-muted); font-size: clamp(0.85rem, 3vw, 1rem); margin-bottom: 20px;">
+                    Rehber ogretmen yetkisi kaldirildi!
                 </p>
-                
-                <button type="button" class="btn btn-success" data-bs-dismiss="modal" 
-                        style="padding: 12px 48px; border-radius: 12px; font-weight: 600; font-size: 1.05rem;">
-                    Tamam
-                </button>
+
+                <button type="button" class="vp-btn vp-btn-success" data-bs-dismiss="modal">Tamam</button>
             </div>
         </div>
     </div>
@@ -332,27 +357,21 @@ let currentTalepId = null;
 
 function yetkiKaldir(talepId) {
     currentTalepId = talepId;
-    
-    // Onay modalını göster
     const confirmModalEl = document.getElementById('confirmModal');
     const confirmModal = new bootstrap.Modal(confirmModalEl);
     confirmModal.show();
 }
 
-// Onay butonuna tıklandığında
 document.addEventListener('DOMContentLoaded', function() {
     const confirmButton = document.getElementById('confirmButton');
     if (confirmButton) {
         confirmButton.addEventListener('click', function() {
             if (currentTalepId) {
-                // Modalı kapat
                 const confirmModalEl = document.getElementById('confirmModal');
                 const confirmModal = bootstrap.Modal.getInstance(confirmModalEl);
                 if (confirmModal) {
                     confirmModal.hide();
                 }
-                
-                // Yetkiyi kaldır
                 yetkiKaldirOnay(currentTalepId);
             }
         });
@@ -360,108 +379,41 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function yetkiKaldirOnay(talepId) {
-    console.log('Yetki kaldırma işlemi başladı:', talepId);
-    
-    fetch(`/veli/rehber-yetki-kaldir/${talepId}`, {
+    fetch('/veli/rehber-yetki-kaldir/' + talepId, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(res => {
-        console.log('Response alındı:', res.status);
-        return res.json();
-    })
-    .then(data => {
-        console.log('Response data:', data);
-        
-        if (data.success) {
-            console.log('İşlem başarılı, öğretmen siliniyor...');
-            
-            // Öğretmeni listeden kaldır
-            const ogretmenDiv = document.getElementById(`ogretmen-${talepId}`);
-            if (ogretmenDiv) {
-                ogretmenDiv.style.transition = 'all 0.3s ease';
-                ogretmenDiv.style.opacity = '0';
-                ogretmenDiv.style.transform = 'translateX(-20px)';
-                
-                setTimeout(() => {
-                    ogretmenDiv.remove();
-                    console.log('Öğretmen DOM\'dan silindi');
-                    
-                    // Eğer liste boşsa, boş mesajı göster
-                    const listGroup = document.querySelector('.list-group');
-                    if (listGroup && listGroup.children.length === 0) {
-                        console.log('Liste boş, sayfa yenileniyor...');
-                        location.reload();
-                    }
-                }, 300);
-            } else {
-                console.error('Öğretmen div bulunamadı:', `ogretmen-${talepId}`);
-            }
-            
-            // Başarı modalı göster
-            try {
-                const successMessageEl = document.getElementById('successMessage');
-                const successModalEl = document.getElementById('successModal');
-                
-                if (successMessageEl && successModalEl) {
-                    successMessageEl.textContent = data.message;
-                    const modal = new bootstrap.Modal(successModalEl);
-                    modal.show();
-                    console.log('Başarı modalı gösterildi');
-                } else {
-                    console.error('Modal elementleri bulunamadı');
-                    alert(data.message);
-                }
-            } catch (modalError) {
-                console.error('Modal gösterme hatası:', modalError);
-                alert(data.message);
-            }
-        } else {
-            console.error('İşlem başarısız:', data.message);
-            alert(data.message || 'Bir hata oluştu!');
-        }
-    })
-    .catch(error => {
-        console.error('Fetch hatası:', error);
-        alert('Bağlantı hatası: ' + error.message);
-    });
-}
-
-// Sınav Sonucu Görüntüleme Yetkisini Değiştir
-function sonucYetkiDegistir(talepId, mevcutDurum) {
-    const yeniDurum = mevcutDurum == 1 ? 0 : 1;
-    const mesaj = yeniDurum == 1 
-        ? 'Rehber öğretmen bu öğrencinin sınav sonuçlarını görebilecek. Onaylıyor musunuz?' 
-        : 'Rehber öğretmen bu öğrencinin sınav sonuçlarını artık göremeyecek. Onaylıyor musunuz?';
-    
-    if (!confirm(mesaj)) {
-        return;
-    }
-    
-    fetch(`/veli/rehber-sonuc-yetki-degistir/${talepId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ yeni_durum: yeniDurum })
+        headers: { 'Content-Type': 'application/json' }
     })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            alert(yeniDurum == 1 ? '✅ Sınav sonuçları yetkisi açıldı!' : '⛔ Sınav sonuçları yetkisi kapatıldı!');
-            location.reload();
+            const ogretmenDiv = document.getElementById('ogretmen-' + talepId);
+            if (ogretmenDiv) {
+                ogretmenDiv.style.transition = 'all 0.3s ease';
+                ogretmenDiv.style.opacity = '0';
+                setTimeout(() => {
+                    ogretmenDiv.remove();
+                    const container = document.querySelector('.vp-purple-header').parentElement.querySelector('div:last-child');
+                    if (container && container.querySelectorAll('.vp-teacher-card').length === 0) {
+                        location.reload();
+                    }
+                }, 300);
+            }
+
+            const successMessageEl = document.getElementById('successMessage');
+            const successModalEl = document.getElementById('successModal');
+            if (successMessageEl && successModalEl) {
+                successMessageEl.textContent = data.message;
+                const modal = new bootstrap.Modal(successModalEl);
+                modal.show();
+            }
         } else {
-            alert('❌ Hata: ' + data.message);
+            alert(data.message || 'Bir hata olustu!');
         }
     })
     .catch(error => {
-        console.error('Hata:', error);
-        alert('❌ Bir hata oluştu!');
+        alert('Baglanti hatasi: ' + error.message);
     });
 }
 </script>
 
 <%- include('partials/footer-dashboard') %>
-

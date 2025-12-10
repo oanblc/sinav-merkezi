@@ -1,194 +1,191 @@
 <%- include('partials/header-dashboard', { title: 'Öğrenci Ekle - Sınav Merkezi', user: user }) %>
+<%- include('partials/veli-panel-styles') %>
 
 <style>
-    .page-header {
+    /* Sayfa Header - Yesil tema */
+    .vp-add-header {
         background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         color: white;
-        padding: 40px 0;
-        margin: -30px -15px 40px;
-        border-radius: 0 0 24px 24px;
-        box-shadow: 0 8px 32px rgba(16, 185, 129, 0.3);
+        padding: clamp(16px, 4vw, 24px) 0;
+        margin: -20px -12px clamp(16px, 4vw, 24px);
+        border-radius: 0 0 var(--vp-radius-lg) var(--vp-radius-lg);
     }
-    
-    .form-card {
-        background: white;
-        border-radius: 24px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.08);
-        overflow: hidden;
+
+    .vp-add-header h2 {
+        font-size: clamp(1.1rem, 4vw, 1.4rem);
+        font-weight: 700;
+        margin-bottom: 4px;
     }
-    
-    .form-body {
-        padding: 40px;
+
+    .vp-add-header p {
+        font-size: clamp(0.85rem, 3vw, 0.95rem);
+        opacity: 0.9;
+        margin: 0;
     }
-    
-    .form-label {
-        font-weight: 600;
-        color: #1e293b;
+
+    /* Info Box Yesil */
+    .vp-info-green {
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        border: 2px solid #a7f3d0;
+        border-radius: var(--vp-radius);
+        padding: clamp(14px, 3vw, 20px);
+        margin-bottom: 16px;
+    }
+
+    .vp-info-green h5 {
+        color: #065f46;
+        font-weight: 700;
+        font-size: clamp(0.9rem, 3.2vw, 1rem);
         margin-bottom: 12px;
-        font-size: 0.95rem;
     }
-    
-    .form-control-modern {
-        border: 2px solid #e8ecf0;
-        border-radius: 12px;
-        padding: 14px 20px;
-        font-size: 1rem;
-        transition: all 0.3s ease;
+
+    .vp-info-green ul {
+        color: #047857;
+        margin: 0;
+        padding-left: 20px;
+        font-size: clamp(0.8rem, 3vw, 0.9rem);
     }
-    
-    .form-control-modern:focus {
-        border-color: #10b981;
-        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
-        outline: none;
+
+    .vp-info-green li {
+        margin-bottom: 6px;
     }
-    
-    .btn-submit {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-        padding: 14px 40px;
-        border-radius: 12px;
-        font-weight: 600;
-        font-size: 1.1rem;
-        color: white;
-        transition: all 0.3s ease;
-    }
-    
-    .btn-submit:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
-        color: white;
-    }
-    
-    .info-card {
+
+    /* Info Box Mavi */
+    .vp-info-blue {
         background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
         border: 2px solid #93c5fd;
-        border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 20px;
+        border-radius: var(--vp-radius);
+        padding: clamp(14px, 3vw, 20px);
+        margin-bottom: 16px;
+    }
+
+    .vp-info-blue h5 {
+        color: #1e40af;
+        font-weight: 700;
+        font-size: clamp(0.9rem, 3.2vw, 1rem);
+        margin-bottom: 12px;
+    }
+
+    .vp-info-blue ul {
+        color: #1e40af;
+        margin: 0;
+        padding-left: 20px;
+        font-size: clamp(0.8rem, 3vw, 0.9rem);
+    }
+
+    .vp-info-blue li {
+        margin-bottom: 6px;
     }
 </style>
 
 <!-- Page Header -->
-<div class="page-header">
+<div class="vp-add-header">
     <div class="container">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1 style="font-weight: 800; margin-bottom: 8px;">
-                    <i class="bi bi-person-plus-fill"></i> Öğrenci Ekle
-                </h1>
-                <p style="opacity: 0.9; margin: 0;">Öğrencinizin bilgilerini girerek sisteme ekleyin</p>
-            </div>
-            <a href="/veli/dashboard" class="btn btn-light btn-lg" style="border-radius: 12px; font-weight: 600;">
-                <i class="bi bi-arrow-left"></i> İptal
-            </a>
-        </div>
+        <h2><i class="bi bi-person-plus-fill"></i> Ogrenci Ekle</h2>
+        <p>Ogrenci bilgilerini girerek sisteme ekleyin</p>
     </div>
 </div>
 
-<% if (error) { %>
-<div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: 12px;">
-    <i class="bi bi-exclamation-triangle"></i> <%= error %>
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-<% } %>
+<div class="container">
+    <% if (error) { %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+        <i class="bi bi-exclamation-triangle"></i> <%= error %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <% } %>
 
-<% if (success) { %>
-<div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 12px;">
-    <i class="bi bi-check-circle"></i> <%= success %>
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-<% } %>
+    <% if (success) { %>
+    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+        <i class="bi bi-check-circle"></i> <%= success %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <% } %>
 
-<div class="row">
-    <!-- Form -->
-    <div class="col-lg-8">
-        <div class="form-card">
-            <div class="form-body">
+    <div class="row">
+        <!-- Mobilde info kartlari uste cikar -->
+        <div class="col-lg-4 order-lg-2 mb-4">
+            <div class="vp-info-blue">
+                <h5><i class="bi bi-info-circle-fill"></i> Zorunlu Alanlar</h5>
+                <ul>
+                    <li><strong>Ad Soyad</strong> - Zorunlu</li>
+                    <li><strong>Okul / Mezun</strong> - Zorunlu</li>
+                    <li><strong>Sinif</strong> - Zorunlu</li>
+                </ul>
+            </div>
+
+            <div class="vp-info-green">
+                <h5><i class="bi bi-lightbulb-fill"></i> Opsiyonel Alanlar</h5>
+                <ul>
+                    <li>TC Kimlik No</li>
+                    <li>Cep Telefonu</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Form -->
+        <div class="col-lg-8 order-lg-1">
+            <div class="vp-card">
                 <form method="POST" action="/veli/ogrenci-ekle">
                     <div class="row">
-                        <div class="col-md-6 mb-4">
-                            <label class="form-label">
-                                <i class="bi bi-person"></i> Öğrenci Adı Soyadı <span class="text-danger">*</span>
-                            </label>
-                            <input type="text" name="ad_soyad" class="form-control form-control-modern" 
-                                   placeholder="Örn: Ahmet Yılmaz" required>
+                        <div class="col-md-6">
+                            <div class="vp-form-group">
+                                <label><i class="bi bi-person"></i> Ogrenci Adi Soyadi *</label>
+                                <input type="text" name="ad_soyad" class="vp-form-control"
+                                       placeholder="Orn: Ahmet Yilmaz" required>
+                            </div>
                         </div>
 
-                        <div class="col-md-6 mb-4">
-                            <label class="form-label">
-                                <i class="bi bi-card-text"></i> T.C. Kimlik No
-                            </label>
-                            <input type="text" name="tc_no" class="form-control form-control-modern" 
-                                   placeholder="11 haneli TC No" maxlength="11">
-                            <small class="text-muted">Opsiyonel</small>
+                        <div class="col-md-6">
+                            <div class="vp-form-group">
+                                <label><i class="bi bi-card-text"></i> T.C. Kimlik No</label>
+                                <input type="text" name="tc_no" class="vp-form-control"
+                                       placeholder="11 haneli TC No" maxlength="11">
+                                <small style="color: var(--vp-text-muted); font-size: 0.75rem;">Opsiyonel</small>
+                            </div>
                         </div>
 
-                        <div class="col-md-6 mb-4">
-                            <label class="form-label">
-                                <i class="bi bi-phone"></i> Öğrenci Cep Telefonu
-                            </label>
-                            <input type="tel" name="telefon" class="form-control form-control-modern" 
-                                   placeholder="0555 555 55 55">
-                            <small class="text-muted">Opsiyonel</small>
+                        <div class="col-md-6">
+                            <div class="vp-form-group">
+                                <label><i class="bi bi-phone"></i> Ogrenci Cep Telefonu</label>
+                                <input type="tel" name="telefon" class="vp-form-control"
+                                       placeholder="0555 555 55 55">
+                                <small style="color: var(--vp-text-muted); font-size: 0.75rem;">Opsiyonel</small>
+                            </div>
                         </div>
 
-                        <div class="col-md-6 mb-4">
-                            <label class="form-label">
-                                <i class="bi bi-building"></i> Okul / Mezun Bilgisi <span class="text-danger">*</span>
-                            </label>
-                            <input type="text" name="okul" class="form-control form-control-modern" 
-                                   placeholder="Örn: Atatürk Lisesi" required>
+                        <div class="col-md-6">
+                            <div class="vp-form-group">
+                                <label><i class="bi bi-building"></i> Okul / Mezun Bilgisi *</label>
+                                <input type="text" name="okul" class="vp-form-control"
+                                       placeholder="Orn: Ataturk Lisesi" required>
+                            </div>
                         </div>
 
-                        <div class="col-md-12 mb-4">
-                            <label class="form-label">
-                                <i class="bi bi-book"></i> Sınıf <span class="text-danger">*</span>
-                            </label>
-                            <select name="sinif" class="form-control form-control-modern" required>
-                                <option value="">Seçiniz...</option>
-                                <option value="9. Sınıf">9. Sınıf</option>
-                                <option value="10. Sınıf">10. Sınıf</option>
-                                <option value="11. Sınıf">11. Sınıf</option>
-                                <option value="12. Sınıf">12. Sınıf</option>
-                                <option value="Mezun">Mezun</option>
-                            </select>
+                        <div class="col-12">
+                            <div class="vp-form-group">
+                                <label><i class="bi bi-book"></i> Sinif *</label>
+                                <select name="sinif" class="vp-form-control" required>
+                                    <option value="">Seciniz...</option>
+                                    <option value="9. Sinif">9. Sinif</option>
+                                    <option value="10. Sinif">10. Sinif</option>
+                                    <option value="11. Sinif">11. Sinif</option>
+                                    <option value="12. Sinif">12. Sinif</option>
+                                    <option value="Mezun">Mezun</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="d-flex gap-3 mt-4">
-                        <button type="submit" class="btn btn-submit flex-grow-1">
-                            <i class="bi bi-check-circle"></i> Öğrenci Ekle
+                    <div class="d-flex gap-2 flex-wrap mt-3">
+                        <button type="submit" class="vp-btn vp-btn-success flex-grow-1">
+                            <i class="bi bi-check-circle"></i> Ogrenci Ekle
                         </button>
-                        <a href="/veli/dashboard" class="btn btn-outline-secondary" style="padding: 14px 32px; border-radius: 12px; font-weight: 600;">
-                            İptal
+                        <a href="/veli/dashboard" class="vp-btn vp-btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Iptal
                         </a>
                     </div>
                 </form>
             </div>
-        </div>
-    </div>
-
-    <!-- Bilgi Kartı -->
-    <div class="col-lg-4">
-        <div class="info-card">
-            <h5 style="color: #1e40af; font-weight: 700; margin-bottom: 16px;">
-                <i class="bi bi-info-circle-fill"></i> Zorunlu Alanlar
-            </h5>
-            <ul style="color: #1e40af; margin: 0; padding-left: 20px;">
-                <li class="mb-2"><strong>Öğrenci Adı Soyadı</strong> - Zorunlu</li>
-                <li class="mb-2"><strong>Okul / Mezun Bilgisi</strong> - Zorunlu</li>
-                <li class="mb-2"><strong>Sınıf</strong> - Zorunlu</li>
-            </ul>
-        </div>
-        
-        <div class="info-card" style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-color: #a7f3d0;">
-            <h5 style="color: #065f46; font-weight: 700; margin-bottom: 16px;">
-                <i class="bi bi-lightbulb-fill"></i> Opsiyonel Alanlar
-            </h5>
-            <ul style="color: #047857; margin: 0; padding-left: 20px;">
-                <li class="mb-2">TC Kimlik No</li>
-                <li>Cep Telefonu</li>
-            </ul>
         </div>
     </div>
 </div>
