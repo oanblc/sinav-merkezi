@@ -6653,24 +6653,15 @@ app.post('/kurum/duyuru-sil/:id', requireAuth, async (req, res) => {
 // Duyurular Route (Genel - Herkes gÃƒÂƒÃ‚Â¶rebilir)
 app.get('/duyurular', async (req, res) => {
   try {
-    const duyurular = await new Promise((resolve, reject) => {
-      db.all(
-        `SELECT * FROM duyurular WHERE aktif = 1 ORDER BY sira ASC, tarih DESC`,
-        [],
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows || []);
-        }
-      );
-    });
-    
+    const duyurular = await dbAll('SELECT * FROM duyurular WHERE aktif = 1 ORDER BY sira ASC, tarih DESC');
+
     res.render('duyurular', {
       title: 'Duyurular',
       user: req.session.userId ? { type: req.session.userType } : null,
-      duyurular: duyurular
+      duyurular: duyurular || []
     });
   } catch (error) {
-    console.error('Duyurular hatasÃƒÂ„Ã‚Â±:', error);
+    console.error('Duyurular hatasi:', error);
     res.status(500).send('Bir hata oluştu!');
   }
 });
