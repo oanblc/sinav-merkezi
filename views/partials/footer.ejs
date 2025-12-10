@@ -4,50 +4,49 @@
             padding: 0;
             overflow-x: hidden;
         }
-        
+
         footer {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             color: white;
             padding: 40px 0 20px;
             margin-top: 60px;
-            width: 100vw;
-            position: relative;
-            left: 50%;
-            right: 50%;
-            margin-left: -50vw;
-            margin-right: -50vw;
+            width: 100%;
         }
-        
+
         footer h5 {
             font-weight: 700;
             margin-bottom: 20px;
             color: white;
+            font-size: clamp(1rem, 2.5vw, 1.25rem);
         }
-        
+
         footer a {
             color: rgba(255,255,255,0.8);
             text-decoration: none;
             transition: all 0.3s ease;
             display: block;
             margin-bottom: 8px;
+            font-size: clamp(0.85rem, 2vw, 0.95rem);
         }
-        
+
         footer a:hover {
             color: white;
             padding-left: 5px;
         }
-        
+
         footer p {
             color: rgba(255,255,255,0.8);
             margin-bottom: 8px;
+            font-size: clamp(0.85rem, 2vw, 0.95rem);
         }
-        
+
         .social-links {
             display: flex;
             gap: 10px;
             margin-top: 15px;
+            flex-wrap: wrap;
         }
-        
+
         .social-links a {
             width: 40px;
             height: 40px;
@@ -60,19 +59,54 @@
             padding: 0;
             margin: 0;
         }
-        
+
         .social-links a:hover {
             background: #003b78;
             transform: translateY(-3px);
             padding: 0;
         }
-        
+
         .footer-bottom {
             border-top: 1px solid rgba(255,255,255,0.1);
             margin-top: 30px;
             padding-top: 20px;
             text-align: center;
             color: rgba(255,255,255,0.6);
+        }
+
+        /* Footer Responsive */
+        @media (max-width: 991px) {
+            footer {
+                padding: 30px 0 15px;
+                margin-top: 40px;
+            }
+
+            footer .row > div {
+                margin-bottom: 25px;
+            }
+        }
+
+        @media (max-width: 767px) {
+            footer {
+                padding: 25px 0 15px;
+                text-align: center;
+            }
+
+            footer .row > div {
+                margin-bottom: 20px;
+            }
+
+            .social-links {
+                justify-content: center;
+            }
+
+            footer a, footer p {
+                text-align: center;
+            }
+
+            footer div[style*="flex-direction: column"] {
+                align-items: center;
+            }
         }
     </style>
 
