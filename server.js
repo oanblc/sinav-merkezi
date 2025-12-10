@@ -888,11 +888,20 @@ db.serialize(() => {
       odeme_turu TEXT,
       edessis_kaydi TEXT,
       taksit TEXT,
+      veli_id INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (veli_id) REFERENCES users(id)
     )
   `);
-  
+
+  // ogrenci_kayitlari tablosuna veli_id kolonu ekle (mevcut tablolar icin)
+  db.run(`ALTER TABLE ogrenci_kayitlari ADD COLUMN veli_id INTEGER`, (err) => {
+    if (err && !err.message.includes('duplicate column')) {
+      // Sutun zaten var, sorun yok
+    }
+  });
+
   // WhatsApp API Ayarları Tablosu
   db.run(`
     CREATE TABLE IF NOT EXISTS whatsapp_ayarlari (
@@ -3257,23 +3266,26 @@ app.get('/kurum/tum-ogrenciler-api', requireAuth, async (req, res) => {
     console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚Â¡ TÃƒÂƒÃ‚Â¼m ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenciler API ÃƒÂƒÃ‚Â§aÃƒÂ„Ã‚ÂŸrÃƒÂ„Ã‚Â±ldÃƒÂ„Ã‚Â±');
     
     // Veli ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri
-    let veliOgrencileri = [];
-    try {
-      veliOgrencileri = await dbAll(`
-        SELECT 
-          o.id,
-          o.ad_soyad,
-          o.tc_no,
-          o.sinif,
-          o.okul,
-          o.telefon,
-          o.ogrenci_no,
-          o.veli_id,
-          'veli' as kaynak
-        FROM ogrenciler o
-        WHERE o.veli_id IS NOT NULL
-        ORDER BY o.ad_soyad ASC
-      `);
+    // Tek tablo sistemi - sadece ogrenci_kayitlari kullan
+    const ogrenciler = await dbAll(`
+      SELECT
+        ok.id,
+        ok.ogrenci_adi_soyadi as ad_soyad,
+        ok.tc_kimlik_no as tc_no,
+        ok.sinif,
+        '' as okul,
+        ok.telefon,
+        '' as ogrenci_no,
+        ok.veli_id,
+        ok.veli_adi,
+        ok.veli_telefon,
+        'kurum' as kaynak
+      FROM ogrenci_kayitlari ok
+      ORDER BY ok.ogrenci_adi_soyadi ASC
+    `);
+    console.log('Toplam ' + ogrenciler.length + ' ogrenci donduruldu');
+    res.json(ogrenciler);
+/*
       console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… ${veliOgrencileri.length} veli ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencisi bulundu`);
     } catch (error) {
       console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Veli ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri yÃƒÂƒÃ‚Â¼kleme hatasÃƒÂ„Ã‚Â±:', error);
@@ -3308,7 +3320,7 @@ app.get('/kurum/tum-ogrenciler-api', requireAuth, async (req, res) => {
     
     console.log(`ÃƒÂ¢Ã‚ÂœÃ‚Â… Toplam ${tumOgrenciler.length} ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci dÃƒÂƒÃ‚Â¶ndÃƒÂƒÃ‚Â¼rÃƒÂƒÃ‚Â¼lÃƒÂƒÃ‚Â¼yor`);
     
-    res.json(tumOgrenciler);
+*/
   } catch (error) {
     console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ TÃƒÂƒÃ‚Â¼m ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci listesi hatasÃƒÂ„Ã‚Â±:', error);
     res.status(500).json({ success: false, message: 'Bir hata oluştu: ' + error.message });
@@ -5703,57 +5715,37 @@ app.get('/veli/dashboard', requireAuth, requireRole('veli'), async (req, res) =>
     
     console.log(`🔍 TC Kimlik No: ${tcKimlikNo} (username: ${req.session.username}, telefon: ${kullanici.telefon})`);
     
-    // 1. Veli'nin kendi eklediği öğrenciler (ogrenciler tablosu)
-    const veliOgrenciler = await dbAll('SELECT * FROM ogrenciler WHERE veli_id = ?', [req.session.userId]);
-    console.log(`✅ Veli tablosundan ${veliOgrenciler.length} öğrenci bulundu`);
-    
-    // 2. Kurum tarafından eklenen öğrenciler (TC eşleşmesi ile)
-    // Hem username hem de telefon ile eşleştir
-    const kurumOgrenciler = await dbAll(`
-      SELECT 
+    // TEK TABLO SISTEMI: Sadece ogrenci_kayitlari tablosundan cek
+    // veli_id ile bagli olanlar VEYA TC/telefon eslesmesi ile
+    const ogrenciler = await dbAll(`
+      SELECT
         id,
         ogrenci_adi_soyadi as ad_soyad,
         tc_kimlik_no as tc_no,
         sinif,
+        veli_id,
         'kurum' as kaynak
-      FROM ogrenci_kayitlari 
-      WHERE REPLACE(CAST(tc_kimlik_no AS TEXT), '.0', '') = REPLACE(?, '.0', '')
+      FROM ogrenci_kayitlari
+      WHERE veli_id = ?
+         OR REPLACE(CAST(tc_kimlik_no AS TEXT), '.0', '') = REPLACE(?, '.0', '')
          OR (veli_telefon IS NOT NULL AND REPLACE(CAST(veli_telefon AS TEXT), '.0', '') = REPLACE(?, '.0', ''))
-    `, [tcKimlikNo, kullanici.telefon ? kullanici.telefon.toString().replace(/\D/g, '') : '']);
-    console.log(`✅ Kurum tablosundan ${kurumOgrenciler.length} öğrenci bulundu (TC: ${tcKimlikNo}, Telefon: ${kullanici.telefon})`);
-    
-    // 3. BirleÃƒÂ…Ã‚ÂŸtir
-    const ogrenciler = [...veliOgrenciler, ...kurumOgrenciler];
+    `, [req.session.userId, tcKimlikNo, kullanici.telefon ? kullanici.telefon.toString().replace(/\D/g, '') : '']);
+    console.log('Tek tablo sisteminden ' + ogrenciler.length + ' ogrenci bulundu');
     console.log(`ÃƒÂ°Ã‚ÂŸÃ‚Â“Ã‚ÂŠ TOPLAM ${ogrenciler.length} ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci`);
     
     // 4. ÃƒÂ„Ã‚Â°statistikler
+    // Tek tablo sistemi - tum ogrenciler kurum kaynagindan
     for (let ogrenci of ogrenciler) {
-      if (ogrenci.kaynak === 'kurum') {
-        // Kurum ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencisi - sinav_katilimcilari'ndan sınavlarÃƒÂ„Ã‚Â± al
-        const katilimlar = await dbAll(`
-          SELECT s.ad AS sinav_adi, s.tarih AS sinav_tarihi, sk.pdf_path
-          FROM sinav_katilimcilari sk
-          JOIN sinavlar s ON sk.sinav_id = s.id
-          WHERE sk.ogrenci_id = ? AND sk.ogrenci_kaynak = 'kurum'
-        `, [ogrenci.id]);
-        
-        ogrenci.pdf_sonuc_sayisi = katilimlar.filter(k => k.pdf_path).length;
-        ogrenci.excel_sonuc_sayisi = 0;
-        ogrenci.sinavlar = katilimlar;
-      } else {
-        // Veli ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencisi - eski sistem
-        const pdfCount = await dbGet(
-          'SELECT COUNT(*) as sayi FROM sinav_sonuclari_pdf WHERE ogrenci_id = ?',
-          [ogrenci.id]
-        );
-        ogrenci.pdf_sonuc_sayisi = pdfCount ? pdfCount.sayi : 0;
-        
-        const excelCount = await dbGet(
-          'SELECT COUNT(DISTINCT sinav_id) as sayi FROM sinav_sonuclari WHERE ogrenci_id = ?',
-          [ogrenci.id]
-        );
-        ogrenci.excel_sonuc_sayisi = excelCount ? excelCount.sayi : 0;
-      }
+      const katilimlar = await dbAll(`
+        SELECT s.ad AS sinav_adi, s.tarih AS sinav_tarihi, sk.pdf_path
+        FROM sinav_katilimcilari sk
+        JOIN sinavlar s ON sk.sinav_id = s.id
+        WHERE sk.ogrenci_id = ? AND sk.ogrenci_kaynak = 'kurum'
+      `, [ogrenci.id]);
+
+      ogrenci.pdf_sonuc_sayisi = katilimlar.filter(k => k.pdf_path).length;
+      ogrenci.excel_sonuc_sayisi = 0;
+      ogrenci.sinavlar = katilimlar;
     }
     
     // Bekleyen talep sayÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± al
@@ -7343,19 +7335,12 @@ app.post('/kurum/toplu-veli-hesap-olustur', requireAuth, async (req, res) => {
         
         // Veli ID'sini al
         const veliUser = await dbGet('SELECT id FROM users WHERE username = ?', [ogrenci.tc_kimlik_no]);
-        
-        // ogrenciler tablosuna ekle (veli-ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci iliÃƒÂ…Ã‚ÂŸkisi)
+
+        // ogrenci_kayitlari tablosundaki kaydin veli_id'sini guncelle (tek tablo sistemi)
         await dbRun(`
-          INSERT OR IGNORE INTO ogrenciler (veli_id, ad_soyad, sinif, telefon, tc_no)
-          VALUES (?, ?, ?, ?, ?)
-        `, [
-          veliUser.id,
-          ogrenci.ogrenci_adi_soyadi,
-          ogrenci.sinif,
-          ogrenci.telefon,
-          ogrenci.tc_kimlik_no
-        ]);
-        
+          UPDATE ogrenci_kayitlari SET veli_id = ? WHERE id = ?
+        `, [veliUser.id, ogrenci.id]);
+
         olusturulan++;
         
       } catch (error) {
