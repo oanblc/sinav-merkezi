@@ -5860,8 +5860,8 @@ app.get('/rehber/dashboard', requireAuth, requireRole('rehber_ogretmen'), async 
       [req.session.userId, 'beklemede']
     );
     
-    res.render('rehber_dashboard', { 
-      user: { username: req.session.username },
+    res.render('rehber_dashboard', {
+      user: { username: req.session.username, type: req.session.userType },
       sinavlar: sinavlar,
       istatistikler: {
         ogrenci: ogrenciSayisi?.sayi || 0,
@@ -5873,8 +5873,8 @@ app.get('/rehber/dashboard', requireAuth, requireRole('rehber_ogretmen'), async 
   } catch (error) {
     console.error('Dashboard hatasÃƒÂ„Ã‚Â±:', error);
     // Sonsuz dÃƒÂƒÃ‚Â¶ngÃƒÂƒÃ‚Â¼yÃƒÂƒÃ‚Â¼ ÃƒÂƒÃ‚Â¶nlemek iÃƒÂƒÃ‚Â§in boÃƒÂ…Ã‚ÂŸ veri ile render et
-    res.render('rehber_dashboard', { 
-      user: { username: req.session.username },
+    res.render('rehber_dashboard', {
+      user: { username: req.session.username, type: req.session.userType },
       sinavlar: [],
       istatistikler: {
         ogrenci: 0,
