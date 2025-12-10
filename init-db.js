@@ -1,5 +1,5 @@
 // Database initialization module - works with both Turso and SQLite
-const { dbRun, dbGet, getDb, USE_TURSO } = require('./db');
+const { dbRun, dbGet, dbAll, getDb, USE_TURSO } = require('./db');
 
 // All CREATE TABLE statements
 const createTableStatements = [
@@ -434,7 +434,8 @@ async function initDatabase() {
       'ALTER TABLE sinav_sonuclari_pdf ADD COLUMN sayfa_no INTEGER',
       'ALTER TABLE sinav_paketleri ADD COLUMN fiyat REAL DEFAULT 0',
       'ALTER TABLE satinalma ADD COLUMN merchant_oid TEXT',
-      'ALTER TABLE satinalma ADD COLUMN paytr_token TEXT'
+      'ALTER TABLE satinalma ADD COLUMN paytr_token TEXT',
+      'ALTER TABLE ogrenci_kayitlari ADD COLUMN veli_id INTEGER'
     ];
 
     for (const sql of alterStatements) {
@@ -443,10 +444,55 @@ async function initDatabase() {
     console.log('Schema migrations completed');
 
     console.log('Database initialization complete!');
+
+    // Veli baglantisi migration - mevcut velileri ogrenci_kayitlari ile bagla
+    await migrateVeliBaglantisi();
+
     return true;
   } catch (err) {
     console.error('Database initialization error:', err);
     throw err;
+  }
+}
+
+// Mevcut velileri ogrenci_kayitlari tablosuna bagla (TC eslesmesi ile)
+async function migrateVeliBaglantisi() {
+  try {
+    console.log('Veli baglantisi migration basliyor...');
+
+    // Bagli olmayan velileri bul ve bagla
+    const veliler = await dbAll("SELECT id, username FROM users WHERE user_type = 'veli'");
+    let baglantiSayisi = 0;
+
+    for (const veli of veliler) {
+      // TC temizle (.0 kaldir)
+      let tc = veli.username ? veli.username.toString().replace('.0', '').trim() : null;
+
+      if (!tc || tc.length !== 11) {
+        continue;
+      }
+
+      // ogrenci_kayitlari'nda TC eslesmesi ara
+      const ogrenci = await dbGet(`
+        SELECT id, ogrenci_adi_soyadi, veli_id
+        FROM ogrenci_kayitlari
+        WHERE REPLACE(CAST(tc_kimlik_no AS TEXT), '.0', '') = ?
+      `, [tc]);
+
+      if (ogrenci && !ogrenci.veli_id) {
+        // veli_id bagla
+        await dbRun('UPDATE ogrenci_kayitlari SET veli_id = ? WHERE id = ?', [veli.id, ogrenci.id]);
+        baglantiSayisi++;
+      }
+    }
+
+    if (baglantiSayisi > 0) {
+      console.log('Veli baglantisi migration: ' + baglantiSayisi + ' yeni baglanti yapildi');
+    } else {
+      console.log('Veli baglantisi migration: Tum veliler zaten bagli');
+    }
+  } catch (err) {
+    console.log('Veli baglantisi migration hatasi (devam ediliyor):', err.message);
   }
 }
 
