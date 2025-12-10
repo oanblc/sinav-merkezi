@@ -47,3 +47,4 @@ tmp/
 # modify*.js
 # autoMatcher.js
 # insertIndex.js
+.env
