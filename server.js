@@ -5989,9 +5989,10 @@ app.get('/rehber/ogrenciler', requireAuth, requireRole('rehber_ogretmen'), async
     // BirleÃƒÂ…Ã‚ÂŸtir
     const ogrenciler = [...veliOgrencileri, ...kurumOgrencileri];
     
-    res.render('ogrenci_listesi', { 
-      user: { username: req.session.username },
-      ogrenciler: ogrenciler
+    res.render('ogrenci_listesi', {
+      user: { username: req.session.username, type: req.session.userType },
+      ogrenciler: ogrenciler,
+      activePage: 'ogrenciler'
     });
   } catch (error) {
     console.error('Öğrenci listesi hatasÃƒÂ„Ã‚Â±:', error);
