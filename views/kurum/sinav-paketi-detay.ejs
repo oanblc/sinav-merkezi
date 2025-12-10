@@ -245,19 +245,18 @@ document.getElementById('ogrenciAtaModal').addEventListener('show.bs.modal', fun
 
 async function ogrencileriYukle() {
     try {
-        // Kurum kayıtları
-        const kurumRes = await fetch('/kurum/ogrenci-kayitlari-api');
-        const kurumData = await kurumRes.json();
-        
-        // Veli kayıtları
-        const veliRes = await fetch('/kurum/veli-ogrencileri-api');
-        const veliData = await veliRes.json();
-        
-        tumOgrenciler = [
-            ...kurumData.map(o => ({ ...o, kaynak: 'kurum' })),
-            ...veliData.map(o => ({ ...o, kaynak: 'veli' }))
-        ];
-        
+        // Tek tablo sistemi - sadece ogrenci_kayitlari kullan
+        const res = await fetch('/kurum/ogrenci-kayitlari-api');
+        const data = await res.json();
+
+        tumOgrenciler = data.map(o => ({
+            id: o.id,
+            ad_soyad: o.ogrenci_adi_soyadi,
+            sinif: o.sinif,
+            tc_no: o.tc_kimlik_no,
+            kaynak: 'kurum'
+        }));
+
         ogrenciListesiniGoster();
     } catch (error) {
         console.error('Öğrenci yükleme hatası:', error);
