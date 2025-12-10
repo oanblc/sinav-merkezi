@@ -239,15 +239,32 @@
 let tumOgrenciler = [];
 
 // Modal açıldığında öğrencileri yükle
-document.getElementById('ogrenciAtaModal').addEventListener('show.bs.modal', function() {
-    ogrencileriYukle();
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('ogrenciAtaModal');
+    if (modal) {
+        modal.addEventListener('show.bs.modal', function() {
+            console.log('Modal acildi, ogrenciler yukleniyor...');
+            ogrencileriYukle();
+        });
+    }
 });
 
 async function ogrencileriYukle() {
+    console.log('ogrencileriYukle fonksiyonu cagrildi');
+    const yukleniyorDiv = document.getElementById('ogrenciYukleniyor');
+    const listeDiv = document.getElementById('ogrenciListesi');
+
     try {
-        // Tek tablo sistemi - sadece ogrenci_kayitlari kullan
+        console.log('API istegi gonderiliyor...');
         const res = await fetch('/kurum/ogrenci-kayitlari-api');
+        console.log('API yanit status:', res.status);
+
+        if (!res.ok) {
+            throw new Error('API yanit hatasi: ' + res.status);
+        }
+
         const data = await res.json();
+        console.log('API yanit data:', data.length, 'kayit');
 
         tumOgrenciler = data.map(o => ({
             id: o.id,
@@ -257,10 +274,13 @@ async function ogrencileriYukle() {
             kaynak: 'kurum'
         }));
 
+        console.log('tumOgrenciler:', tumOgrenciler.length);
         ogrenciListesiniGoster();
     } catch (error) {
-        console.error('Öğrenci yükleme hatası:', error);
-        document.getElementById('ogrenciYukleniyor').innerHTML = '<div class="alert alert-danger">Öğrenciler yüklenirken hata oluştu!</div>';
+        console.error('Ogrenci yukleme hatasi:', error);
+        if (yukleniyorDiv) {
+            yukleniyorDiv.innerHTML = '<div class="alert alert-danger">Ogrenciler yuklenirken hata olustu: ' + error.message + '</div>';
+        }
     }
 }
 
