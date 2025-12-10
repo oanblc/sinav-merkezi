@@ -2634,17 +2634,16 @@ app.post('/paket-talep-gonder', async (req, res) => {
       }
     }
 
-    // Paket icinde sinav yoksa veya tum sinavlara zaten talep varsa, sadece paket talebini kaydet
+    // Paket icinde sinav yoksa bilgi ver
     if (paketSinavlari.length === 0) {
-      // Paket icinde sinav yok ama yine de talep kaydedilsin
-      const paketAciklama = `[PAKET TALEBI: ${paket.ad}] ${aciklama || ''}`;
-      await dbRun(
-        `INSERT INTO sinav_talepleri (veli_id, sinav_id, durum, aciklama, talep_tarihi)
-         VALUES (?, NULL, 'beklemede', ?, datetime('now'))`,
-        [veli_id, paketAciklama]
-      );
-      olusturulanTalep = 1;
-    } else if (olusturulanTalep === 0) {
+      return res.json({
+        success: false,
+        message: 'Bu pakette henuz sinav bulunmamaktadir. Lutfen daha sonra tekrar deneyiniz veya bizimle iletisime geciniz.'
+      });
+    }
+
+    // Tum sinavlara zaten talep varsa
+    if (olusturulanTalep === 0) {
       return res.json({ success: false, message: 'Bu paket icin zaten tum sinavlara talebiniz bulunmaktadir!' });
     }
     
