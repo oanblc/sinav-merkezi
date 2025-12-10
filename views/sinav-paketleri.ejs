@@ -4,45 +4,107 @@
 <%- include('partials/index-styles') %>
 
 <style>
-    /* Ek Özel Stiller */
-    .hero-section {
-        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
-        padding: 120px 0 80px;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .hero-section::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 600px;
-        height: 600px;
-        background: rgba(255,255,255,0.05);
-        border-radius: 50%;
-        transform: translate(30%, -30%);
-    }
-    
+    /* Sinav Paketleri - Kompakt Kart Stilleri */
     .pricing-card {
-        transition: all 0.4s ease;
+        padding: 16px !important;
+        border-radius: 14px !important;
+        transition: all 0.3s ease;
+        margin-top: 0 !important;
     }
-    
+
     .pricing-card:hover {
-        transform: translateY(-12px);
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.1);
     }
-    
+
+    .pricing-badge {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        transform: none;
+        padding: 5px 12px;
+        font-size: 0.7rem;
+        border-radius: 6px;
+    }
+
+    .pricing-header {
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        padding-top: 0;
+    }
+
+    .pricing-title {
+        font-size: 1rem !important;
+        margin-bottom: 4px;
+    }
+
+    .pricing-subtitle {
+        font-size: 0.8rem !important;
+        margin: 0;
+    }
+
+    .pricing-price {
+        padding: 12px 0 !important;
+        margin-bottom: 12px !important;
+    }
+
+    .price-amount {
+        font-size: 1.5rem !important;
+    }
+
+    .price-currency {
+        font-size: 0.9rem !important;
+    }
+
+    .price-info {
+        margin-top: 6px !important;
+        font-size: 0.8rem !important;
+        gap: 4px !important;
+    }
+
+    .pricing-actions {
+        margin-top: auto;
+    }
+
     .btn-buy {
         width: 100%;
-        padding: 14px;
-        font-weight: 700;
-        border-radius: 12px;
+        padding: 10px 16px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        border-radius: 8px;
         transition: all 0.3s ease;
     }
-    
+
     .btn-buy:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(6, 182, 212, 0.4);
+        box-shadow: 0 4px 12px rgba(0, 59, 120, 0.3);
+    }
+
+    /* Filtre bar margin */
+    .filter-bar {
+        margin-bottom: 20px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .pricing-card {
+            padding: 14px !important;
+        }
+
+        .pricing-badge {
+            top: 10px;
+            left: 10px;
+            font-size: 0.65rem;
+            padding: 4px 10px;
+        }
+
+        .pricing-title {
+            font-size: 0.95rem !important;
+        }
+
+        .price-amount {
+            font-size: 1.3rem !important;
+        }
     }
 </style>
 
@@ -99,31 +161,28 @@
                     <i class="bi bi-x-circle"></i> Temizle
                 </button>
             </div>
-        </div>
-        
-        <div class="row g-4" id="sinavlarContainer">
+
+        <div class="row g-3 mt-2" id="sinavlarContainer">
             <% if (typeof paketler !== 'undefined' && paketler && paketler.length > 0) { %>
                 <% paketler.forEach((paket, index) => { %>
-                    <div class="col-lg-4 col-md-6 sinav-item paket-item" 
+                    <div class="col-lg-3 col-md-4 col-sm-6 sinav-item paket-item"
                          data-ad="<%= paket.ad.toLowerCase() %>"
                          data-sinif="<%= paket.sinif || '' %>"
                          data-ders=""
                          data-fiyat="<%= paket.fiyat || 0 %>"
                          data-tarih="<%= paket.olusturulma_tarihi %>">
-                        <div class="pricing-card <%= index === 0 ? 'featured' : '' %>" style="border: 2px solid #06b6d4;">
-                            <% if (index === 0) { %>
+                        <div class="pricing-card" style="border: 1px solid #e8ecf0;">
                             <div class="pricing-badge" style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);">
-                                <i class="bi bi-star-fill"></i> Paket
+                                <i class="bi bi-star-fill"></i> PAKET
                             </div>
-                            <% } %>
-                            
-                            <div class="pricing-header">
+
+                            <div class="pricing-header" style="padding-top: 24px;">
                                 <h3 class="pricing-title"><%= paket.ad %></h3>
                                 <p class="pricing-subtitle">
                                     <%= paket.aciklama || 'Sınav paketi' %>
                                 </p>
                             </div>
-                            
+
                             <div class="pricing-price">
                                 <span class="price-amount"><%= paket.fiyat ? paket.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '0' %></span>
                                 <span class="price-currency">₺</span>
@@ -138,12 +197,12 @@
                                 <div class="price-info">
                                     <i class="bi bi-calendar-event"></i> <%= new Date(paket.olusturulma_tarihi).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) %>
                                 </div>
-        </div>
-        
+                            </div>
+
                             <div class="pricing-actions">
                                 <button class="pricing-btn primary btn-buy" onclick="talepGonderPaket(<%= paket.id %>, '<%= paket.ad %>', 0)">
                                     <i class="bi bi-send"></i>
-                                    <span>Talep Gönder</span>
+                                    <span>TALEP GONDER</span>
                                 </button>
                             </div>
                         </div>
@@ -153,26 +212,20 @@
             
             <% if (sinavlar && sinavlar.length > 0) { %>
                 <% sinavlar.forEach((sinav, index) => { %>
-                    <div class="col-lg-4 col-md-6 sinav-item" 
+                    <div class="col-lg-3 col-md-4 col-sm-6 sinav-item"
                          data-ad="<%= sinav.ad.toLowerCase() %>"
                          data-sinif="<%= sinav.sinif || '' %>"
                          data-ders="<%= sinav.ders || '' %>"
                          data-fiyat="<%= sinav.fiyat %>"
                          data-tarih="<%= sinav.tarih %>">
-                        <div class="pricing-card <%= index === 0 ? 'featured' : '' %>">
-                            <% if (index === 0) { %>
-                            <div class="pricing-badge">
-                                <i class="bi bi-star-fill"></i> En Popüler
-                            </div>
-                            <% } %>
-                            
+                        <div class="pricing-card" style="border: 1px solid #e8ecf0;">
                             <div class="pricing-header">
                                 <h3 class="pricing-title"><%= sinav.ad %></h3>
                                 <p class="pricing-subtitle">
                                     <%= sinav.aciklama || 'Kapsamlı deneme sınavı' %>
                                 </p>
                             </div>
-                            
+
                             <div class="pricing-price">
                                 <span class="price-amount"><%= typeof sinav.fiyat === 'number' ? sinav.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : sinav.fiyat %></span>
                                 <span class="price-currency">₺</span>
@@ -190,16 +243,16 @@
                                     <i class="bi bi-calendar-event"></i> <%= new Date(sinav.tarih).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) %>
                                 </div>
                             </div>
-                            
+
                             <div class="pricing-actions">
                                 <button class="pricing-btn primary btn-buy" onclick="talepGonder(<%= sinav.id %>, '<%= sinav.ad %>', <%= sinav.fiyat %>)">
                                     <i class="bi bi-send"></i>
-                                    <span>Talep Gönder</span>
+                                    <span>TALEP GONDER</span>
                                 </button>
                             </div>
                         </div>
                     </div>
-                    <% }); %>
+                <% }); %>
             <% } %>
                 </div>
         
