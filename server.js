@@ -4773,7 +4773,7 @@ app.post('/kurum/sinav-sonuclari-yayinla/:id', requireAuth, async (req, res) => 
     const eslesmeSayisi = eslesmisler[0]?.sayi || 0;
     
     if (eslesmeSayisi === 0) {
-      return res.json({ success: false, message: 'HiÃƒÂƒÃ‚Â§ eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸmiÃƒÂ…Ã‚ÂŸ sonuÃƒÂƒÃ‚Â§ yok! LÃƒÂƒÃ‚Â¼tfen ÃƒÂƒÃ‚Â¶nce eÃƒÂ…Ã‚ÂŸleÃƒÂ…Ã‚ÂŸtirme yapÃƒÂ„Ã‚Â±n.' });
+      return res.json({ success: false, message: 'Hic eslesmis sonuc yok! Lutfen once eslestirme yapin.' });
     }
     
     // SınavÃƒÂ„Ã‚Â± yayÃƒÂ„Ã‚Â±nla
@@ -4781,9 +4781,9 @@ app.post('/kurum/sinav-sonuclari-yayinla/:id', requireAuth, async (req, res) => 
     
     console.log(`   ÃƒÂ¢Ã‚ÂœÃ‚Â… YayÃƒÂ„Ã‚Â±nlandÃƒÂ„Ã‚Â±: ${eslesmeSayisi} sonuÃƒÂƒÃ‚Â§ velilere gÃƒÂƒÃ‚Â¶rÃƒÂƒÃ‚Â¼nÃƒÂƒÃ‚Â¼r hale geldi`);
     
-    res.json({ 
-      success: true, 
-      message: `ÃƒÂ¢Ã‚ÂœÃ‚Â… SonuÃƒÂƒÃ‚Â§lar yayÃƒÂ„Ã‚Â±nlandÃƒÂ„Ã‚Â±! ${eslesmeSayisi} ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencinin velisi artÃƒÂ„Ã‚Â±k sonuçları gÃƒÂƒÃ‚Â¶rebilir.`
+    res.json({
+      success: true,
+      message: 'Sonuclar yayinlandi! ' + eslesmeSayisi + ' ogrencinin velisi artik sonuclari gorebilir.'
     });
     
   } catch (error) {
