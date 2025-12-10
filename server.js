@@ -2607,39 +2607,45 @@ app.post('/paket-talep-gonder', async (req, res) => {
       }
     }
     
-    // Paket iÃƒÂƒÃ‚Â§indeki sınavlarÃƒÂ„Ã‚Â± al
+    // Paket icindeki sinavlari al
     const paketSinavlari = await dbAll(
       'SELECT sinav_id FROM paket_sinavlari WHERE paket_id = ?',
       [paket_id]
     );
-    
-    if (paketSinavlari.length === 0) {
-      return res.json({ success: false, message: 'Paket iÃƒÂƒÃ‚Â§inde sınav bulunamadı!' });
-    }
-    
-    // Her sınav iÃƒÂƒÃ‚Â§in talep oluştur
+
+    // Her sinav icin talep olustur (eger sinav varsa)
     let olusturulanTalep = 0;
     for (const ps of paketSinavlari) {
-      // Daha ÃƒÂƒÃ‚Â¶nce talep gÃƒÂƒÃ‚Â¶nderilmiÃƒÂ…Ã‚ÂŸ mi kontrol et
+      // Daha once talep gonderilmis mi kontrol et
       const mevcutTalep = await dbGet(
         'SELECT * FROM sinav_talepleri WHERE veli_id = ? AND sinav_id = ? AND durum != "reddedildi"',
         [veli_id, ps.sinav_id]
       );
-      
+
       if (!mevcutTalep) {
         // Talep kaydet (paket bilgisini aciklama'ya ekle)
         const paketAciklama = `[PAKET: ${paket.ad}] ${aciklama || ''}`;
         await dbRun(
-          `INSERT INTO sinav_talepleri (veli_id, sinav_id, durum, aciklama, talep_tarihi) 
+          `INSERT INTO sinav_talepleri (veli_id, sinav_id, durum, aciklama, talep_tarihi)
            VALUES (?, ?, 'beklemede', ?, datetime('now'))`,
           [veli_id, ps.sinav_id, paketAciklama]
         );
         olusturulanTalep++;
       }
     }
-    
-    if (olusturulanTalep === 0) {
-      return res.json({ success: false, message: 'Bu paket iÃƒÂƒÃ‚Â§in zaten tÃƒÂƒÃ‚Â¼m sınavlara talebiniz bulunmaktadır!' });
+
+    // Paket icinde sinav yoksa veya tum sinavlara zaten talep varsa, sadece paket talebini kaydet
+    if (paketSinavlari.length === 0) {
+      // Paket icinde sinav yok ama yine de talep kaydedilsin
+      const paketAciklama = `[PAKET TALEBI: ${paket.ad}] ${aciklama || ''}`;
+      await dbRun(
+        `INSERT INTO sinav_talepleri (veli_id, sinav_id, durum, aciklama, talep_tarihi)
+         VALUES (?, NULL, 'beklemede', ?, datetime('now'))`,
+        [veli_id, paketAciklama]
+      );
+      olusturulanTalep = 1;
+    } else if (olusturulanTalep === 0) {
+      return res.json({ success: false, message: 'Bu paket icin zaten tum sinavlara talebiniz bulunmaktadir!' });
     }
     
     // Veli bilgilerini al (WhatsApp bildirimi iÃƒÂƒÃ‚Â§in)
