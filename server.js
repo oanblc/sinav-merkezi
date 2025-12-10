@@ -13,6 +13,10 @@ const pdfParse = require('pdf-parse');
 const { PDFDocument } = require('pdf-lib');
 require('dotenv').config();
 
+// Turso/SQLite Database Module
+const { initConnection, dbGet, dbAll, dbRun, getDb, isTurso, USE_TURSO } = require('./db');
+const { initDatabase } = require('./init-db');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
@@ -519,16 +523,20 @@ const answerKeyUpload = multer({
   }
 });
 
-// VeritabanÃƒÂ„Ã‚Â± baÃƒÂ„Ã‚ÂŸlantÃƒÂ„Ã‚Â±sÃƒÂ„Ã‚Â±
-const db = new sqlite3.Database(DB_PATH, (err) => {
-  if (err) {
-    console.error('VeritabanÃƒÂ„Ã‚Â± baÃƒÂ„Ã‚ÂŸlantÃƒÂ„Ã‚Â± hatasÃƒÂ„Ã‚Â±:', err);
-  } else {
-    console.log('Database connected:', DB_PATH);
-  }
+// Veritabani baglantisi (Turso veya SQLite)
+initConnection();
+
+// Initialize database tables (async)
+initDatabase().then(() => {
+  console.log('Database ready');
+}).catch(err => {
+  console.error('Database init failed:', err);
 });
 
-// VeritabanÃƒÂ„Ã‚Â± tablolarÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± oluştur
+// LEGACY: db.serialize block removed - now using init-db.js
+// Old db.serialize(() => { ... }) block starts here - REMOVING
+const DB_INIT_REMOVED = true; // Marker for removed code
+/* OLD CODE REMOVED - START
 db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
@@ -1245,13 +1253,13 @@ db.serialize(() => {
     if (err && !err.message.includes('duplicate column')) {
       console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â sinav_paketleri.fiyat kolonu zaten var veya hata:', err.message);
     } else if (!err) {
-      console.log('ÃƒÂ¢Ã‚ÂœÃ‚Â… sinav_paketleri.fiyat kolonu eklendi');
+      console.log('sinav_paketleri.fiyat kolonu eklendi');
     }
   });
 });
+OLD CODE REMOVED - END */
 
-// VeritabanÃƒÂ„Ã‚Â± yardÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â± fonksiyonlarÃƒÂ„Ã‚Â± (Promise wrapper)
-// Öğrenci NumarasÃƒÂ„Ã‚Â± OluÃƒÂ…Ã‚ÂŸturma Fonksiyonu
+// Ogrenci Numarasi Olusturma Fonksiyonu
 async function generateOgrenciNo() {
   const yil = new Date().getFullYear();
   
@@ -1275,32 +1283,7 @@ async function generateOgrenciNo() {
   return ogrenciNo;
 }
 
-function dbGet(query, params = []) {
-  return new Promise((resolve, reject) => {
-    db.get(query, params, (err, row) => {
-      if (err) reject(err);
-      else resolve(row);
-    });
-  });
-}
-
-function dbAll(query, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(query, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
-}
-
-function dbRun(query, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(query, params, function(err) {
-      if (err) reject(err);
-      else resolve({ lastID: this.lastID, changes: this.changes });
-    });
-  });
-}
+// dbGet, dbAll, dbRun fonksiyonlari artik db.js'den import ediliyor
 
 /**
  * TC bazlÃƒÂ„Ã‚Â± ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci tekrarlarÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â± temizler
