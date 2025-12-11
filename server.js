@@ -2609,11 +2609,19 @@ app.post('/paket-talep-gonder', async (req, res) => {
     
     // Paket icindeki sinavlari al
     const paketSinavlari = await dbAll(
-      'SELECT sinav_id FROM paket_sinavlari WHERE paket_id = ?',
+      'SELECT sinav_id FROM paket_sinavlari WHERE paket_id = ? AND sinav_id IS NOT NULL',
       [paket_id]
     );
 
-    // Her sinav icin talep olustur (eger sinav varsa)
+    // Paket icinde sinav yoksa bilgi ver (ONCE KONTROL ET)
+    if (paketSinavlari.length === 0) {
+      return res.json({
+        success: false,
+        message: 'Bu pakette henuz sinav bulunmamaktadir. Lutfen daha sonra tekrar deneyiniz veya bizimle iletisime geciniz.'
+      });
+    }
+
+    // Her sinav icin talep olustur
     let olusturulanTalep = 0;
     for (const ps of paketSinavlari) {
       // Daha once talep gonderilmis mi kontrol et
@@ -2632,14 +2640,6 @@ app.post('/paket-talep-gonder', async (req, res) => {
         );
         olusturulanTalep++;
       }
-    }
-
-    // Paket icinde sinav yoksa bilgi ver
-    if (paketSinavlari.length === 0) {
-      return res.json({
-        success: false,
-        message: 'Bu pakette henuz sinav bulunmamaktadir. Lutfen daha sonra tekrar deneyiniz veya bizimle iletisime geciniz.'
-      });
     }
 
     // Tum sinavlara zaten talep varsa
