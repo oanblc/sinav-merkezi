@@ -3211,8 +3211,9 @@ app.get('/kurum/talepler', requireAuth, requireRole(['kurum_yonetici','kurum_adm
 // Kurum - Talep Yonetimi (Alias - /kurum/talepler ile ayni)
 app.get('/kurum/talep-yonetimi', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
   try {
-    const talepler = await dbAll(`
-      SELECT 
+    // Sinav Talepleri (Veli -> Kurum)
+    const sinavTalepleri = await dbAll(`
+      SELECT
         st.*,
         s.ad as sinav_adi,
         s.fiyat,
@@ -3222,26 +3223,75 @@ app.get('/kurum/talep-yonetimi', requireAuth, requireRole(['kurum_yonetici','kur
         u.username as veli_username,
         u.email as veli_email,
         u.telefon as veli_telefon,
-        u.ad_soyad as veli_ad_soyad
+        u.ad_soyad as veli_ad_soyad,
+        'sinav' as talep_tipi
       FROM sinav_talepleri st
       INNER JOIN sinavlar s ON st.sinav_id = s.id
       INNER JOIN users u ON st.veli_id = u.id
-      ORDER BY 
-        CASE st.durum
-          WHEN 'beklemede' THEN 1
-          WHEN 'onaylandi' THEN 2
-          WHEN 'reddedildi' THEN 3
-        END,
-        st.talep_tarihi DESC
     `);
-    
+
+    // Rehber Ogretmen Talepleri (Hem kurum hem veli ogrencileri)
+    const rehberTalepleri = await dbAll(`
+      SELECT
+        ot.*,
+        ot.ad_soyad as sinav_adi,
+        0 as fiyat,
+        NULL as sinav_tarihi,
+        ot.sinif,
+        NULL as ders,
+        v.username as veli_username,
+        v.email as veli_email,
+        v.telefon as veli_telefon,
+        v.ad_soyad as veli_ad_soyad,
+        r.ad_soyad as rehber_ad_soyad,
+        r.brans as rehber_brans,
+        'rehber' as talep_tipi
+      FROM ogrenci_talepleri ot
+      INNER JOIN users v ON ot.veli_id = v.id
+      LEFT JOIN users r ON ot.rehber_ogretmen_id = r.id
+      WHERE ot.durum IN ('beklemede', 'onaylandi', 'reddedildi')
+    `);
+
+    // Paket Talepleri (Anasayfadan gelen)
+    let paketTalepleri = [];
+    try {
+      paketTalepleri = await dbAll(`
+        SELECT
+          pt.*,
+          p.ad as paket_adi,
+          p.fiyat,
+          p.sinif,
+          pt.ad_soyad as veli_ad_soyad,
+          pt.telefon as veli_telefon,
+          pt.email as veli_email,
+          u.username as veli_username,
+          'paket' as talep_tipi
+        FROM paket_talepleri pt
+        LEFT JOIN sinav_paketleri p ON pt.paket_id = p.id
+        LEFT JOIN users u ON pt.veli_id = u.id
+      `);
+    } catch (err) {
+      console.log('Paket talepleri sorgu hatasi (tablo olmayabilir):', err.message);
+    }
+
+    // Tum listeleri birlestir
+    const talepler = [...sinavTalepleri, ...rehberTalepleri, ...paketTalepleri].sort((a, b) => {
+      // Once duruma gore sirala
+      const durumOrder = { 'beklemede': 1, 'onaylandi': 2, 'reddedildi': 3 };
+      const durumDiff = durumOrder[a.durum] - durumOrder[b.durum];
+      if (durumDiff !== 0) return durumDiff;
+
+      // Sonra tarihe gore sirala (en yeni en ustte)
+      return new Date(b.talep_tarihi || b.created_at) - new Date(a.talep_tarihi || a.created_at);
+    });
+
     res.render('kurum/talepler', {
       talepler: talepler,
       user: { username: req.session.username, type: req.session.userType },
       error: req.session.error,
       success: req.session.success
     });
-    
+
     req.session.error = null;
     req.session.success = null;
   } catch (error) {
