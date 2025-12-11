@@ -730,11 +730,38 @@
             <div style="font-size: 4rem; color: #10b981; margin-bottom: 20px;">
                 <i class="bi bi-check-circle-fill"></i>
             </div>
-            <h4 style="font-weight: 800; color: #1e293b; margin-bottom: 16px;">İşlem Başarılı!</h4>
+            <h4 style="font-weight: 800; color: #1e293b; margin-bottom: 16px;">Islem Basarili!</h4>
             <p id="successMessage" style="color: #64748b; margin-bottom: 30px;"></p>
             <button type="button" class="btn btn-primary" data-bs-dismiss="modal" style="border-radius: 12px; padding: 12px 40px;" onclick="location.reload()">
                 Tamam
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- TC Mukerrer Kayit Uyari Modal -->
+<div class="modal fade" id="tcDuplicateModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 20px; padding: 30px;">
+            <div style="text-align: center;">
+                <div style="font-size: 4rem; color: #f59e0b; margin-bottom: 20px;">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+                <h4 style="font-weight: 800; color: #1e293b; margin-bottom: 16px;">Ayni TC ile Kayit Mevcut!</h4>
+                <p style="color: #64748b; margin-bottom: 10px;">Bu TC Kimlik No ile zaten bir ogrenci kayitli:</p>
+                <div style="background: #fef3c7; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                    <p style="margin: 0; font-weight: 700; color: #92400e;" id="tcDuplicateInfo"></p>
+                </div>
+                <p style="color: #64748b; margin-bottom: 20px; font-size: 0.9rem;">Yine de kaydetmek istiyor musunuz?</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-secondary flex-grow-1" data-bs-dismiss="modal" style="border-radius: 12px; padding: 12px;">
+                    <i class="bi bi-x-lg"></i> Iptal
+                </button>
+                <button type="button" class="btn btn-warning flex-grow-1" id="tcDuplicateConfirmBtn" style="border-radius: 12px; padding: 12px;">
+                    <i class="bi bi-check-lg"></i> Yine de Kaydet
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -989,6 +1016,9 @@ async function deleteOgrenci(id, ad) {
     }
 }
 
+// TC duplicate kontrolu icin gecici data
+let pendingFormData = null;
+
 // Form submissions
 document.getElementById('addForm').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -1005,6 +1035,10 @@ document.getElementById('addForm').addEventListener('submit', async function(e) 
     if (data.telefon) data.telefon = data.telefon.replace(/\s/g, '');
     if (data.veli_telefon) data.veli_telefon = data.veli_telefon.replace(/\s/g, '');
 
+    await submitOgrenciForm(data);
+});
+
+async function submitOgrenciForm(data) {
     try {
         const result = await apiCall('/kurum/ogrenci-kayit-ekle', {
             method: 'POST',
@@ -1013,6 +1047,17 @@ document.getElementById('addForm').addEventListener('submit', async function(e) 
         });
 
         if (!result) return;
+
+        // Mukerrer TC kontrolu
+        if (result.duplicate) {
+            pendingFormData = data;
+            const info = result.mevcutOgrenci;
+            document.getElementById('tcDuplicateInfo').textContent =
+                info.ad_soyad + (info.sinif ? ' - Sinif: ' + info.sinif : '');
+            bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
+            new bootstrap.Modal(document.getElementById('tcDuplicateModal')).show();
+            return;
+        }
 
         bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
 
@@ -1025,6 +1070,16 @@ document.getElementById('addForm').addEventListener('submit', async function(e) 
     } catch (error) {
         console.error('Ekleme hatasi:', error);
         alert('Kayit eklenirken bir hata olustu!');
+    }
+}
+
+// TC Duplicate onay butonu
+document.getElementById('tcDuplicateConfirmBtn').addEventListener('click', async function() {
+    if (pendingFormData) {
+        pendingFormData.tcOnaylanmis = true;
+        bootstrap.Modal.getInstance(document.getElementById('tcDuplicateModal')).hide();
+        await submitOgrenciForm(pendingFormData);
+        pendingFormData = null;
     }
 });
 

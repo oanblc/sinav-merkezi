@@ -3829,8 +3829,29 @@ app.post('/kurum/ogrenci-kayit-ekle', requireAuth, async (req, res) => {
     const {
       sinif, ogrenci_adi_soyadi, telefon, tc_kimlik_no,
       veli_adi, veli_telefon, tutar, odeme_durumu,
-      odeme_turu, edessis_kaydi, taksit
+      odeme_turu, edessis_kaydi, taksit, tcOnaylanmis
     } = req.body;
+
+    // TC Kimlik kontrolu - ayni TC ile kayitli ogrenci var mi?
+    if (tc_kimlik_no && !tcOnaylanmis) {
+      const tcTemiz = tc_kimlik_no.toString().replace('.0', '').trim();
+      const mevcutOgrenci = await dbGet(
+        'SELECT id, ogrenci_adi_soyadi, sinif FROM ogrenci_kayitlari WHERE tc_kimlik_no = ?',
+        [tcTemiz]
+      );
+
+      if (mevcutOgrenci) {
+        return res.json({
+          success: false,
+          duplicate: true,
+          message: 'Bu TC Kimlik No ile kayitli bir ogrenci bulunuyor!',
+          mevcutOgrenci: {
+            ad_soyad: mevcutOgrenci.ogrenci_adi_soyadi,
+            sinif: mevcutOgrenci.sinif
+          }
+        });
+      }
+    }
 
     // Ogrenci kaydini ekle
     await dbRun(
