@@ -325,6 +325,22 @@ const createTableStatements = [
     aciklama TEXT,
     durum TEXT DEFAULT 'yaklasan',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS paket_talepleri (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    veli_id INTEGER NOT NULL,
+    paket_id INTEGER NOT NULL,
+    durum TEXT DEFAULT 'beklemede',
+    aciklama TEXT,
+    yanit TEXT,
+    ad_soyad TEXT,
+    telefon TEXT,
+    email TEXT,
+    talep_tarihi DATETIME DEFAULT CURRENT_TIMESTAMP,
+    yanitlanma_tarihi DATETIME,
+    FOREIGN KEY (veli_id) REFERENCES users(id),
+    FOREIGN KEY (paket_id) REFERENCES sinav_paketleri(id)
   )`
 ];
 
