@@ -13,91 +13,83 @@
         --kt-border: #e2e8f0;
         --kt-bg: #f8fafc;
         --kt-card: #ffffff;
-        --kt-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        --kt-shadow-lg: 0 12px 40px rgba(0,0,0,0.12);
-        --kt-radius: 16px;
-        --kt-radius-sm: 10px;
+        --kt-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        --kt-shadow-hover: 0 4px 12px rgba(0,0,0,0.1);
+        --kt-radius: 10px;
+        --kt-radius-sm: 6px;
     }
 
-    /* Page Header - Compact & Modern */
+    /* Page Header - Compact */
     .kt-page-header {
         background: linear-gradient(135deg, var(--kt-primary) 0%, var(--kt-primary-light) 100%);
         color: white;
-        padding: clamp(20px, 4vw, 32px) 0;
-        margin: -30px -15px clamp(20px, 4vw, 32px);
+        padding: 14px 0;
+        margin: -20px -15px 16px;
         border-radius: 0 0 var(--kt-radius) var(--kt-radius);
-        box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
     }
 
     .kt-page-header h1 {
-        font-size: clamp(1.25rem, 4vw, 1.75rem);
-        font-weight: 800;
-        margin: 0 0 4px 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
     }
 
     .kt-page-header p {
-        font-size: clamp(0.85rem, 2.5vw, 0.95rem);
-        opacity: 0.9;
-        margin: 0;
+        font-size: 0.75rem;
+        opacity: 0.85;
+        margin: 2px 0 0 0;
     }
 
     .kt-header-btn {
         background: rgba(255,255,255,0.2);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,0.3);
+        border: none;
         color: white;
-        padding: 10px 18px;
+        padding: 6px 12px;
         border-radius: var(--kt-radius-sm);
         font-weight: 600;
-        font-size: 0.9rem;
-        transition: all 0.2s;
+        font-size: 0.8rem;
         display: inline-flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
     }
 
     .kt-header-btn:hover {
         background: rgba(255,255,255,0.3);
         color: white;
-        transform: translateY(-2px);
     }
 
-    /* Stats Bar */
+    /* Stats Bar - Compact */
     .kt-stats-bar {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-        margin-bottom: 24px;
+        gap: 8px;
+        margin-bottom: 12px;
     }
 
-    @media (max-width: 768px) {
-        .kt-stats-bar {
-            grid-template-columns: repeat(2, 1fr);
-        }
+    @media (max-width: 576px) {
+        .kt-stats-bar { grid-template-columns: repeat(4, 1fr); gap: 6px; }
     }
 
     .kt-stat-card {
         background: var(--kt-card);
         border-radius: var(--kt-radius-sm);
-        padding: 16px;
+        padding: 10px 8px;
         text-align: center;
         box-shadow: var(--kt-shadow);
         border: 1px solid var(--kt-border);
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.15s;
     }
 
     .kt-stat-card:hover, .kt-stat-card.active {
-        transform: translateY(-2px);
-        box-shadow: var(--kt-shadow-lg);
+        box-shadow: var(--kt-shadow-hover);
     }
 
     .kt-stat-card.active {
         border-color: var(--kt-primary);
-        background: linear-gradient(135deg, rgba(99,102,241,0.05) 0%, rgba(129,140,248,0.1) 100%);
     }
 
     .kt-stat-card.active.beklemede { border-color: var(--kt-warning); }
@@ -105,8 +97,8 @@
     .kt-stat-card.active.reddedildi { border-color: var(--kt-danger); }
 
     .kt-stat-number {
-        font-size: clamp(1.5rem, 4vw, 2rem);
-        font-weight: 800;
+        font-size: 1.25rem;
+        font-weight: 700;
         color: var(--kt-primary);
         line-height: 1;
     }
@@ -116,382 +108,303 @@
     .kt-stat-card.reddedildi .kt-stat-number { color: var(--kt-danger); }
 
     .kt-stat-label {
-        font-size: 0.8rem;
+        font-size: 0.65rem;
         color: var(--kt-text-muted);
         font-weight: 600;
-        margin-top: 4px;
+        margin-top: 2px;
     }
 
-    /* Search Box */
+    /* Search Box - Compact */
     .kt-search-box {
         background: var(--kt-card);
         border-radius: var(--kt-radius);
-        padding: 14px 20px;
-        border: 2px solid var(--kt-border);
-        margin-bottom: 20px;
+        padding: 8px 12px;
+        border: 1px solid var(--kt-border);
+        margin-bottom: 12px;
         display: flex;
         align-items: center;
-        gap: 12px;
-        transition: all 0.2s;
+        gap: 8px;
     }
 
     .kt-search-box:focus-within {
         border-color: var(--kt-primary);
-        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
     }
 
     .kt-search-box input {
         border: none;
         outline: none;
         width: 100%;
-        font-size: 1rem;
+        font-size: 0.85rem;
         background: transparent;
     }
 
     .kt-search-box i {
         color: var(--kt-text-muted);
-        font-size: 1.1rem;
+        font-size: 0.9rem;
     }
 
-    /* Talep Cards - Modern Design */
+    /* Talep Cards - Compact */
     .kt-talep-card {
         background: var(--kt-card);
         border-radius: var(--kt-radius);
-        margin-bottom: 16px;
+        margin-bottom: 8px;
         box-shadow: var(--kt-shadow);
         border: 1px solid var(--kt-border);
         overflow: hidden;
-        transition: all 0.2s;
+        transition: all 0.15s;
     }
 
     .kt-talep-card:hover {
-        transform: translateY(-3px);
-        box-shadow: var(--kt-shadow-lg);
-    }
-
-    .kt-talep-card:active {
-        transform: scale(0.99);
+        box-shadow: var(--kt-shadow-hover);
     }
 
     /* Card Status Indicator */
     .kt-card-status {
-        height: 4px;
+        height: 3px;
         background: var(--kt-border);
     }
 
-    .kt-talep-card.beklemede .kt-card-status {
-        background: linear-gradient(90deg, var(--kt-warning) 0%, #fbbf24 100%);
-    }
-
-    .kt-talep-card.onaylandi .kt-card-status {
-        background: linear-gradient(90deg, var(--kt-success) 0%, #34d399 100%);
-    }
-
-    .kt-talep-card.reddedildi .kt-card-status {
-        background: linear-gradient(90deg, var(--kt-danger) 0%, #f87171 100%);
-    }
+    .kt-talep-card.beklemede .kt-card-status { background: var(--kt-warning); }
+    .kt-talep-card.onaylandi .kt-card-status { background: var(--kt-success); }
+    .kt-talep-card.reddedildi .kt-card-status { background: var(--kt-danger); }
 
     .kt-card-body {
-        padding: clamp(16px, 4vw, 24px);
+        padding: 12px;
     }
 
-    /* Card Header */
+    /* Card Header - Compact */
     .kt-card-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 12px;
-        margin-bottom: 16px;
+        gap: 8px;
+        margin-bottom: 8px;
     }
 
     .kt-talep-title {
-        font-size: clamp(1rem, 3vw, 1.15rem);
-        font-weight: 700;
+        font-size: 0.9rem;
+        font-weight: 600;
         color: var(--kt-text);
-        margin: 0 0 8px 0;
+        margin: 0 0 4px 0;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         flex-wrap: wrap;
     }
 
+    .kt-talep-title i { font-size: 0.85rem; }
+
     .kt-talep-type {
-        font-size: 0.7rem;
-        padding: 4px 10px;
-        border-radius: 20px;
+        font-size: 0.6rem;
+        padding: 2px 6px;
+        border-radius: 10px;
         font-weight: 600;
-        white-space: nowrap;
     }
 
     .kt-talep-type.sinav { background: #dbeafe; color: #2563eb; }
     .kt-talep-type.paket { background: #d1fae5; color: #059669; }
     .kt-talep-type.rehber { background: #e0e7ff; color: #4f46e5; }
 
-    /* Status Badge */
+    /* Status Badge - Compact */
     .kt-status-badge {
-        padding: 8px 14px;
-        border-radius: 20px;
-        font-weight: 700;
-        font-size: 0.75rem;
+        padding: 4px 8px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.65rem;
         white-space: nowrap;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
     }
 
-    .kt-status-badge.beklemede {
-        background: #fef3c7;
-        color: #b45309;
-    }
+    .kt-status-badge i { font-size: 0.7rem; }
 
-    .kt-status-badge.onaylandi {
-        background: #d1fae5;
-        color: #047857;
-    }
+    .kt-status-badge.beklemede { background: #fef3c7; color: #b45309; }
+    .kt-status-badge.onaylandi { background: #d1fae5; color: #047857; }
+    .kt-status-badge.reddedildi { background: #fee2e2; color: #b91c1c; }
 
-    .kt-status-badge.reddedildi {
-        background: #fee2e2;
-        color: #b91c1c;
-    }
-
-    /* Meta Info */
+    /* Meta Info - Compact */
     .kt-meta-row {
         display: flex;
         flex-wrap: wrap;
-        gap: 12px 20px;
-        margin-bottom: 12px;
+        gap: 6px 12px;
     }
 
     .kt-meta-item {
         display: flex;
         align-items: center;
-        gap: 6px;
-        font-size: 0.85rem;
+        gap: 4px;
+        font-size: 0.75rem;
         color: var(--kt-text-muted);
     }
 
-    .kt-meta-item i {
-        font-size: 0.9rem;
-        opacity: 0.7;
-    }
+    .kt-meta-item i { font-size: 0.7rem; }
+    .kt-meta-item strong { color: var(--kt-text); font-weight: 600; }
 
-    .kt-meta-item strong {
-        color: var(--kt-text);
-        font-weight: 600;
-    }
-
-    /* Details Grid */
+    /* Details Grid - Compact */
     .kt-details-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
         background: var(--kt-bg);
         border-radius: var(--kt-radius-sm);
-        padding: 16px;
-        margin-top: 16px;
+        padding: 8px 10px;
+        margin-top: 8px;
     }
 
     .kt-detail-item {
         display: flex;
-        flex-direction: column;
+        align-items: center;
         gap: 4px;
     }
 
     .kt-detail-label {
-        font-size: 0.75rem;
+        font-size: 0.65rem;
         color: var(--kt-text-muted);
         font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
     }
 
     .kt-detail-value {
-        font-size: 0.9rem;
+        font-size: 0.75rem;
         color: var(--kt-text);
         font-weight: 500;
     }
 
-    /* Aciklama Box */
+    /* Aciklama Box - Compact */
     .kt-aciklama-box {
-        background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%);
-        border-left: 4px solid var(--kt-warning);
+        background: #fffbeb;
+        border-left: 3px solid var(--kt-warning);
         border-radius: 0 var(--kt-radius-sm) var(--kt-radius-sm) 0;
-        padding: 14px 16px;
-        margin-top: 16px;
+        padding: 8px 10px;
+        margin-top: 8px;
     }
 
     .kt-aciklama-box h6 {
-        font-size: 0.8rem;
+        font-size: 0.7rem;
         color: #92400e;
-        font-weight: 700;
-        margin: 0 0 6px 0;
+        font-weight: 600;
+        margin: 0 0 3px 0;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
     }
 
     .kt-aciklama-box p {
-        font-size: 0.9rem;
+        font-size: 0.75rem;
         color: #78350f;
         margin: 0;
-        line-height: 1.5;
+        line-height: 1.4;
     }
 
-    /* Yanit Box */
+    /* Yanit Box - Compact */
     .kt-yanit-box {
-        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-        border-left: 4px solid var(--kt-success);
+        background: #ecfdf5;
+        border-left: 3px solid var(--kt-success);
         border-radius: 0 var(--kt-radius-sm) var(--kt-radius-sm) 0;
-        padding: 14px 16px;
-        margin-top: 12px;
+        padding: 8px 10px;
+        margin-top: 6px;
     }
 
     .kt-yanit-box h6 {
-        font-size: 0.8rem;
+        font-size: 0.7rem;
         color: #047857;
-        font-weight: 700;
-        margin: 0 0 6px 0;
+        font-weight: 600;
+        margin: 0 0 3px 0;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
     }
 
     .kt-yanit-box p {
-        font-size: 0.9rem;
+        font-size: 0.75rem;
         color: #065f46;
         margin: 0;
-        line-height: 1.5;
+        line-height: 1.4;
     }
 
-    /* Action Buttons */
+    /* Action Buttons - Compact */
     .kt-action-buttons {
         display: flex;
-        gap: 10px;
-        margin-top: 16px;
-        padding-top: 16px;
+        gap: 8px;
+        margin-top: 10px;
+        padding-top: 10px;
         border-top: 1px solid var(--kt-border);
     }
 
     .kt-btn {
         flex: 1;
-        padding: 12px 20px;
+        padding: 8px 12px;
         border-radius: var(--kt-radius-sm);
         border: none;
-        font-weight: 700;
-        font-size: 0.9rem;
+        font-weight: 600;
+        font-size: 0.8rem;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.15s;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
-        min-height: 48px;
-    }
-
-    .kt-btn:active {
-        transform: scale(0.97);
+        gap: 6px;
     }
 
     .kt-btn-success {
-        background: linear-gradient(135deg, var(--kt-success) 0%, #059669 100%);
+        background: var(--kt-success);
         color: white;
-        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
     }
 
-    .kt-btn-success:hover {
-        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-        transform: translateY(-2px);
-    }
+    .kt-btn-success:hover { background: #059669; }
 
     .kt-btn-danger {
-        background: linear-gradient(135deg, var(--kt-danger) 0%, #dc2626 100%);
+        background: var(--kt-danger);
         color: white;
-        box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
     }
 
-    .kt-btn-danger:hover {
-        box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
-        transform: translateY(-2px);
-    }
+    .kt-btn-danger:hover { background: #dc2626; }
 
-    /* Empty State */
+    /* Empty State - Compact */
     .kt-empty-state {
         text-align: center;
-        padding: clamp(40px, 10vw, 80px) 20px;
+        padding: 40px 20px;
         background: var(--kt-card);
         border-radius: var(--kt-radius);
-        border: 2px dashed var(--kt-border);
+        border: 1px dashed var(--kt-border);
     }
 
     .kt-empty-icon {
-        width: 100px;
-        height: 100px;
+        width: 60px;
+        height: 60px;
         background: var(--kt-bg);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 auto 20px;
+        margin: 0 auto 12px;
     }
 
     .kt-empty-icon i {
-        font-size: 3rem;
+        font-size: 1.5rem;
         color: var(--kt-text-muted);
-        opacity: 0.5;
     }
 
     .kt-empty-state h4 {
-        font-weight: 700;
+        font-size: 0.95rem;
+        font-weight: 600;
         color: var(--kt-text);
-        margin-bottom: 8px;
+        margin-bottom: 4px;
     }
 
     .kt-empty-state p {
+        font-size: 0.8rem;
         color: var(--kt-text-muted);
         margin: 0;
     }
 
-    /* Mobile Optimizations */
+    /* Mobile */
     @media (max-width: 576px) {
-        .kt-card-header {
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .kt-status-badge {
-            align-self: flex-start;
-        }
-
-        .kt-action-buttons {
-            flex-direction: column;
-        }
-
-        .kt-details-grid {
-            grid-template-columns: 1fr;
-        }
+        .kt-card-header { flex-direction: column; gap: 6px; }
+        .kt-status-badge { align-self: flex-start; }
+        .kt-action-buttons { flex-direction: row; }
+        .kt-details-grid { flex-direction: column; gap: 4px; }
     }
-
-    /* Animation */
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .kt-talep-card {
-        animation: fadeInUp 0.4s ease forwards;
-    }
-
-    .kt-talep-card:nth-child(1) { animation-delay: 0.05s; }
-    .kt-talep-card:nth-child(2) { animation-delay: 0.1s; }
-    .kt-talep-card:nth-child(3) { animation-delay: 0.15s; }
-    .kt-talep-card:nth-child(4) { animation-delay: 0.2s; }
-    .kt-talep-card:nth-child(5) { animation-delay: 0.25s; }
 </style>
 
 <!-- Page Header -->
