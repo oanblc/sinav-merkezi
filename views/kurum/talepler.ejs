@@ -285,12 +285,14 @@
         </div>
     <% } else { %>
         <% talepler.forEach(function(talep) { %>
-            <div class="talep-card <%= talep.durum %>" data-durum="<%= talep.durum %>" data-search="<%= (talep.veli_ad_soyad || talep.veli_username).toLowerCase() %> <%= talep.sinav_adi.toLowerCase() %> <%= (talep.veli_telefon || '').toLowerCase() %> <%= (talep.rehber_ad_soyad || '').toLowerCase() %>">
+            <div class="talep-card <%= talep.durum %>" data-durum="<%= talep.durum %>" data-search="<%= (talep.veli_ad_soyad || talep.veli_username || '').toLowerCase() %> <%= (talep.sinav_adi || talep.paket_adi || '').toLowerCase() %> <%= (talep.veli_telefon || '').toLowerCase() %> <%= (talep.rehber_ad_soyad || '').toLowerCase() %>">
                 <div class="talep-header">
                     <div class="talep-info">
                         <h4>
                             <% if (talep.talep_tipi === 'rehber') { %>
                                 👨‍🏫 <%= talep.sinav_adi %> <span class="badge bg-info" style="font-size: 0.7rem; vertical-align: middle;">Rehber Talebi</span>
+                            <% } else if (talep.talep_tipi === 'paket') { %>
+                                📦 <%= talep.paket_adi || 'Paket' %> <span class="badge bg-success" style="font-size: 0.7rem; vertical-align: middle;">Paket Talebi</span>
                             <% } else { %>
                                 📚 <%= talep.sinav_adi %>
                             <% } %>
@@ -371,6 +373,26 @@
                         </div>
                         <% } %>
                     </div>
+                    <% } else if (talep.talep_tipi === 'paket') { %>
+                    <!-- PAKET TALEPLERİ İÇİN -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <span class="detail-label">📧 E-posta:</span>
+                            <span class="detail-value"><%= talep.veli_email || talep.email || 'Belirtilmedi' %></span>
+                        </div>
+                        <div class="col-md-6">
+                            <span class="detail-label">💰 Paket Fiyatı:</span>
+                            <span class="detail-value"><%= talep.fiyat || 0 %> TL</span>
+                        </div>
+                    </div>
+                    <% if (talep.sinif) { %>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <span class="detail-label">📚 Sınıf:</span>
+                            <span class="detail-value"><%= talep.sinif %></span>
+                        </div>
+                    </div>
+                    <% } %>
                     <% } %>
                     
                     <% if (talep.aciklama || talep.mesaj) { %>

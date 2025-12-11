@@ -3120,7 +3120,7 @@ app.get('/kurum/talepler', requireAuth, requireRole(['kurum_yonetici','kurum_adm
     
     // Rehber ÃƒÂƒÃ‚Â–ÃƒÂ„Ã‚ÂŸretmen Talepleri (Hem kurum hem veli ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrencileri)
     const rehberTalepleri = await dbAll(`
-      SELECT 
+      SELECT
         ot.*,
         ot.ad_soyad as sinav_adi,
         0 as fiyat,
@@ -3139,9 +3139,31 @@ app.get('/kurum/talepler', requireAuth, requireRole(['kurum_yonetici','kurum_adm
       LEFT JOIN users r ON ot.rehber_ogretmen_id = r.id
       WHERE ot.durum IN ('beklemede', 'onaylandi', 'reddedildi')
     `);
-    
-    // ÃƒÂ„Ã‚Â°ki listeyi birleÃƒÂ…Ã‚ÂŸtir
-    const talepler = [...sinavTalepleri, ...rehberTalepleri].sort((a, b) => {
+
+    // Paket Talepleri (Anasayfadan gelen)
+    let paketTalepleri = [];
+    try {
+      paketTalepleri = await dbAll(`
+        SELECT
+          pt.*,
+          p.ad as paket_adi,
+          p.fiyat,
+          p.sinif,
+          pt.ad_soyad as veli_ad_soyad,
+          pt.telefon as veli_telefon,
+          pt.email as veli_email,
+          u.username as veli_username,
+          'paket' as talep_tipi
+        FROM paket_talepleri pt
+        LEFT JOIN sinav_paketleri p ON pt.paket_id = p.id
+        LEFT JOIN users u ON pt.veli_id = u.id
+      `);
+    } catch (err) {
+      console.log('Paket talepleri sorgu hatasi (tablo olmayabilir):', err.message);
+    }
+
+    // Tum listeleri birlestir
+    const talepler = [...sinavTalepleri, ...rehberTalepleri, ...paketTalepleri].sort((a, b) => {
       // ÃƒÂƒÃ‚Â–nce duruma gÃƒÂƒÃ‚Â¶re sÃƒÂ„Ã‚Â±rala
       const durumOrder = { 'beklemede': 1, 'onaylandi': 2, 'reddedildi': 3 };
       const durumDiff = durumOrder[a.durum] - durumOrder[b.durum];
