@@ -3701,8 +3701,45 @@ app.post('/kurum/rehber-talep-gonder', requireAuth, async (req, res) => {
   }
 });
 
-// Kurum - Öğrenci KayıtlarÃƒÂ„Ã‚Â± YÃƒÂƒÃ‚Â¶netimi
-// API: Kurum Öğrenci KayıtlarÃƒÂ„Ã‚Â± (JSON)
+// Kurum - Ogrenci Kayitlari Yonetimi
+
+// API: Hesapsiz Velileri Kontrol Et
+app.get('/kurum/kontrol-hesapsiz-veliler', requireAuth, async (req, res) => {
+  if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
+    return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
+  }
+
+  try {
+    // ogrenci_kayitlari tablosundaki velileri al (sistemde hesabi olmayan)
+    const hesapsizVeliler = await dbAll(`
+      SELECT DISTINCT
+        ok.veli_adi,
+        ok.veli_telefon,
+        ok.veli_email,
+        ok.ogrenci_adi_soyadi,
+        ok.sinif
+      FROM ogrenci_kayitlari ok
+      WHERE ok.veli_telefon IS NOT NULL
+        AND ok.veli_telefon != ''
+        AND NOT EXISTS (
+          SELECT 1 FROM users u
+          WHERE u.telefon = ok.veli_telefon
+            OR u.username = ok.veli_telefon
+        )
+      ORDER BY ok.veli_adi ASC
+    `);
+
+    res.json({
+      success: true,
+      veliler: hesapsizVeliler
+    });
+  } catch (error) {
+    console.error('Hesapsiz veliler kontrol hatasi:', error);
+    res.json({ success: false, message: 'Bir hata olustu!', veliler: [] });
+  }
+});
+
+// API: Kurum Ogrenci Kayitlari (JSON)
 app.get('/kurum/ogrenci-kayitlari-api', requireAuth, async (req, res) => {
   if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
     return res.status(403).json([]);
