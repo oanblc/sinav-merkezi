@@ -5249,7 +5249,7 @@ app.get('/veli/sinav-sonuclari', requireAuth, requireRole('veli'), async (req, r
         user: { username: req.session.username, type: req.session.userType },
         sonuclar: [],
         ogrenciler: [],
-        error: 'HenÃƒÂƒÃ‚Â¼z ÃƒÂƒÃ‚Â¶ÃƒÂ„Ã‚ÂŸrenci kaydÃƒÂ„Ã‚Â±nÃƒÂ„Ã‚Â±z bulunmuyor.',
+        error: 'Henuz ogrenci kaydiniz bulunmuyor.',
         success: req.session.success
       });
     }
