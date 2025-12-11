@@ -745,6 +745,39 @@
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
 
 <script>
+// Global API helper - oturum hatalarini yakalar
+async function apiCall(url, options = {}) {
+    try {
+        const response = await fetch(url, options);
+
+        // JSON parse et
+        const data = await response.json();
+
+        // Oturum hatasi kontrolu
+        if (response.status === 401 || data.redirect === '/login') {
+            alert('Oturum suresi doldu. Giris sayfasina yonlendiriliyorsunuz.');
+            window.location.href = '/login';
+            return null;
+        }
+
+        // Yetki hatasi
+        if (response.status === 403) {
+            alert('Bu islemi yapmaya yetkiniz yok!');
+            return null;
+        }
+
+        return data;
+    } catch (error) {
+        // JSON parse hatasi - muhtemelen HTML dondu (oturum suresi dolmus)
+        if (error instanceof SyntaxError && error.message.includes('Unexpected token')) {
+            alert('Oturum suresi doldu. Giris sayfasina yonlendiriliyorsunuz.');
+            window.location.href = '/login';
+            return null;
+        }
+        throw error;
+    }
+}
+
 let table;
 
 $(document).ready(function() {
@@ -874,23 +907,24 @@ function editOgrenci(ogr) {
 }
 
 async function deleteOgrenci(id, ad) {
-    if (!confirm(`"${ad}" adlı öğrenciyi silmek istediğinize emin misiniz?`)) return;
-    
+    if (!confirm(`"${ad}" adli ogrenciyi silmek istediginize emin misiniz?`)) return;
+
     try {
-        const response = await fetch(`/kurum/ogrenci-kayit-sil/${id}`, {
+        const data = await apiCall(`/kurum/ogrenci-kayit-sil/${id}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         });
-        const data = await response.json();
-        
+
+        if (!data) return; // Oturum hatasi, yonlendirme yapildi
+
         if (data.success) {
             location.reload();
         } else {
-            alert('❌ ' + data.message);
+            alert('Hata: ' + data.message);
         }
     } catch (error) {
-        console.error('Silme hatası:', error);
-        alert('❌ Silme sırasında bir hata oluştu!');
+        console.error('Silme hatasi:', error);
+        alert('Silme sirasinda bir hata olustu!');
     }
 }
 
@@ -899,26 +933,27 @@ document.getElementById('addForm').addEventListener('submit', async function(e) 
     e.preventDefault();
     const formData = new FormData(this);
     const data = Object.fromEntries(formData);
-    
+
     try {
-        const response = await fetch('/kurum/ogrenci-kayit-ekle', {
+        const result = await apiCall('/kurum/ogrenci-kayit-ekle', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        const result = await response.json();
-        
+
+        if (!result) return;
+
         bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
-        
+
         if (result.success) {
             document.getElementById('successMessage').textContent = result.message;
             new bootstrap.Modal(document.getElementById('successModal')).show();
         } else {
-            alert('❌ ' + result.message);
+            alert('Hata: ' + result.message);
         }
     } catch (error) {
-        console.error('Ekleme hatası:', error);
-        alert('❌ Kayıt eklenirken bir hata oluştu!');
+        console.error('Ekleme hatasi:', error);
+        alert('Kayit eklenirken bir hata olustu!');
     }
 });
 
@@ -927,85 +962,87 @@ document.getElementById('editForm').addEventListener('submit', async function(e)
     const formData = new FormData(this);
     const data = Object.fromEntries(formData);
     const id = document.getElementById('edit_id').value;
-    
+
     try {
-        const response = await fetch(`/kurum/ogrenci-kayit-guncelle/${id}`, {
+        const result = await apiCall(`/kurum/ogrenci-kayit-guncelle/${id}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        const result = await response.json();
-        
+
+        if (!result) return;
+
         bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
-        
+
         if (result.success) {
             document.getElementById('successMessage').textContent = result.message;
             new bootstrap.Modal(document.getElementById('successModal')).show();
         } else {
-            alert('❌ ' + result.message);
+            alert('Hata: ' + result.message);
         }
     } catch (error) {
-        console.error('Güncelleme hatası:', error);
-        alert('❌ Güncelleme sırasında bir hata oluştu!');
+        console.error('Guncelleme hatasi:', error);
+        alert('Guncelleme sirasinda bir hata olustu!');
     }
 });
 
 document.getElementById('importForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     const formData = new FormData(this);
-    
+
     try {
-        const response = await fetch('/kurum/ogrenci-import-excel', {
+        const result = await apiCall('/kurum/ogrenci-import-excel', {
             method: 'POST',
             body: formData
         });
-        const result = await response.json();
-        
+
+        if (!result) return;
+
         bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
-        
+
         if (result.success) {
             document.getElementById('successMessage').textContent = result.message;
             new bootstrap.Modal(document.getElementById('successModal')).show();
         } else {
-            alert('❌ ' + result.message);
+            alert('Hata: ' + result.message);
         }
     } catch (error) {
-        console.error('Import hatası:', error);
-        alert('❌ Excel yüklenirken bir hata oluştu!');
+        console.error('Import hatasi:', error);
+        alert('Excel yuklenirken bir hata olustu!');
     }
 });
 
-// Tümünü Sil Form
+// Tumunu Sil Form
 document.getElementById('deleteAllForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    
+
     const onayKodu = document.getElementById('onayKodu').value.trim();
-    
-    // Son bir kez daha onay iste
-    if (!confirm('⚠️ SON ONAY: TÜM kayıtlar silinecek! Emin misiniz?')) {
+
+    if (!confirm('SON ONAY: TUM kayitlar silinecek! Emin misiniz?')) {
         return;
     }
-    
+
     try {
-        const response = await fetch('/kurum/ogrenci-kayitlari-tumunu-sil', {
+        const result = await apiCall('/kurum/ogrenci-kayitlari-tumunu-sil', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ onayKodu: onayKodu })
         });
-        const result = await response.json();
-        
+
+        if (!result) return;
+
         bootstrap.Modal.getInstance(document.getElementById('deleteAllModal')).hide();
-        
+
         if (result.success) {
             document.getElementById('successMessage').textContent = result.message;
             const successModal = new bootstrap.Modal(document.getElementById('successModal'));
             successModal.show();
         } else {
-            alert('❌ ' + result.message);
+            alert('Hata: ' + result.message);
         }
     } catch (error) {
-        console.error('Toplu silme hatası:', error);
-        alert('❌ Silme işlemi sırasında bir hata oluştu!');
+        console.error('Toplu silme hatasi:', error);
+        alert('Silme islemi sirasinda bir hata olustu!');
     }
 });
 
@@ -1131,51 +1168,53 @@ function copyToClipboard(text, label) {
     });
 }
 
-// ============ KULLANICI OLUŞTUR SİSTEMİ ============
+// ============ KULLANICI OLUSTUR SISTEMI ============
 
-// Hesapsız velileri kontrol et
-// Toplu veli hesabı oluştur
+// Toplu veli hesabi olustur
 async function topluVeliHesapOlustur() {
-    if (!confirm('⚠️ TÜM ÖĞRENCİLER İÇİN VELİ HESABI OLUŞTURULACAK!\n\n' +
-                 'Her öğrencinin TC Kimlik No ile veli hesabı oluşturulacak.\n' +
-                 'İlk şifre = TC Kimlik No\n\n' +
+    if (!confirm('TUM OGRENCILER ICIN VELI HESABI OLUSTURULACAK!\n\n' +
+                 'Her ogrencinin TC Kimlik No ile veli hesabi olusturulacak.\n' +
+                 'Ilk sifre = TC Kimlik No\n\n' +
                  'Devam etmek istiyor musunuz?')) {
         return;
     }
-    
+
     const btn = event.target;
     const originalText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Oluşturuluyor...';
-    
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Olusturuluyor...';
+
     try {
-        const response = await fetch('/kurum/toplu-veli-hesap-olustur', {
+        const result = await apiCall('/kurum/toplu-veli-hesap-olustur', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            let mesaj = `✅ TOPLU VELİ HESABI OLUŞTURMA TAMAMLANDI!\n\n`;
-            mesaj += `📊 Toplam Öğrenci: ${result.toplam}\n`;
-            mesaj += `✅ Oluşturulan Hesap: ${result.olusturulan}\n`;
-            mesaj += `⚠️ Zaten Mevcut: ${result.mevcutOlanlar}\n`;
-            mesaj += `❌ Hata: ${result.hatalar}\n\n`;
-            mesaj += `👤 Giriş Bilgileri:\n`;
-            mesaj += `Kullanıcı Adı: Öğrenci TC\n`;
-            mesaj += `İlk Şifre: Öğrenci TC\n`;
-            mesaj += `(İlk girişte yeni şifre istenir)`;
-            
-            alert(mesaj);
-            
-        } else {
-            alert('❌ Hata: ' + (result.error || 'İşlem başarısız!'));
+
+        if (!result) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            return;
         }
-        
+
+        if (result.success) {
+            let mesaj = 'TOPLU VELI HESABI OLUSTURMA TAMAMLANDI!\n\n';
+            mesaj += 'Toplam Ogrenci: ' + result.toplam + '\n';
+            mesaj += 'Olusturulan Hesap: ' + result.olusturulan + '\n';
+            mesaj += 'Zaten Mevcut: ' + result.mevcutOlanlar + '\n';
+            mesaj += 'Hata: ' + result.hatalar + '\n\n';
+            mesaj += 'Giris Bilgileri:\n';
+            mesaj += 'Kullanici Adi: Ogrenci TC\n';
+            mesaj += 'Ilk Sifre: Ogrenci TC';
+
+            alert(mesaj);
+
+        } else {
+            alert('Hata: ' + (result.error || 'Islem basarisiz!'));
+        }
+
     } catch (error) {
         console.error('Hata:', error);
-        alert('❌ İstek sırasında hata oluştu!');
+        alert('Istek sirasinda hata olustu!');
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;
@@ -1256,37 +1295,7 @@ async function kontrolHesapsizVeliler() {
     }
 }
 
-// Toplu hesap oluştur
-async function topluVeliHesapOlustur() {
-    if (!confirm('Seçilen veliler için hesap oluşturulsun mu?\n\nİlk şifre: Veli2024!')) return;
-    
-    const olusturBtn = document.getElementById('olusturBtn');
-    olusturBtn.disabled = true;
-    olusturBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Oluşturuluyor...';
-    
-    try {
-        const response = await fetch('/kurum/toplu-veli-hesap-olustur', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            alert(`✅ ${data.olusturulan} hesap başarıyla oluşturuldu!\n\nKullanıcı Adı: Telefon numarası\nİlk Şifre: Veli2024!`);
-            bootstrap.Modal.getInstance(document.getElementById('kullaniciOlusturModal')).hide();
-            location.reload();
-        } else {
-            alert('❌ ' + data.message);
-            olusturBtn.disabled = false;
-            olusturBtn.innerHTML = '<i class="bi bi-check-circle"></i> Hesap Oluştur';
-        }
-    } catch (error) {
-        console.error('Oluşturma hatası:', error);
-        alert('❌ Bir hata oluştu!');
-        olusturBtn.disabled = false;
-        olusturBtn.innerHTML = '<i class="bi bi-check-circle"></i> Hesap Oluştur';
-    }
-}
+// Duplicate fonksiyon silindi - usteki topluVeliHesapOlustur kullaniliyor
 </script>
 
 <%- include('../partials/footer-dashboard') %>

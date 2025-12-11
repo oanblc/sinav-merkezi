@@ -630,6 +630,34 @@
 </div>
 
 <script>
+// Global API helper - oturum hatalarini yakalar
+async function apiCall(url, options = {}) {
+    try {
+        const response = await fetch(url, options);
+        const data = await response.json();
+
+        if (response.status === 401 || data.redirect === '/login') {
+            alert('Oturum suresi doldu. Giris sayfasina yonlendiriliyorsunuz.');
+            window.location.href = '/login';
+            return null;
+        }
+
+        if (response.status === 403) {
+            alert('Bu islemi yapmaya yetkiniz yok!');
+            return null;
+        }
+
+        return data;
+    } catch (error) {
+        if (error instanceof SyntaxError && error.message.includes('Unexpected token')) {
+            alert('Oturum suresi doldu. Giris sayfasina yonlendiriliyorsunuz.');
+            window.location.href = '/login';
+            return null;
+        }
+        throw error;
+    }
+}
+
     // Filter Talepler
     function filterTalepler(durum, clickedCard) {
         // Update active stat card
@@ -695,36 +723,34 @@
     // Form Submit
     document.getElementById('yanitForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        
+
         const talepId = document.getElementById('talepId').value;
         const durum = document.getElementById('talepDurum').value;
         const yanit = document.getElementById('yanitMesaj').value.trim();
         const talepTipi = document.getElementById('talepTipi').value;
-        
+
         try {
-            const response = await fetch('/kurum/talep-yanitla', {
+            const data = await apiCall('/kurum/talep-yanitla', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ talep_id: talepId, durum: durum, yanit: yanit, talep_tipi: talepTipi })
             });
-            
-            const data = await response.json();
-            
-            // Close yanıt modal
+
+            if (!data) return;
+
             const yanitModal = bootstrap.Modal.getInstance(document.getElementById('yanitModal'));
             yanitModal.hide();
-            
+
             if (data.success) {
-                // Show success modal
                 document.getElementById('successMessage').textContent = data.message;
                 const successModal = new bootstrap.Modal(document.getElementById('successModal'));
                 successModal.show();
             } else {
-                alert('❌ ' + data.message);
+                alert('Hata: ' + data.message);
             }
         } catch (error) {
-            console.error('Talep yanıtlama hatası:', error);
-            alert('❌ İşlem sırasında bir hata oluştu!');
+            console.error('Talep yanitlama hatasi:', error);
+            alert('Islem sirasinda bir hata olustu!');
         }
     });
 </script>
@@ -850,43 +876,36 @@ if (rehberTalepModal) {
 
 async function ogrencileriYukle() {
     try {
-        console.log('📡 Öğrenci listesi yükleniyor...');
-        const response = await fetch('/kurum/tum-ogrenciler-api');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log('✅ Öğrenciler yüklendi:', data.length, 'öğrenci bulundu');
+        const data = await apiCall('/kurum/tum-ogrenciler-api');
+        if (!data) return;
+
         tumOgrenciler = data;
-        
-        // Otomatik arama kaldırıldı - kullanıcı arama yapınca sonuçlar gösterilecek
     } catch (error) {
-        console.error('❌ Öğrenci yükleme hatası:', error);
+        console.error('Ogrenci yukleme hatasi:', error);
         const liste = document.getElementById('ogrenciListesi');
-        liste.innerHTML = '<div class="alert alert-danger">Öğrenciler yüklenirken hata oluştu: ' + error.message + '</div>';
+        liste.innerHTML = '<div class="alert alert-danger">Ogrenciler yuklenirken hata olustu</div>';
         liste.style.display = 'block';
     }
 }
 
 async function rehberleriYukle() {
     try {
-        const response = await fetch('/kurum/rehberler-api');
-        const data = await response.json();
+        const data = await apiCall('/kurum/rehberler-api');
+        if (!data) return;
+
         tumRehberler = data;
-        
+
         const select = document.getElementById('rehberOgretmen');
-        select.innerHTML = '<option value="">Rehber öğretmen seçin...</option>';
-        
+        select.innerHTML = '<option value="">Rehber ogretmen secin...</option>';
+
         data.forEach(rehber => {
             const option = document.createElement('option');
             option.value = rehber.id;
-            option.textContent = `${rehber.ad_soyad || rehber.username} ${rehber.brans ? `(${rehber.brans})` : ''}`;
+            option.textContent = (rehber.ad_soyad || rehber.username) + (rehber.brans ? ' (' + rehber.brans + ')' : '');
             select.appendChild(option);
         });
     } catch (error) {
-        console.error('Rehber yükleme hatası:', error);
+        console.error('Rehber yukleme hatasi:', error);
     }
 }
 
@@ -1039,49 +1058,41 @@ window.ogrenciSecimiTemizle = function() {
 
 async function veliBilgisiniYukle(veliId) {
     try {
-        const response = await fetch(`/kurum/veli-bilgi-api?veli_id=${veliId}`);
-        const data = await response.json();
-        
+        const data = await apiCall('/kurum/veli-bilgi-api?veli_id=' + veliId);
+
         if (!data || !data.id) {
-            document.getElementById('veliBilgiIcerik').innerHTML = '<div class="alert alert-warning">Veli bilgisi bulunamadı!</div>';
+            document.getElementById('veliBilgiIcerik').innerHTML = '<div class="alert alert-warning">Veli bilgisi bulunamadi!</div>';
             document.getElementById('veliBilgiAlani').style.display = 'block';
             return;
         }
-        
+
         seciliVeliId = data.id;
-        
-        // Geçici email ve telefon kontrolü
+
         const email = data.email && !data.email.includes('@temp.com') ? data.email : null;
         const telefon = data.telefon && !data.telefon.includes('.0') && data.telefon.length > 5 ? data.telefon : null;
-        
-        let veliHtml = `
-            <div class="d-flex align-items-center">
-                <div class="flex-grow-1">
-                    <h6 class="mb-1">
-                        <i class="bi bi-person-fill text-primary"></i> 
-                        <strong>${data.ad_soyad || data.username || 'Veli'}</strong>
-                    </h6>
-        `;
-        
+
+        let veliHtml = '<div class="d-flex align-items-center"><div class="flex-grow-1">';
+        veliHtml += '<h6 class="mb-1"><i class="bi bi-person-fill text-primary"></i> <strong>' + (data.ad_soyad || data.username || 'Veli') + '</strong></h6>';
+
         if (telefon) {
-            veliHtml += `<div class="small text-muted">📱 ${telefon}</div>`;
+            veliHtml += '<div class="small text-muted">Tel: ' + telefon + '</div>';
         }
-        
+
         if (email) {
-            veliHtml += `<div class="small text-muted">📧 ${email}</div>`;
+            veliHtml += '<div class="small text-muted">Email: ' + email + '</div>';
         }
-        
+
         if (!telefon && !email) {
-            veliHtml += `<div class="small text-muted">İletişim bilgisi bulunmuyor</div>`;
+            veliHtml += '<div class="small text-muted">Iletisim bilgisi bulunmuyor</div>';
         }
-        
-        veliHtml += `</div></div>`;
-        
+
+        veliHtml += '</div></div>';
+
         document.getElementById('veliBilgiIcerik').innerHTML = veliHtml;
         document.getElementById('veliBilgiAlani').style.display = 'block';
     } catch (error) {
-        console.error('Veli bilgisi yükleme hatası:', error);
-        document.getElementById('veliBilgiIcerik').innerHTML = '<div class="alert alert-danger">Veli bilgisi yüklenirken hata oluştu!</div>';
+        console.error('Veli bilgisi yukleme hatasi:', error);
+        document.getElementById('veliBilgiIcerik').innerHTML = '<div class="alert alert-danger">Veli bilgisi yuklenirken hata olustu!</div>';
         document.getElementById('veliBilgiAlani').style.display = 'block';
     }
 }
@@ -1098,44 +1109,43 @@ async function rehberTalepGonder() {
         return;
     }
     
-    // Kurum öğrencileri için veli bilgisi kontrolü
+    // Kurum ogrencileri icin veli bilgisi kontrolu
     let kullanilacakVeliId = seciliVeliId;
-    
+
     if (seciliOgrenci.kaynak === 'kurum' && !seciliOgrenci.veli_id && seciliOgrenci.veli_telefon) {
-        // Kurum öğrencisi - veli_telefon ile users tablosunda veli ara
         try {
             const veliTelefon = seciliOgrenci.veli_telefon.replace('.0', '').trim();
-            const response = await fetch(`/kurum/veli-bul-telefon?telefon=${encodeURIComponent(veliTelefon)}`);
-            const veliData = await response.json();
-            
+            const veliData = await apiCall('/kurum/veli-bul-telefon?telefon=' + encodeURIComponent(veliTelefon));
+
+            if (!veliData) return;
+
             if (veliData && veliData.id) {
                 kullanilacakVeliId = veliData.id;
-                console.log('✅ Veli bulundu (telefon ile):', veliData);
             } else {
-                alert('❌ Bu öğrenci için sistemde veli hesabı bulunamadı. Rehber öğretmene talep göndermek için öğrencinin veli hesabı olması gerekiyor.');
+                alert('Bu ogrenci icin sistemde veli hesabi bulunamadi.');
                 return;
             }
         } catch (error) {
-            console.error('Veli arama hatası:', error);
-            alert('❌ Veli bilgisi kontrol edilirken hata oluştu!');
+            console.error('Veli arama hatasi:', error);
+            alert('Veli bilgisi kontrol edilirken hata olustu!');
             return;
         }
     }
-    
+
     if (!kullanilacakVeliId) {
-        alert('❌ Veli bilgisi bulunamadı!');
+        alert('Veli bilgisi bulunamadi!');
         return;
     }
-    
+
     const rehberId = document.getElementById('rehberOgretmen').value;
     if (!rehberId) {
-        alert('❌ Lütfen bir rehber öğretmen seçin!');
+        alert('Lutfen bir rehber ogretmen secin!');
         return;
     }
-    
+
     const mesaj = document.getElementById('talepMesaj').value.trim();
-    
-    const data = {
+
+    const talepData = {
         veli_id: kullanilacakVeliId,
         ogrenci_id: seciliOgrenciId,
         rehber_ogretmen_id: rehberId,
@@ -1146,45 +1156,43 @@ async function rehberTalepGonder() {
         mesaj: mesaj,
         ogrenci_kaynak: seciliOgrenci.kaynak || 'veli'
     };
-    
-    console.log('📤 Talep gönderiliyor:', data);
-    
-    // Butonu ID ile bul
+
     const btn = document.getElementById('rehberTalepGonderBtn');
     if (!btn) {
-        console.error('❌ Talep gönder butonu bulunamadı!');
-        alert('Bir hata oluştu! Lütfen sayfayı yenileyin.');
+        alert('Bir hata olustu! Lutfen sayfayi yenileyin.');
         return;
     }
-    
+
     const btnText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Gönderiliyor...';
-    
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Gonderiliyor...';
+
     try {
-        const response = await fetch('/kurum/rehber-talep-gonder', {
+        const result = await apiCall('/kurum/rehber-talep-gonder', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(talepData)
         });
-        
-        const result = await response.json();
-        
+
+        if (!result) {
+            btn.disabled = false;
+            btn.innerHTML = btnText;
+            return;
+        }
+
         if (result.success) {
-            alert('✅ ' + result.message);
+            alert('Basarili: ' + result.message);
             const modal = bootstrap.Modal.getInstance(document.getElementById('rehberTalepModal'));
             modal.hide();
             location.reload();
         } else {
-            alert('❌ ' + result.message);
+            alert('Hata: ' + result.message);
             btn.disabled = false;
             btn.innerHTML = btnText;
         }
     } catch (error) {
-        console.error('Talep gönderme hatası:', error);
-        alert('Bir hata oluştu!');
+        console.error('Talep gonderme hatasi:', error);
+        alert('Bir hata olustu!');
         btn.disabled = false;
         btn.innerHTML = btnText;
     }

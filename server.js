@@ -1860,15 +1860,22 @@ const upload = multer({
 
 // YardÃƒÂ„Ã‚Â±mcÃƒÂ„Ã‚Â± fonksiyonlar
 function requireAuth(req, res, next) {
-  console.log('ÃƒÂ°Ã‚ÂŸÃ‚Â”Ã‚Â’ requireAuth middleware:');
-  console.log('   Session ID:', req.session.userId);
-  console.log('   User Type:', req.session.userType);
-  
   if (req.session.userId) {
-    console.log('   ÃƒÂ¢Ã‚ÂœÃ‚Â… Kimlik doÃƒÂ„Ã‚ÂŸrulandÃƒÂ„Ã‚Â±\n');
     next();
   } else {
-    console.log('   ÃƒÂ¢Ã‚ÂÃ‚ÂŒ Kimlik doÃƒÂ„Ã‚ÂŸrulanamadı, login\'e yÃƒÂƒÃ‚Â¶nlendiriliyor\n');
+    // AJAX/API istekleri icin JSON donmeli
+    const isApiRequest = req.xhr ||
+      (req.headers.accept && req.headers.accept.includes('application/json')) ||
+      (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) ||
+      req.method === 'POST' || req.method === 'DELETE' || req.method === 'PUT';
+
+    if (isApiRequest) {
+      return res.status(401).json({
+        success: false,
+        message: 'Oturum suresi doldu. Lutfen tekrar giris yapin.',
+        redirect: '/login'
+      });
+    }
     res.redirect('/login');
   }
 }
@@ -1880,8 +1887,21 @@ function requireRole(role) {
     if (allowed.includes(req.session.userType)) {
       return next();
     }
-    req.session.error = 'Bu sayfaya erişim yetkiniz yok!';
-    // Kurum rolleri için kurum dashboard'a yönlendir, diğerleri ana sayfaya
+
+    // AJAX/API istekleri icin JSON donmeli
+    const isApiRequest = req.xhr ||
+      (req.headers.accept && req.headers.accept.includes('application/json')) ||
+      (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) ||
+      req.method === 'POST' || req.method === 'DELETE' || req.method === 'PUT';
+
+    if (isApiRequest) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bu islemi yapmaya yetkiniz yok!'
+      });
+    }
+
+    req.session.error = 'Bu sayfaya erisim yetkiniz yok!';
     if (req.session.userType && req.session.userType.startsWith('kurum')) {
       return res.redirect('/kurum/dashboard');
     }
@@ -3804,14 +3824,15 @@ app.post('/kurum/ogrenci-kayit-ekle', requireAuth, async (req, res) => {
   if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
   }
-  
+
   try {
     const {
       sinif, ogrenci_adi_soyadi, telefon, tc_kimlik_no,
       veli_adi, veli_telefon, tutar, odeme_durumu,
       odeme_turu, edessis_kaydi, taksit
     } = req.body;
-    
+
+    // Ogrenci kaydini ekle
     await dbRun(
       `INSERT INTO ogrenci_kayitlari (
         sinif, ogrenci_adi_soyadi, telefon, tc_kimlik_no,
@@ -3822,11 +3843,35 @@ app.post('/kurum/ogrenci-kayit-ekle', requireAuth, async (req, res) => {
        veli_adi, veli_telefon, tutar, odeme_durumu,
        odeme_turu, edessis_kaydi, taksit]
     );
-    
-    res.json({ success: true, message: 'Öğrenci kaydı başarıyla eklendi!' });
+
+    // Otomatik veli hesabi olustur (TC ile giris yapabilsin)
+    let veliHesabiMesaji = '';
+    if (tc_kimlik_no) {
+      const tcTemiz = tc_kimlik_no.toString().replace('.0', '').trim();
+
+      // TC ile mevcut veli hesabi var mi kontrol et
+      const mevcutVeli = await dbGet(
+        'SELECT id FROM users WHERE username = ? AND user_type = ?',
+        [tcTemiz, 'veli']
+      );
+
+      if (!mevcutVeli) {
+        // Yeni veli hesabi olustur - TC hem kullanici adi hem sifre
+        const hashedPassword = await bcrypt.hash(tcTemiz, 10);
+        await dbRun(
+          `INSERT INTO users (username, password_hash, user_type, ad_soyad, telefon, created_at)
+           VALUES (?, ?, 'veli', ?, ?, datetime('now'))`,
+          [tcTemiz, hashedPassword, veli_adi || ogrenci_adi_soyadi + ' Velisi', veli_telefon || telefon]
+        );
+        veliHesabiMesaji = ' Veli hesabi otomatik olusturuldu (TC: ' + tcTemiz + ')';
+        console.log('Otomatik veli hesabi olusturuldu - TC:', tcTemiz);
+      }
+    }
+
+    res.json({ success: true, message: 'Ogrenci kaydi basariyla eklendi!' + veliHesabiMesaji });
   } catch (error) {
-    console.error('Öğrenci kayıt ekleme hatasÃƒÂ„Ã‚Â±:', error);
-    res.json({ success: false, message: 'Kayıt eklenirken bir hata oluştu: ' + error.message });
+    console.error('Ogrenci kayit ekleme hatasi:', error);
+    res.json({ success: false, message: 'Kayit eklenirken bir hata olustu: ' + error.message });
   }
 });
 
@@ -3986,12 +4031,131 @@ app.post('/kurum/ogrenci-kayitlari-tumunu-sil', requireAuth, async (req, res) =>
   }
 });
 
-// Kurum - Excel Import
+// Kurum - Ogrenci Kayitlari Excel Import (Otomatik Veli Hesabi Olusturma ile)
 app.post('/kurum/ogrenci-import-excel', requireAuth, upload.single('excelFile'), async (req, res) => {
   if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
   }
-  
+
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Excel dosyasi secilmedi!' });
+    }
+
+    console.log('\nOGRENCi KAYITLARI EXCEL IMPORT BASLADI');
+    console.log('Dosya:', req.file.originalname);
+
+    // Excel dosyasini oku
+    const data = await readExcelFile(req.file.path);
+
+    if (!data || data.length === 0) {
+      fs.unlinkSync(req.file.path);
+      return res.json({ success: false, message: 'Excel dosyasi bos veya okunamiyor!' });
+    }
+
+    console.log('Toplam ' + data.length + ' satir bulundu');
+
+    let eklenen = 0;
+    let hatalar = 0;
+    let veliOlusturulan = 0;
+
+    for (const row of data) {
+      try {
+        // Kolon isimlerini normalize et
+        const normalizedRow = {};
+        for (const key of Object.keys(row)) {
+          const normalKey = key.toString().trim().toUpperCase()
+            .replace(/İ/g, 'I').replace(/Ğ/g, 'G').replace(/Ü/g, 'U')
+            .replace(/Ş/g, 'S').replace(/Ö/g, 'O').replace(/Ç/g, 'C');
+          normalizedRow[normalKey] = row[key];
+        }
+
+        // Degerleri al
+        const sinif = normalizedRow['OGRENCI SINIF BILGISI'] || normalizedRow['SINIF'] || '';
+        const ogrenci_adi_soyadi = normalizedRow['OGRENCI ADI SOYADI'] || normalizedRow['AD SOYAD'] || '';
+        const telefon = normalizedRow['TELEFON KAYDI'] || normalizedRow['TELEFON'] || '';
+        let tc_kimlik_no = normalizedRow['T.C KIMLIK NO'] || normalizedRow['TC KIMLIK NO'] || normalizedRow['TC'] || '';
+        const veli_adi = normalizedRow['OGRENCI VELI'] || normalizedRow['VELI ADI'] || '';
+        const veli_telefon = normalizedRow['VELI TELEFON'] || '';
+        const tutar = normalizedRow['TUTAR'] || 0;
+        const odeme_durumu = normalizedRow['ODEME DURUMU'] || 'BEKLIYOR';
+        const odeme_turu = normalizedRow['ODEME TURU'] || '';
+        const edessis_kaydi = normalizedRow['EDESIS KAYDI'] || normalizedRow['EDESSIS KAYDI'] || '';
+        const taksit = normalizedRow['TAKSIT'] || '';
+
+        // TC'yi temizle (.0 varsa)
+        if (tc_kimlik_no) {
+          tc_kimlik_no = tc_kimlik_no.toString().replace('.0', '').trim();
+        }
+
+        // Ogrenci adini kontrol et
+        if (!ogrenci_adi_soyadi || ogrenci_adi_soyadi.toString().trim() === '') {
+          continue;
+        }
+
+        // Veritabanina ekle
+        await dbRun(
+          `INSERT INTO ogrenci_kayitlari (
+            sinif, ogrenci_adi_soyadi, telefon, tc_kimlik_no,
+            veli_adi, veli_telefon, tutar, odeme_durumu,
+            odeme_turu, edessis_kaydi, taksit
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [sinif, ogrenci_adi_soyadi, telefon, tc_kimlik_no,
+           veli_adi, veli_telefon, tutar, odeme_durumu,
+           odeme_turu, edessis_kaydi, taksit]
+        );
+
+        eklenen++;
+
+        // Otomatik veli hesabi olustur
+        if (tc_kimlik_no) {
+          const mevcutVeli = await dbGet(
+            'SELECT id FROM users WHERE username = ? AND user_type = ?',
+            [tc_kimlik_no, 'veli']
+          );
+
+          if (!mevcutVeli) {
+            const hashedPassword = await bcrypt.hash(tc_kimlik_no, 10);
+            await dbRun(
+              `INSERT INTO users (username, password_hash, user_type, ad_soyad, telefon, created_at)
+               VALUES (?, ?, 'veli', ?, ?, datetime('now'))`,
+              [tc_kimlik_no, hashedPassword, veli_adi || ogrenci_adi_soyadi + ' Velisi', veli_telefon || telefon]
+            );
+            veliOlusturulan++;
+          }
+        }
+
+      } catch (rowError) {
+        console.error('Satir hatasi:', rowError.message);
+        hatalar++;
+      }
+    }
+
+    // Gecici dosyayi sil
+    fs.unlinkSync(req.file.path);
+
+    console.log('EXCEL IMPORT TAMAMLANDI: ' + eklenen + ' eklendi, ' + veliOlusturulan + ' veli hesabi olusturuldu');
+
+    res.json({
+      success: true,
+      message: eklenen + ' ogrenci eklendi, ' + veliOlusturulan + ' veli hesabi otomatik olusturuldu!'
+    });
+
+  } catch (error) {
+    console.error('Excel import hatasi:', error);
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    res.status(500).json({ success: false, message: 'Excel yuklenirken hata: ' + error.message });
+  }
+});
+
+// ESKI: Sinav Sonucu PDF Yukle (kullanilmiyor)
+app.post('/kurum/ogrenci-import-excel-eski', requireAuth, upload.single('excelFile'), async (req, res) => {
+  if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
+    return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
+  }
+
   try {
     const { sinav_id, pdfPath } = req.body;
     const isUploaded = !!req.file;
