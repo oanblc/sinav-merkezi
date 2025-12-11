@@ -144,11 +144,11 @@
                 <div class="vp-student-info">
                     <div class="vp-student-name"><%= ogrenci.ad_soyad %></div>
                     <div class="vp-student-meta">
-                        <% if (ogrenci.ogrenci_no) { %>
-                            <span class="vp-badge vp-badge-primary">No: <%= ogrenci.ogrenci_no %></span>
+                        <% if (ogrenci.sinif) { %>
+                            <span class="vp-badge vp-badge-primary"><i class="bi bi-book"></i> <%= ogrenci.sinif %></span>
                         <% } %>
                         <% if (ogrenci.tc_no) { %>
-                            <i class="bi bi-card-text"></i> <%= ogrenci.tc_no %>
+                            <span class="vp-badge vp-badge-info"><i class="bi bi-card-text"></i> TC: <%= ogrenci.tc_no.substring(0,3) %>***</span>
                         <% } %>
                     </div>
                 </div>
