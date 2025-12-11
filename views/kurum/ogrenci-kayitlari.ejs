@@ -404,19 +404,22 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Telefon</label>
-                            <input type="text" class="form-control" name="telefon">
+                            <input type="tel" class="form-control telefon-input" name="telefon" placeholder="05XX XXX XX XX" maxlength="14">
+                            <small class="text-muted">Ornek: 0532 123 45 67</small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">T.C. Kimlik No</label>
-                            <input type="text" class="form-control" name="tc_kimlik_no">
+                            <input type="text" class="form-control tc-input" name="tc_kimlik_no" placeholder="XXXXXXXXXXX" maxlength="11" pattern="[0-9]{11}" inputmode="numeric">
+                            <small class="text-muted">11 haneli TC Kimlik numarasi</small>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Veli Adı</label>
+                            <label class="form-label">Veli Adi</label>
                             <input type="text" class="form-control" name="veli_adi">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Veli Telefon</label>
-                            <input type="text" class="form-control" name="veli_telefon">
+                            <input type="tel" class="form-control telefon-input" name="veli_telefon" placeholder="05XX XXX XX XX" maxlength="14">
+                            <small class="text-muted">Ornek: 0532 123 45 67</small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Tutar</label>
@@ -503,19 +506,22 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Telefon</label>
-                            <input type="text" class="form-control" id="edit_telefon" name="telefon">
+                            <input type="tel" class="form-control telefon-input" id="edit_telefon" name="telefon" placeholder="05XX XXX XX XX" maxlength="14">
+                            <small class="text-muted">Ornek: 0532 123 45 67</small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">T.C. Kimlik No</label>
-                            <input type="text" class="form-control" id="edit_tc_kimlik_no" name="tc_kimlik_no">
+                            <input type="text" class="form-control tc-input" id="edit_tc_kimlik_no" name="tc_kimlik_no" placeholder="XXXXXXXXXXX" maxlength="11" pattern="[0-9]{11}" inputmode="numeric">
+                            <small class="text-muted">11 haneli TC Kimlik numarasi</small>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Veli Adı</label>
+                            <label class="form-label">Veli Adi</label>
                             <input type="text" class="form-control" id="edit_veli_adi" name="veli_adi">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Veli Telefon</label>
-                            <input type="text" class="form-control" id="edit_veli_telefon" name="veli_telefon">
+                            <input type="tel" class="form-control telefon-input" id="edit_veli_telefon" name="veli_telefon" placeholder="05XX XXX XX XX" maxlength="14">
+                            <small class="text-muted">Ornek: 0532 123 45 67</small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Tutar</label>
@@ -780,7 +786,62 @@ async function apiCall(url, options = {}) {
 
 let table;
 
+// TC Kimlik No formatlama - sadece rakam, max 11 hane
+function formatTcInput(input) {
+    input.addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, ''); // Sadece rakamlar
+        if (value.length > 11) {
+            value = value.slice(0, 11);
+        }
+        e.target.value = value;
+
+        // Gecerlilik kontrolu
+        if (value.length > 0 && value.length < 11) {
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+        } else if (value.length === 11) {
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+        } else {
+            input.classList.remove('is-invalid');
+            input.classList.remove('is-valid');
+        }
+    });
+}
+
+// Telefon formatlama - 05XX XXX XX XX
+function formatTelefonInput(input) {
+    input.addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, ''); // Sadece rakamlar
+
+        // Format: 05XX XXX XX XX
+        if (value.length > 0) {
+            let formatted = '';
+            if (value.length <= 4) {
+                formatted = value;
+            } else if (value.length <= 7) {
+                formatted = value.slice(0, 4) + ' ' + value.slice(4);
+            } else if (value.length <= 9) {
+                formatted = value.slice(0, 4) + ' ' + value.slice(4, 7) + ' ' + value.slice(7);
+            } else {
+                formatted = value.slice(0, 4) + ' ' + value.slice(4, 7) + ' ' + value.slice(7, 9) + ' ' + value.slice(9, 11);
+            }
+            e.target.value = formatted;
+        }
+
+        // Max 11 rakam (14 karakter formatli)
+        const digits = e.target.value.replace(/\D/g, '');
+        if (digits.length > 11) {
+            e.target.value = digits.slice(0, 4) + ' ' + digits.slice(4, 7) + ' ' + digits.slice(7, 9) + ' ' + digits.slice(9, 11);
+        }
+    });
+}
+
 $(document).ready(function() {
+    // TC ve Telefon input formatlamalarini baslat
+    document.querySelectorAll('.tc-input').forEach(formatTcInput);
+    document.querySelectorAll('.telefon-input').forEach(formatTelefonInput);
+
     // DataTable başlat
     table = $('#ogrenciTable').DataTable({
         responsive: {
@@ -934,6 +995,16 @@ document.getElementById('addForm').addEventListener('submit', async function(e) 
     const formData = new FormData(this);
     const data = Object.fromEntries(formData);
 
+    // TC Kimlik validasyonu
+    if (data.tc_kimlik_no && data.tc_kimlik_no.length > 0 && data.tc_kimlik_no.length !== 11) {
+        alert('TC Kimlik No 11 haneli olmalidir!');
+        return;
+    }
+
+    // Telefon temizle (bosluklar kaldirilsin)
+    if (data.telefon) data.telefon = data.telefon.replace(/\s/g, '');
+    if (data.veli_telefon) data.veli_telefon = data.veli_telefon.replace(/\s/g, '');
+
     try {
         const result = await apiCall('/kurum/ogrenci-kayit-ekle', {
             method: 'POST',
@@ -962,6 +1033,16 @@ document.getElementById('editForm').addEventListener('submit', async function(e)
     const formData = new FormData(this);
     const data = Object.fromEntries(formData);
     const id = document.getElementById('edit_id').value;
+
+    // TC Kimlik validasyonu
+    if (data.tc_kimlik_no && data.tc_kimlik_no.length > 0 && data.tc_kimlik_no.length !== 11) {
+        alert('TC Kimlik No 11 haneli olmalidir!');
+        return;
+    }
+
+    // Telefon temizle (bosluklar kaldirilsin)
+    if (data.telefon) data.telefon = data.telefon.replace(/\s/g, '');
+    if (data.veli_telefon) data.veli_telefon = data.veli_telefon.replace(/\s/g, '');
 
     try {
         const result = await apiCall(`/kurum/ogrenci-kayit-guncelle/${id}`, {
