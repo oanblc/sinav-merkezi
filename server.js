@@ -4008,11 +4008,40 @@ app.post('/kurum/ogrenci-kayit-sil/:id', requireAuth, async (req, res) => {
   if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
   }
-  
+
   try {
     const { id } = req.params;
+
+    // Silinecek ogrencinin TC'sini al (veli hesabi kontrolu icin)
+    const ogrenci = await dbGet('SELECT tc_kimlik_no FROM ogrenci_kayitlari WHERE id = ?', [id]);
+    const tcKimlik = ogrenci?.tc_kimlik_no?.toString().replace('.0', '').trim();
+
+    // Ogrenciyi sil
     await dbRun('DELETE FROM ogrenci_kayitlari WHERE id = ?', [id]);
-    res.json({ success: true, message: 'Ogrenci kaydi silindi!' });
+
+    // TC varsa, bu TC ile baska ogrenci var mi kontrol et
+    let veliSilindi = false;
+    if (tcKimlik) {
+      const digerOgrenci = await dbGet(
+        'SELECT id FROM ogrenci_kayitlari WHERE tc_kimlik_no = ? OR tc_kimlik_no = ?',
+        [tcKimlik, tcKimlik + '.0']
+      );
+
+      // Baska ogrenci yoksa veli hesabini sil
+      if (!digerOgrenci) {
+        const veli = await dbGet('SELECT id FROM users WHERE username = ? AND user_type = ?', [tcKimlik, 'veli']);
+        if (veli) {
+          await dbRun('DELETE FROM users WHERE id = ?', [veli.id]);
+          console.log(`Veli hesabi silindi (TC: ${tcKimlik}) - baska ogrencisi kalmadi`);
+          veliSilindi = true;
+        }
+      }
+    }
+
+    const mesaj = veliSilindi
+      ? 'Ogrenci kaydi ve veli hesabi silindi!'
+      : 'Ogrenci kaydi silindi!';
+    res.json({ success: true, message: mesaj });
   } catch (error) {
     console.error('Ogrenci kayit silme hatasi:', error);
     res.json({ success: false, message: 'Silme sirasinda bir hata olustu!' });
@@ -4024,28 +4053,48 @@ app.post('/kurum/ogrenci-kayitlari-tumunu-sil', requireAuth, async (req, res) =>
   if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
   }
-  
+
   try {
     const { onayKodu } = req.body;
-    
+
     // Guvenlik kontrolu: "SIL" yazmasi gerekiyor
     if (onayKodu !== 'SIL') {
       return res.json({ success: false, message: 'Onay kodu hatali! "SIL" yazmaniz gerekiyor.' });
     }
-    
+
     // Kac kayit var?
     const kayitSayisi = await dbGet('SELECT COUNT(*) as sayi FROM ogrenci_kayitlari');
-    
-    // Tum kayitlari sil
+
+    // Silinecek TC'leri topla (veli hesaplarini silmek icin)
+    const tcListesi = await dbAll(`
+      SELECT DISTINCT tc_kimlik_no FROM ogrenci_kayitlari
+      WHERE tc_kimlik_no IS NOT NULL AND tc_kimlik_no != ''
+    `);
+
+    // Tum ogrenci kayitlarini sil
     await dbRun('DELETE FROM ogrenci_kayitlari');
-    
-    console.log(`\n  TUM ORENCI KAYITLARI SILINDI!`);
-    console.log(`   Silinen kayit sayisi: ${kayitSayisi.sayi}`);
+
+    // Yetim veli hesaplarini sil (artik ogrencisi olmayan)
+    let silinenVeliSayisi = 0;
+    for (const row of tcListesi) {
+      const tc = row.tc_kimlik_no?.toString().replace('.0', '').trim();
+      if (tc) {
+        const veli = await dbGet('SELECT id FROM users WHERE username = ? AND user_type = ?', [tc, 'veli']);
+        if (veli) {
+          await dbRun('DELETE FROM users WHERE id = ?', [veli.id]);
+          silinenVeliSayisi++;
+        }
+      }
+    }
+
+    console.log(`\n  TUM OGRENCI KAYITLARI SILINDI!`);
+    console.log(`   Silinen ogrenci sayisi: ${kayitSayisi.sayi}`);
+    console.log(`   Silinen veli hesabi sayisi: ${silinenVeliSayisi}`);
     console.log(`   Yapan kullanici: ${req.session.username}\n`);
-    
-    res.json({ 
-      success: true, 
-      message: `${kayitSayisi.sayi} ogrenci kaydi basariyla silindi!` 
+
+    res.json({
+      success: true,
+      message: `${kayitSayisi.sayi} ogrenci kaydi ve ${silinenVeliSayisi} veli hesabi silindi!`
     });
   } catch (error) {
     console.error('Toplu silme hatasi:', error);
