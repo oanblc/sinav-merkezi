@@ -771,6 +771,25 @@ db.serialize(() => {
       FOREIGN KEY (sinav_id) REFERENCES sinavlar(id)
     )
   `);
+
+  // Paket Talepleri Tablosu (Sinav olmasa bile paket talebi kaydedilir)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS paket_talepleri (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      veli_id INTEGER NOT NULL,
+      paket_id INTEGER NOT NULL,
+      durum TEXT DEFAULT 'beklemede',
+      aciklama TEXT,
+      yanit TEXT,
+      ad_soyad TEXT,
+      telefon TEXT,
+      email TEXT,
+      talep_tarihi DATETIME DEFAULT CURRENT_TIMESTAMP,
+      yanitlanma_tarihi DATETIME,
+      FOREIGN KEY (veli_id) REFERENCES users(id),
+      FOREIGN KEY (paket_id) REFERENCES paketler(id)
+    )
+  `);
   
   // PayTR Ayarları Tablosu - KALDIRILDÃƒÂ„Ã‚Â° (Talep sistemi kullanÃƒÂ„Ã‚Â±lÃƒÂ„Ã‚Â±yor)
   
@@ -2607,22 +2626,34 @@ app.post('/paket-talep-gonder', async (req, res) => {
       }
     }
     
-    // Paket icindeki sinavlari al
+    // Daha once ayni pakete talep gonderilmis mi kontrol et
+    const mevcutPaketTalep = await dbGet(
+      'SELECT * FROM paket_talepleri WHERE veli_id = ? AND paket_id = ? AND durum = "beklemede"',
+      [veli_id, paket_id]
+    );
+
+    if (mevcutPaketTalep) {
+      return res.json({
+        success: false,
+        message: 'Bu paket icin zaten bekleyen bir talebiniz bulunmaktadir!'
+      });
+    }
+
+    // Paket talebini kaydet (sinav olsun olmasin)
+    await dbRun(
+      `INSERT INTO paket_talepleri (veli_id, paket_id, durum, aciklama, ad_soyad, telefon, email, talep_tarihi)
+       VALUES (?, ?, 'beklemede', ?, ?, ?, ?, datetime('now'))`,
+      [veli_id, paket_id, aciklama || '', ad_soyad || '', telefon || '', email || '']
+    );
+
+    // Paket icindeki sinavlari al (varsa)
     const paketSinavlari = await dbAll(
       'SELECT sinav_id FROM paket_sinavlari WHERE paket_id = ? AND sinav_id IS NOT NULL',
       [paket_id]
     );
 
-    // Paket icinde sinav yoksa bilgi ver (ONCE KONTROL ET)
-    if (paketSinavlari.length === 0) {
-      return res.json({
-        success: false,
-        message: 'Bu pakette henuz sinav bulunmamaktadir. Lutfen daha sonra tekrar deneyiniz veya bizimle iletisime geciniz.'
-      });
-    }
-
-    // Her sinav icin talep olustur
-    let olusturulanTalep = 0;
+    // Eger pakette sinav varsa, her sinav icin de talep olustur
+    let olusturulanSinavTalep = 0;
     for (const ps of paketSinavlari) {
       // Daha once talep gonderilmis mi kontrol et
       const mevcutTalep = await dbGet(
@@ -2638,13 +2669,8 @@ app.post('/paket-talep-gonder', async (req, res) => {
            VALUES (?, ?, 'beklemede', ?, datetime('now'))`,
           [veli_id, ps.sinav_id, paketAciklama]
         );
-        olusturulanTalep++;
+        olusturulanSinavTalep++;
       }
-    }
-
-    // Tum sinavlara zaten talep varsa
-    if (olusturulanTalep === 0) {
-      return res.json({ success: false, message: 'Bu paket icin zaten tum sinavlara talebiniz bulunmaktadir!' });
     }
     
     // Veli bilgilerini al (WhatsApp bildirimi iÃƒÂƒÃ‚Â§in)
@@ -2678,9 +2704,16 @@ app.post('/paket-talep-gonder', async (req, res) => {
       console.log('ÃƒÂ¢Ã‚ÂšÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â  WhatsApp ayarları yapÃƒÂ„Ã‚Â±lmamÃƒÂ„Ã‚Â±ÃƒÂ…Ã‚ÂŸ, bildirim gÃƒÂƒÃ‚Â¶nderilmedi');
     }
     
-    res.json({ 
-      success: true, 
-      message: `${paket.ad} paketi için ${olusturulanTalep} sınav talebi başarıyla gönderildi! En kısa sürede değerlendirilecektir.`,
+    // Basari mesaji olustur
+    let basariMesaji = `${paket.ad} paketi icin talebiniz basariyla gonderildi!`;
+    if (paketSinavlari.length > 0) {
+      basariMesaji += ` (${olusturulanSinavTalep} sinav talebi oluşturuldu)`;
+    }
+    basariMesaji += ' En kisa surede degerlendirilecektir.';
+
+    res.json({
+      success: true,
+      message: basariMesaji,
       yeniHesap: (ad_soyad && email) ? true : false,
       veli_id: veli_id
     });
