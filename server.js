@@ -3289,10 +3289,19 @@ app.post('/kurum/talep-yanitla', requireAuth, async (req, res) => {
           .catch(error => console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ WhatsApp bildirimi hatasÃƒÂ„Ã‚Â±:', error));
       }
       
-    } else {
-      // Sınav talebi (eski kod)
+    } else if (talep_tipi === 'paket') {
+      // Paket talebi
       await dbRun(
-        `UPDATE sinav_talepleri 
+        `UPDATE paket_talepleri
+         SET durum = ?, yanit = ?, yanitlanma_tarihi = datetime('now')
+         WHERE id = ?`,
+        [durum, yanit || '', talep_id]
+      );
+
+    } else {
+      // Sinav talebi (eski kod)
+      await dbRun(
+        `UPDATE sinav_talepleri
          SET durum = ?, yanit = ?, yanitlanma_tarihi = datetime('now')
          WHERE id = ?`,
         [durum, yanit || '', talep_id]
@@ -3332,19 +3341,19 @@ app.post('/kurum/talep-yanitla', requireAuth, async (req, res) => {
           .catch(error => console.error('ÃƒÂ¢Ã‚ÂÃ‚ÂŒ WhatsApp bildirimi hatasÃƒÂ„Ã‚Â±:', error));
       }
     }
-    
-    res.json({ 
-      success: true, 
-      message: durum === 'onaylandi' ? 'Talep başarıyla onaylandÃƒÂ„Ã‚Â±!' : 'Talep reddedildi.' 
+
+    res.json({
+      success: true,
+      message: durum === 'onaylandi' ? 'Talep basariyla onaylandi!' : 'Talep reddedildi.'
     });
-    
+
   } catch (error) {
-    console.error('Talep yanÃƒÂ„Ã‚Â±tlama hatasÃƒÂ„Ã‚Â±:', error);
-    res.json({ success: false, message: 'Talep iÃƒÂ…Ã‚ÂŸlenirken bir hata oluştu!' });
+    console.error('Talep yanitlama hatasi:', error);
+    res.json({ success: false, message: 'Talep islenirken bir hata olustu!' });
   }
 });
 
-// Kurum - Veli Listesi API (Rehber Talep iÃƒÂƒÃ‚Â§in)
+// Kurum - Veli Listesi API (Rehber Talep icin)
 app.get('/kurum/veliler-api', requireAuth, async (req, res) => {
   if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
     return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
