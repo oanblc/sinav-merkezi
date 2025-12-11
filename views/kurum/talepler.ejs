@@ -1,432 +1,663 @@
 <%- include('../partials/header-dashboard', { title: 'Talep Yönetimi - Kurum Paneli', user: user }) %>
 
 <style>
-    .page-header {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    :root {
+        --kt-primary: #6366f1;
+        --kt-primary-light: #818cf8;
+        --kt-primary-dark: #4f46e5;
+        --kt-success: #10b981;
+        --kt-warning: #f59e0b;
+        --kt-danger: #ef4444;
+        --kt-text: #1e293b;
+        --kt-text-muted: #64748b;
+        --kt-border: #e2e8f0;
+        --kt-bg: #f8fafc;
+        --kt-card: #ffffff;
+        --kt-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        --kt-shadow-lg: 0 12px 40px rgba(0,0,0,0.12);
+        --kt-radius: 16px;
+        --kt-radius-sm: 10px;
+    }
+
+    /* Page Header - Compact & Modern */
+    .kt-page-header {
+        background: linear-gradient(135deg, var(--kt-primary) 0%, var(--kt-primary-light) 100%);
         color: white;
-        padding: 40px 0;
-        margin: -30px -15px 40px;
-        border-radius: 0 0 24px 24px;
-        box-shadow: 0 8px 32px rgba(245, 158, 11, 0.3);
+        padding: clamp(20px, 4vw, 32px) 0;
+        margin: -30px -15px clamp(20px, 4vw, 32px);
+        border-radius: 0 0 var(--kt-radius) var(--kt-radius);
+        box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
     }
-    
-    .filter-tabs {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 30px;
-        flex-wrap: wrap;
-    }
-    
-    .filter-btn {
-        padding: 12px 24px;
-        border-radius: 12px;
-        border: 2px solid #e2e8f0;
-        background: white;
-        color: #64748b;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-    
-    .filter-btn:hover {
-        border-color: #f59e0b;
-        background: #fef3c7;
-        color: #f59e0b;
-    }
-    
-    .filter-btn.active {
-        border-color: #f59e0b;
-        background: #f59e0b;
-        color: white;
-        box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3);
-    }
-    
-    .talep-card {
-        background: white;
-        border-radius: 20px;
-        padding: 24px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-        transition: all 0.3s ease;
-        border-left: 5px solid #e2e8f0;
-    }
-    
-    .talep-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-    }
-    
-    .talep-card.beklemede {
-        border-left-color: #f59e0b;
-    }
-    
-    .talep-card.onaylandi {
-        border-left-color: #10b981;
-    }
-    
-    .talep-card.reddedildi {
-        border-left-color: #ef4444;
-    }
-    
-    .talep-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: start;
-        margin-bottom: 20px;
-    }
-    
-    .talep-info h4 {
+
+    .kt-page-header h1 {
+        font-size: clamp(1.25rem, 4vw, 1.75rem);
         font-weight: 800;
-        color: #1e293b;
-        margin-bottom: 8px;
-    }
-    
-    .talep-meta {
-        display: flex;
-        gap: 16px;
-        flex-wrap: wrap;
-        margin-bottom: 16px;
-    }
-    
-    .meta-item {
+        margin: 0 0 4px 0;
         display: flex;
         align-items: center;
+        gap: 10px;
+    }
+
+    .kt-page-header p {
+        font-size: clamp(0.85rem, 2.5vw, 0.95rem);
+        opacity: 0.9;
+        margin: 0;
+    }
+
+    .kt-header-btn {
+        background: rgba(255,255,255,0.2);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.3);
+        color: white;
+        padding: 10px 18px;
+        border-radius: var(--kt-radius-sm);
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
         gap: 8px;
-        color: #64748b;
-        font-size: 0.9rem;
     }
-    
-    .meta-item i {
-        color: #94a3b8;
+
+    .kt-header-btn:hover {
+        background: rgba(255,255,255,0.3);
+        color: white;
+        transform: translateY(-2px);
     }
-    
-    .talep-badge {
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-weight: 600;
-        font-size: 0.85rem;
-        white-space: nowrap;
-    }
-    
-    .talep-badge.beklemede {
-        background: #fef3c7;
-        color: #f59e0b;
-    }
-    
-    .talep-badge.onaylandi {
-        background: #d1fae5;
-        color: #10b981;
-    }
-    
-    .talep-badge.reddedildi {
-        background: #fee2e2;
-        color: #ef4444;
-    }
-    
-    .talep-details {
-        background: #f8fafc;
-        border-radius: 12px;
-        padding: 16px;
-        margin-top: 16px;
-    }
-    
-    .talep-details .row {
-        margin-bottom: 12px;
-    }
-    
-    .talep-details .row:last-child {
-        margin-bottom: 0;
-    }
-    
-    .detail-label {
-        font-weight: 600;
-        color: #475569;
-        font-size: 0.9rem;
-    }
-    
-    .detail-value {
-        color: #1e293b;
-        font-size: 0.95rem;
-    }
-    
-    .action-buttons {
-        display: flex;
+
+    /* Stats Bar */
+    .kt-stats-bar {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
         gap: 12px;
-        margin-top: 16px;
-    }
-    
-    .btn-action {
-        padding: 10px 20px;
-        border-radius: 10px;
-        border: none;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .btn-onayla {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-    }
-    
-    .btn-onayla:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
-    }
-    
-    .btn-reddet {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        color: white;
-    }
-    
-    .btn-reddet:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
-    }
-    
-    .empty-state {
-        text-align: center;
-        padding: 80px 20px;
-        color: #94a3b8;
-    }
-    
-    .empty-state i {
-        font-size: 5rem;
-        margin-bottom: 20px;
-        opacity: 0.5;
-    }
-    
-    .yanit-section {
-        background: #fffbeb;
-        border-left: 4px solid #f59e0b;
-        border-radius: 8px;
-        padding: 16px;
-        margin-top: 16px;
-    }
-    
-    .yanit-section h6 {
-        color: #f59e0b;
-        font-weight: 700;
-        margin-bottom: 8px;
-    }
-    
-    .search-box {
-        background: white;
-        border-radius: 12px;
-        padding: 12px 20px;
-        border: 2px solid #e2e8f0;
         margin-bottom: 24px;
+    }
+
+    @media (max-width: 768px) {
+        .kt-stats-bar {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    .kt-stat-card {
+        background: var(--kt-card);
+        border-radius: var(--kt-radius-sm);
+        padding: 16px;
+        text-align: center;
+        box-shadow: var(--kt-shadow);
+        border: 1px solid var(--kt-border);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .kt-stat-card:hover, .kt-stat-card.active {
+        transform: translateY(-2px);
+        box-shadow: var(--kt-shadow-lg);
+    }
+
+    .kt-stat-card.active {
+        border-color: var(--kt-primary);
+        background: linear-gradient(135deg, rgba(99,102,241,0.05) 0%, rgba(129,140,248,0.1) 100%);
+    }
+
+    .kt-stat-card.active.beklemede { border-color: var(--kt-warning); }
+    .kt-stat-card.active.onaylandi { border-color: var(--kt-success); }
+    .kt-stat-card.active.reddedildi { border-color: var(--kt-danger); }
+
+    .kt-stat-number {
+        font-size: clamp(1.5rem, 4vw, 2rem);
+        font-weight: 800;
+        color: var(--kt-primary);
+        line-height: 1;
+    }
+
+    .kt-stat-card.beklemede .kt-stat-number { color: var(--kt-warning); }
+    .kt-stat-card.onaylandi .kt-stat-number { color: var(--kt-success); }
+    .kt-stat-card.reddedildi .kt-stat-number { color: var(--kt-danger); }
+
+    .kt-stat-label {
+        font-size: 0.8rem;
+        color: var(--kt-text-muted);
+        font-weight: 600;
+        margin-top: 4px;
+    }
+
+    /* Search Box */
+    .kt-search-box {
+        background: var(--kt-card);
+        border-radius: var(--kt-radius);
+        padding: 14px 20px;
+        border: 2px solid var(--kt-border);
+        margin-bottom: 20px;
         display: flex;
         align-items: center;
         gap: 12px;
+        transition: all 0.2s;
     }
-    
-    .search-box input {
+
+    .kt-search-box:focus-within {
+        border-color: var(--kt-primary);
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    }
+
+    .kt-search-box input {
         border: none;
         outline: none;
         width: 100%;
         font-size: 1rem;
+        background: transparent;
     }
-    
-    .search-box i {
-        color: #94a3b8;
+
+    .kt-search-box i {
+        color: var(--kt-text-muted);
+        font-size: 1.1rem;
     }
+
+    /* Talep Cards - Modern Design */
+    .kt-talep-card {
+        background: var(--kt-card);
+        border-radius: var(--kt-radius);
+        margin-bottom: 16px;
+        box-shadow: var(--kt-shadow);
+        border: 1px solid var(--kt-border);
+        overflow: hidden;
+        transition: all 0.2s;
+    }
+
+    .kt-talep-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--kt-shadow-lg);
+    }
+
+    .kt-talep-card:active {
+        transform: scale(0.99);
+    }
+
+    /* Card Status Indicator */
+    .kt-card-status {
+        height: 4px;
+        background: var(--kt-border);
+    }
+
+    .kt-talep-card.beklemede .kt-card-status {
+        background: linear-gradient(90deg, var(--kt-warning) 0%, #fbbf24 100%);
+    }
+
+    .kt-talep-card.onaylandi .kt-card-status {
+        background: linear-gradient(90deg, var(--kt-success) 0%, #34d399 100%);
+    }
+
+    .kt-talep-card.reddedildi .kt-card-status {
+        background: linear-gradient(90deg, var(--kt-danger) 0%, #f87171 100%);
+    }
+
+    .kt-card-body {
+        padding: clamp(16px, 4vw, 24px);
+    }
+
+    /* Card Header */
+    .kt-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .kt-talep-title {
+        font-size: clamp(1rem, 3vw, 1.15rem);
+        font-weight: 700;
+        color: var(--kt-text);
+        margin: 0 0 8px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .kt-talep-type {
+        font-size: 0.7rem;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .kt-talep-type.sinav { background: #dbeafe; color: #2563eb; }
+    .kt-talep-type.paket { background: #d1fae5; color: #059669; }
+    .kt-talep-type.rehber { background: #e0e7ff; color: #4f46e5; }
+
+    /* Status Badge */
+    .kt-status-badge {
+        padding: 8px 14px;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 0.75rem;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .kt-status-badge.beklemede {
+        background: #fef3c7;
+        color: #b45309;
+    }
+
+    .kt-status-badge.onaylandi {
+        background: #d1fae5;
+        color: #047857;
+    }
+
+    .kt-status-badge.reddedildi {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    /* Meta Info */
+    .kt-meta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px 20px;
+        margin-bottom: 12px;
+    }
+
+    .kt-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85rem;
+        color: var(--kt-text-muted);
+    }
+
+    .kt-meta-item i {
+        font-size: 0.9rem;
+        opacity: 0.7;
+    }
+
+    .kt-meta-item strong {
+        color: var(--kt-text);
+        font-weight: 600;
+    }
+
+    /* Details Grid */
+    .kt-details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        background: var(--kt-bg);
+        border-radius: var(--kt-radius-sm);
+        padding: 16px;
+        margin-top: 16px;
+    }
+
+    .kt-detail-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .kt-detail-label {
+        font-size: 0.75rem;
+        color: var(--kt-text-muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .kt-detail-value {
+        font-size: 0.9rem;
+        color: var(--kt-text);
+        font-weight: 500;
+    }
+
+    /* Aciklama Box */
+    .kt-aciklama-box {
+        background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%);
+        border-left: 4px solid var(--kt-warning);
+        border-radius: 0 var(--kt-radius-sm) var(--kt-radius-sm) 0;
+        padding: 14px 16px;
+        margin-top: 16px;
+    }
+
+    .kt-aciklama-box h6 {
+        font-size: 0.8rem;
+        color: #92400e;
+        font-weight: 700;
+        margin: 0 0 6px 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .kt-aciklama-box p {
+        font-size: 0.9rem;
+        color: #78350f;
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    /* Yanit Box */
+    .kt-yanit-box {
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        border-left: 4px solid var(--kt-success);
+        border-radius: 0 var(--kt-radius-sm) var(--kt-radius-sm) 0;
+        padding: 14px 16px;
+        margin-top: 12px;
+    }
+
+    .kt-yanit-box h6 {
+        font-size: 0.8rem;
+        color: #047857;
+        font-weight: 700;
+        margin: 0 0 6px 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .kt-yanit-box p {
+        font-size: 0.9rem;
+        color: #065f46;
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    /* Action Buttons */
+    .kt-action-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--kt-border);
+    }
+
+    .kt-btn {
+        flex: 1;
+        padding: 12px 20px;
+        border-radius: var(--kt-radius-sm);
+        border: none;
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 48px;
+    }
+
+    .kt-btn:active {
+        transform: scale(0.97);
+    }
+
+    .kt-btn-success {
+        background: linear-gradient(135deg, var(--kt-success) 0%, #059669 100%);
+        color: white;
+        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+    }
+
+    .kt-btn-success:hover {
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        transform: translateY(-2px);
+    }
+
+    .kt-btn-danger {
+        background: linear-gradient(135deg, var(--kt-danger) 0%, #dc2626 100%);
+        color: white;
+        box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
+    }
+
+    .kt-btn-danger:hover {
+        box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+        transform: translateY(-2px);
+    }
+
+    /* Empty State */
+    .kt-empty-state {
+        text-align: center;
+        padding: clamp(40px, 10vw, 80px) 20px;
+        background: var(--kt-card);
+        border-radius: var(--kt-radius);
+        border: 2px dashed var(--kt-border);
+    }
+
+    .kt-empty-icon {
+        width: 100px;
+        height: 100px;
+        background: var(--kt-bg);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+    }
+
+    .kt-empty-icon i {
+        font-size: 3rem;
+        color: var(--kt-text-muted);
+        opacity: 0.5;
+    }
+
+    .kt-empty-state h4 {
+        font-weight: 700;
+        color: var(--kt-text);
+        margin-bottom: 8px;
+    }
+
+    .kt-empty-state p {
+        color: var(--kt-text-muted);
+        margin: 0;
+    }
+
+    /* Mobile Optimizations */
+    @media (max-width: 576px) {
+        .kt-card-header {
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .kt-status-badge {
+            align-self: flex-start;
+        }
+
+        .kt-action-buttons {
+            flex-direction: column;
+        }
+
+        .kt-details-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Animation */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .kt-talep-card {
+        animation: fadeInUp 0.4s ease forwards;
+    }
+
+    .kt-talep-card:nth-child(1) { animation-delay: 0.05s; }
+    .kt-talep-card:nth-child(2) { animation-delay: 0.1s; }
+    .kt-talep-card:nth-child(3) { animation-delay: 0.15s; }
+    .kt-talep-card:nth-child(4) { animation-delay: 0.2s; }
+    .kt-talep-card:nth-child(5) { animation-delay: 0.25s; }
 </style>
 
 <!-- Page Header -->
-<div class="page-header">
+<div class="kt-page-header">
     <div class="container">
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>
-                <h1 style="font-weight: 800; margin-bottom: 8px;">
-                    <i class="bi bi-inbox-fill"></i> Talep Yönetimi
-                </h1>
-                <p style="opacity: 0.9; margin: 0;">Gelen sınav taleplerini inceleyin, onaylayın veya reddedin</p>
+                <h1><i class="bi bi-inbox-fill"></i> Talep Yonetimi</h1>
+                <p>Gelen talepleri inceleyin, onaylayin veya reddedin</p>
             </div>
-            <button class="btn btn-light" onclick="showRehberTalepModal()" style="border-radius: 12px; padding: 12px 24px; font-weight: 600;">
-                <i class="bi bi-person-plus"></i> Rehber Öğretmene Talep Gönder
+            <button class="kt-header-btn" onclick="showRehberTalepModal()">
+                <i class="bi bi-person-plus-fill"></i>
+                <span class="d-none d-sm-inline">Rehber Ogretmene Talep</span>
+                <span class="d-sm-none">Talep</span>
             </button>
         </div>
     </div>
 </div>
 
-<!-- Filter Tabs -->
-<div class="filter-tabs">
-    <button class="filter-btn active" onclick="filterTalepler('hepsi')">
-        <i class="bi bi-inbox"></i> Tümü (<%= talepler.length %>)
-    </button>
-    <button class="filter-btn" onclick="filterTalepler('beklemede')">
-        <i class="bi bi-clock-history"></i> Bekleyen (<%= talepler.filter(t => t.durum === 'beklemede').length %>)
-    </button>
-    <button class="filter-btn" onclick="filterTalepler('onaylandi')">
-        <i class="bi bi-check-circle"></i> Onaylanan (<%= talepler.filter(t => t.durum === 'onaylandi').length %>)
-    </button>
-    <button class="filter-btn" onclick="filterTalepler('reddedildi')">
-        <i class="bi bi-x-circle"></i> Reddedilen (<%= talepler.filter(t => t.durum === 'reddedildi').length %>)
-    </button>
-</div>
+<div class="container">
+    <!-- Stats Bar -->
+    <div class="kt-stats-bar">
+        <div class="kt-stat-card active" onclick="filterTalepler('hepsi', this)">
+            <div class="kt-stat-number"><%= talepler.length %></div>
+            <div class="kt-stat-label">Toplam</div>
+        </div>
+        <div class="kt-stat-card beklemede" onclick="filterTalepler('beklemede', this)">
+            <div class="kt-stat-number"><%= talepler.filter(t => t.durum === 'beklemede').length %></div>
+            <div class="kt-stat-label">Bekleyen</div>
+        </div>
+        <div class="kt-stat-card onaylandi" onclick="filterTalepler('onaylandi', this)">
+            <div class="kt-stat-number"><%= talepler.filter(t => t.durum === 'onaylandi').length %></div>
+            <div class="kt-stat-label">Onaylanan</div>
+        </div>
+        <div class="kt-stat-card reddedildi" onclick="filterTalepler('reddedildi', this)">
+            <div class="kt-stat-number"><%= talepler.filter(t => t.durum === 'reddedildi').length %></div>
+            <div class="kt-stat-label">Reddedilen</div>
+        </div>
+    </div>
 
-<!-- Search Box -->
-<div class="search-box">
-    <i class="bi bi-search"></i>
-    <input type="text" id="searchInput" placeholder="Veli adı, sınav adı veya telefon ile ara..." onkeyup="searchTalepler()">
-</div>
+    <!-- Search Box -->
+    <div class="kt-search-box">
+        <i class="bi bi-search"></i>
+        <input type="text" id="searchInput" placeholder="Veli adi, sinav/paket adi veya telefon ile ara..." onkeyup="searchTalepler()">
+    </div>
 
 <!-- Talepler Listesi -->
-<div id="taleplerContainer">
-    <% if (talepler.length === 0) { %>
-        <div class="empty-state">
-            <i class="bi bi-inbox"></i>
-            <h4>Henüz talep bulunmamaktadır</h4>
-            <p>Gelen talepler burada görüntülenecektir.</p>
-        </div>
-    <% } else { %>
-        <% talepler.forEach(function(talep) { %>
-            <div class="talep-card <%= talep.durum %>" data-durum="<%= talep.durum %>" data-search="<%= (talep.veli_ad_soyad || talep.veli_username || '').toLowerCase() %> <%= (talep.sinav_adi || talep.paket_adi || '').toLowerCase() %> <%= (talep.veli_telefon || '').toLowerCase() %> <%= (talep.rehber_ad_soyad || '').toLowerCase() %>">
-                <div class="talep-header">
-                    <div class="talep-info">
-                        <h4>
-                            <% if (talep.talep_tipi === 'rehber') { %>
-                                👨‍🏫 <%= talep.sinav_adi %> <span class="badge bg-info" style="font-size: 0.7rem; vertical-align: middle;">Rehber Talebi</span>
-                            <% } else if (talep.talep_tipi === 'paket') { %>
-                                📦 <%= talep.paket_adi || 'Paket' %> <span class="badge bg-success" style="font-size: 0.7rem; vertical-align: middle;">Paket Talebi</span>
-                            <% } else { %>
-                                📚 <%= talep.sinav_adi %>
+    <div id="taleplerContainer">
+        <% if (talepler.length === 0) { %>
+            <div class="kt-empty-state">
+                <div class="kt-empty-icon">
+                    <i class="bi bi-inbox"></i>
+                </div>
+                <h4>Henuz talep bulunmamaktadir</h4>
+                <p>Gelen talepler burada goruntulenecektir.</p>
+            </div>
+        <% } else { %>
+            <% talepler.forEach(function(talep) { %>
+                <div class="kt-talep-card <%= talep.durum %>" data-durum="<%= talep.durum %>" data-search="<%= (talep.veli_ad_soyad || talep.veli_username || '').toLowerCase() %> <%= (talep.sinav_adi || talep.paket_adi || '').toLowerCase() %> <%= (talep.veli_telefon || '').toLowerCase() %> <%= (talep.rehber_ad_soyad || '').toLowerCase() %>">
+                    <div class="kt-card-status"></div>
+                    <div class="kt-card-body">
+                        <div class="kt-card-header">
+                            <div>
+                                <h4 class="kt-talep-title">
+                                    <% if (talep.talep_tipi === 'rehber') { %>
+                                        <i class="bi bi-mortarboard-fill" style="color: #6366f1;"></i>
+                                        <%= talep.sinav_adi %>
+                                        <span class="kt-talep-type rehber">Rehber Talebi</span>
+                                    <% } else if (talep.talep_tipi === 'paket') { %>
+                                        <i class="bi bi-box-seam-fill" style="color: #10b981;"></i>
+                                        <%= talep.paket_adi || 'Paket' %>
+                                        <span class="kt-talep-type paket">Paket Talebi</span>
+                                    <% } else { %>
+                                        <i class="bi bi-journal-bookmark-fill" style="color: #2563eb;"></i>
+                                        <%= talep.sinav_adi %>
+                                        <span class="kt-talep-type sinav">Sinav Talebi</span>
+                                    <% } %>
+                                </h4>
+                                <div class="kt-meta-row">
+                                    <span class="kt-meta-item">
+                                        <i class="bi bi-person-fill"></i>
+                                        <strong><%= talep.veli_ad_soyad || talep.veli_username %></strong>
+                                    </span>
+                                    <span class="kt-meta-item">
+                                        <i class="bi bi-clock"></i>
+                                        <%= new Date(talep.talep_tarihi || talep.created_at).toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) %>
+                                    </span>
+                                    <% if (talep.veli_telefon) { %>
+                                    <span class="kt-meta-item">
+                                        <i class="bi bi-telephone-fill"></i>
+                                        <%= talep.veli_telefon %>
+                                    </span>
+                                    <% } %>
+                                </div>
+                            </div>
+                            <span class="kt-status-badge <%= talep.durum %>">
+                                <% if (talep.durum === 'beklemede') { %>
+                                    <i class="bi bi-hourglass-split"></i> Beklemede
+                                <% } else if (talep.durum === 'onaylandi') { %>
+                                    <i class="bi bi-check-circle-fill"></i> Onaylandi
+                                <% } else { %>
+                                    <i class="bi bi-x-circle-fill"></i> Reddedildi
+                                <% } %>
+                            </span>
+                        </div>
+
+                        <div class="kt-details-grid">
+                            <div class="kt-detail-item">
+                                <span class="kt-detail-label">E-posta</span>
+                                <span class="kt-detail-value"><%= talep.veli_email || talep.email || 'Belirtilmedi' %></span>
+                            </div>
+                            <% if (talep.talep_tipi === 'sinav' && talep.sinav_tarihi) { %>
+                            <div class="kt-detail-item">
+                                <span class="kt-detail-label">Sinav Tarihi</span>
+                                <span class="kt-detail-value"><%= new Date(talep.sinav_tarihi).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) %></span>
+                            </div>
                             <% } %>
-                        </h4>
-                        <div class="talep-meta">
-                            <span class="meta-item">
-                                <i class="bi bi-person-fill"></i>
-                                <strong><%= talep.veli_ad_soyad || talep.veli_username %></strong>
-                            </span>
-                            <span class="meta-item">
-                                <i class="bi bi-calendar3"></i>
-                                <%= new Date(talep.talep_tarihi || talep.created_at).toLocaleString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
-                            </span>
-                            <% if (talep.talep_tipi === 'rehber' && talep.rehber_ad_soyad) { %>
-                            <span class="meta-item">
-                                <i class="bi bi-mortarboard-fill"></i>
-                                <%= talep.rehber_ad_soyad %> <%= talep.rehber_brans ? `(${talep.rehber_brans})` : '' %>
-                            </span>
+                            <% if (talep.fiyat) { %>
+                            <div class="kt-detail-item">
+                                <span class="kt-detail-label">Fiyat</span>
+                                <span class="kt-detail-value" style="color: #10b981; font-weight: 700;"><%= talep.fiyat %> TL</span>
+                            </div>
                             <% } %>
                             <% if (talep.sinif) { %>
-                            <span class="meta-item">
-                                <i class="bi bi-person-workspace"></i>
-                                <%= talep.sinif %>
-                            </span>
-                            <% } %>
-                            <% if (talep.ders) { %>
-                            <span class="meta-item">
-                                <i class="bi bi-book"></i>
-                                <%= talep.ders %>
-                            </span>
-                            <% } %>
-                        </div>
-                    </div>
-                    <span class="talep-badge <%= talep.durum %>">
-                        <% if (talep.durum === 'beklemede') { %>
-                            ⏳ Beklemede
-                        <% } else if (talep.durum === 'onaylandi') { %>
-                            ✅ Onaylandı
-                        <% } else { %>
-                            ❌ Reddedildi
-                        <% } %>
-                    </span>
-                </div>
-                
-                <div class="talep-details">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <span class="detail-label">👤 Veli:</span>
-                            <span class="detail-value"><%= talep.veli_ad_soyad || talep.veli_username %></span>
-                        </div>
-                        <div class="col-md-6">
-                            <span class="detail-label">📞 Telefon:</span>
-                            <span class="detail-value"><%= talep.veli_telefon || 'Belirtilmedi' %></span>
-                        </div>
-                    </div>
-                    
-                    <% if (talep.talep_tipi === 'sinav') { %>
-                    <!-- SADECE SINAV TALEPLERİ İÇİN -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <span class="detail-label">📧 E-posta:</span>
-                            <span class="detail-value"><%= talep.veli_email %></span>
-                        </div>
-                        <div class="col-md-6">
-                            <span class="detail-label">💰 Fiyat:</span>
-                            <span class="detail-value"><%= talep.fiyat %> TL</span>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <span class="detail-label">📅 Sınav Tarihi:</span>
-                            <span class="detail-value"><%= new Date(talep.sinav_tarihi).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) %></span>
-                        </div>
-                        <% if (talep.yanitlanma_tarihi) { %>
-                        <div class="col-md-6">
-                            <span class="detail-label">📝 Yanıt Tarihi:</span>
-                            <span class="detail-value"><%= new Date(talep.yanitlanma_tarihi).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) %></span>
-                        </div>
-                        <% } %>
-                    </div>
-                    <% } else if (talep.talep_tipi === 'paket') { %>
-                    <!-- PAKET TALEPLERİ İÇİN -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <span class="detail-label">📧 E-posta:</span>
-                            <span class="detail-value"><%= talep.veli_email || talep.email || 'Belirtilmedi' %></span>
-                        </div>
-                        <div class="col-md-6">
-                            <span class="detail-label">💰 Paket Fiyatı:</span>
-                            <span class="detail-value"><%= talep.fiyat || 0 %> TL</span>
-                        </div>
-                    </div>
-                    <% if (talep.sinif) { %>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <span class="detail-label">📚 Sınıf:</span>
-                            <span class="detail-value"><%= talep.sinif %></span>
-                        </div>
-                    </div>
-                    <% } %>
-                    <% } %>
-                    
-                    <% if (talep.aciklama || talep.mesaj) { %>
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            <span class="detail-label">💬 <% if (talep.talep_tipi === 'rehber') { %>Kurum Mesajı<% } else { %>Veli Açıklaması<% } %>:</span>
-                            <div class="detail-value" style="background: white; padding: 12px; border-radius: 8px; margin-top: 8px;">
-                                <%= talep.aciklama || talep.mesaj %>
+                            <div class="kt-detail-item">
+                                <span class="kt-detail-label">Sinif</span>
+                                <span class="kt-detail-value"><%= talep.sinif %></span>
                             </div>
+                            <% } %>
+                            <% if (talep.talep_tipi === 'rehber' && talep.rehber_ad_soyad) { %>
+                            <div class="kt-detail-item">
+                                <span class="kt-detail-label">Rehber Ogretmen</span>
+                                <span class="kt-detail-value"><%= talep.rehber_ad_soyad %> <%= talep.rehber_brans ? `(${talep.rehber_brans})` : '' %></span>
+                            </div>
+                            <% } %>
                         </div>
+
+                        <% if (talep.aciklama || talep.mesaj) { %>
+                        <div class="kt-aciklama-box">
+                            <h6><i class="bi bi-chat-left-text-fill"></i> <% if (talep.talep_tipi === 'rehber') { %>Kurum Mesaji<% } else { %>Veli Aciklamasi<% } %></h6>
+                            <p><%= talep.aciklama || talep.mesaj %></p>
+                        </div>
+                        <% } %>
+
+                        <% if (talep.yanit) { %>
+                        <div class="kt-yanit-box">
+                            <h6><i class="bi bi-reply-fill"></i> Kurum Yaniti</h6>
+                            <p><%= talep.yanit %></p>
+                        </div>
+                        <% } %>
+
+                        <% if (talep.durum === 'beklemede') { %>
+                        <div class="kt-action-buttons">
+                            <button class="kt-btn kt-btn-success" data-talep-id="<%= talep.id %>" data-talep-tipi="<%= talep.talep_tipi || 'sinav' %>" data-sinav-adi="<%= (talep.sinav_adi || talep.paket_adi || '').replace(/"/g, '&quot;') %>" onclick="showYanitModalFromButton(this, 'onayla')">
+                                <i class="bi bi-check-lg"></i> Onayla
+                            </button>
+                            <button class="kt-btn kt-btn-danger" data-talep-id="<%= talep.id %>" data-talep-tipi="<%= talep.talep_tipi || 'sinav' %>" data-sinav-adi="<%= (talep.sinav_adi || talep.paket_adi || '').replace(/"/g, '&quot;') %>" onclick="showYanitModalFromButton(this, 'reddet')">
+                                <i class="bi bi-x-lg"></i> Reddet
+                            </button>
+                        </div>
+                        <% } %>
                     </div>
-                    <% } %>
                 </div>
-                
-                <% if (talep.yanit) { %>
-                <div class="yanit-section">
-                    <h6><i class="bi bi-reply-fill"></i> Kurum Yanıtı</h6>
-                    <p style="margin: 0; color: #92400e;"><%= talep.yanit %></p>
-                </div>
-                <% } %>
-                
-                <% if (talep.durum === 'beklemede') { %>
-                <div class="action-buttons">
-                    <button class="btn-action btn-onayla" data-talep-id="<%= talep.id %>" data-talep-tipi="<%= talep.talep_tipi || 'sinav' %>" data-sinav-adi="<%= (talep.sinav_adi || '').replace(/"/g, '&quot;') %>" onclick="showYanitModalFromButton(this, 'onayla')">
-                        <i class="bi bi-check-circle-fill"></i> Onayla
-                    </button>
-                    <button class="btn-action btn-reddet" data-talep-id="<%= talep.id %>" data-talep-tipi="<%= talep.talep_tipi || 'sinav' %>" data-sinav-adi="<%= (talep.sinav_adi || '').replace(/"/g, '&quot;') %>" onclick="showYanitModalFromButton(this, 'reddet')">
-                        <i class="bi bi-x-circle-fill"></i> Reddet
-                    </button>
-                </div>
-                <% } %>
-            </div>
-        <% }); %>
-    <% } %>
+            <% }); %>
+        <% } %>
+    </div>
 </div>
 
 <!-- Yanıt Modal -->
@@ -485,15 +716,17 @@
 
 <script>
     // Filter Talepler
-    function filterTalepler(durum) {
-        // Update active button
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.classList.remove('active');
+    function filterTalepler(durum, clickedCard) {
+        // Update active stat card
+        document.querySelectorAll('.kt-stat-card').forEach(card => {
+            card.classList.remove('active');
         });
-        event.target.closest('.filter-btn').classList.add('active');
-        
-        // Filter cards
-        const cards = document.querySelectorAll('.talep-card');
+        if (clickedCard) {
+            clickedCard.classList.add('active');
+        }
+
+        // Filter talep cards
+        const cards = document.querySelectorAll('.kt-talep-card');
         cards.forEach(card => {
             if (durum === 'hepsi' || card.dataset.durum === durum) {
                 card.style.display = 'block';
@@ -502,12 +735,12 @@
             }
         });
     }
-    
+
     // Search Talepler
     function searchTalepler() {
         const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-        const cards = document.querySelectorAll('.talep-card');
-        
+        const cards = document.querySelectorAll('.kt-talep-card');
+
         cards.forEach(card => {
             const searchData = card.dataset.search;
             if (searchData.includes(searchTerm)) {
