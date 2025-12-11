@@ -2,9 +2,9 @@
 
 <style>
     :root {
-        --kt-primary: #6366f1;
-        --kt-primary-light: #818cf8;
-        --kt-primary-dark: #4f46e5;
+        --kt-primary: #3b82f6;
+        --kt-primary-light: #2563eb;
+        --kt-primary-dark: #1d4ed8;
         --kt-success: #10b981;
         --kt-warning: #f59e0b;
         --kt-danger: #ef4444;
@@ -13,92 +13,97 @@
         --kt-border: #e2e8f0;
         --kt-bg: #f8fafc;
         --kt-card: #ffffff;
-        --kt-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        --kt-shadow-hover: 0 4px 12px rgba(0,0,0,0.1);
-        --kt-radius: 10px;
-        --kt-radius-sm: 6px;
+        --kt-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        --kt-shadow-hover: 0 4px 12px rgba(0,0,0,0.12);
+        --kt-radius: 16px;
+        --kt-radius-sm: 10px;
     }
 
-    /* Page Header - Compact */
+    /* Page Header - Modern */
     .kt-page-header {
         background: linear-gradient(135deg, var(--kt-primary) 0%, var(--kt-primary-light) 100%);
         color: white;
-        padding: 14px 0;
-        margin: -20px -15px 16px;
-        border-radius: 0 0 var(--kt-radius) var(--kt-radius);
+        padding: 40px 0;
+        margin: -30px -15px 30px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
     }
 
     .kt-page-header h1 {
-        font-size: 1.1rem;
-        font-weight: 700;
+        font-size: 1.75rem;
+        font-weight: 800;
         margin: 0;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 12px;
     }
 
     .kt-page-header p {
-        font-size: 0.75rem;
-        opacity: 0.85;
-        margin: 2px 0 0 0;
+        font-size: 1rem;
+        opacity: 0.9;
+        margin: 8px 0 0 0;
     }
 
     .kt-header-btn {
         background: rgba(255,255,255,0.2);
         border: none;
         color: white;
-        padding: 6px 12px;
-        border-radius: var(--kt-radius-sm);
+        padding: 12px 20px;
+        border-radius: 12px;
         font-weight: 600;
-        font-size: 0.8rem;
+        font-size: 0.95rem;
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
+        transition: all 0.3s ease;
     }
 
     .kt-header-btn:hover {
         background: rgba(255,255,255,0.3);
         color: white;
+        transform: translateY(-2px);
     }
 
-    /* Stats Bar - Compact */
+    /* Stats Bar */
     .kt-stats-bar {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: 8px;
-        margin-bottom: 12px;
+        gap: 16px;
+        margin-bottom: 24px;
     }
 
     @media (max-width: 576px) {
-        .kt-stats-bar { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        .kt-stats-bar { grid-template-columns: repeat(2, 1fr); gap: 12px; }
     }
 
     .kt-stat-card {
         background: var(--kt-card);
-        border-radius: var(--kt-radius-sm);
-        padding: 10px 8px;
+        border-radius: var(--kt-radius);
+        padding: 20px 16px;
         text-align: center;
         box-shadow: var(--kt-shadow);
-        border: 1px solid var(--kt-border);
+        border: 2px solid var(--kt-border);
         cursor: pointer;
-        transition: all 0.15s;
+        transition: all 0.3s ease;
     }
 
-    .kt-stat-card:hover, .kt-stat-card.active {
+    .kt-stat-card:hover {
         box-shadow: var(--kt-shadow-hover);
+        transform: translateY(-2px);
     }
 
     .kt-stat-card.active {
         border-color: var(--kt-primary);
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2);
     }
 
-    .kt-stat-card.active.beklemede { border-color: var(--kt-warning); }
-    .kt-stat-card.active.onaylandi { border-color: var(--kt-success); }
-    .kt-stat-card.active.reddedildi { border-color: var(--kt-danger); }
+    .kt-stat-card.active.beklemede { border-color: var(--kt-warning); box-shadow: 0 4px 20px rgba(245, 158, 11, 0.2); }
+    .kt-stat-card.active.onaylandi { border-color: var(--kt-success); box-shadow: 0 4px 20px rgba(16, 185, 129, 0.2); }
+    .kt-stat-card.active.reddedildi { border-color: var(--kt-danger); box-shadow: 0 4px 20px rgba(239, 68, 68, 0.2); }
 
     .kt-stat-number {
-        font-size: 1.25rem;
-        font-weight: 700;
+        font-size: 2rem;
+        font-weight: 800;
         color: var(--kt-primary);
         line-height: 1;
     }
@@ -108,59 +113,62 @@
     .kt-stat-card.reddedildi .kt-stat-number { color: var(--kt-danger); }
 
     .kt-stat-label {
-        font-size: 0.65rem;
+        font-size: 0.85rem;
         color: var(--kt-text-muted);
         font-weight: 600;
-        margin-top: 2px;
+        margin-top: 8px;
     }
 
-    /* Search Box - Compact */
+    /* Search Box */
     .kt-search-box {
         background: var(--kt-card);
         border-radius: var(--kt-radius);
-        padding: 8px 12px;
-        border: 1px solid var(--kt-border);
-        margin-bottom: 12px;
+        padding: 14px 20px;
+        border: 2px solid var(--kt-border);
+        margin-bottom: 24px;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 12px;
+        transition: all 0.3s ease;
     }
 
     .kt-search-box:focus-within {
         border-color: var(--kt-primary);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
     }
 
     .kt-search-box input {
         border: none;
         outline: none;
         width: 100%;
-        font-size: 0.85rem;
+        font-size: 1rem;
         background: transparent;
     }
 
     .kt-search-box i {
         color: var(--kt-text-muted);
-        font-size: 0.9rem;
+        font-size: 1.1rem;
     }
 
-    /* Talep Cards - Compact */
+    /* Talep Cards */
     .kt-talep-card {
         background: var(--kt-card);
         border-radius: var(--kt-radius);
-        margin-bottom: 8px;
+        margin-bottom: 16px;
         box-shadow: var(--kt-shadow);
         border: 1px solid var(--kt-border);
         overflow: hidden;
-        transition: all 0.15s;
+        transition: all 0.3s ease;
     }
 
     .kt-talep-card:hover {
         box-shadow: var(--kt-shadow-hover);
+        transform: translateY(-2px);
     }
 
     /* Card Status Indicator */
     .kt-card-status {
-        height: 3px;
+        height: 4px;
         background: var(--kt-border);
     }
 
@@ -169,35 +177,35 @@
     .kt-talep-card.reddedildi .kt-card-status { background: var(--kt-danger); }
 
     .kt-card-body {
-        padding: 12px;
+        padding: 20px;
     }
 
-    /* Card Header - Compact */
+    /* Card Header */
     .kt-card-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 8px;
-        margin-bottom: 8px;
+        gap: 12px;
+        margin-bottom: 12px;
     }
 
     .kt-talep-title {
-        font-size: 0.9rem;
-        font-weight: 600;
+        font-size: 1.1rem;
+        font-weight: 700;
         color: var(--kt-text);
-        margin: 0 0 4px 0;
+        margin: 0 0 8px 0;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 10px;
         flex-wrap: wrap;
     }
 
-    .kt-talep-title i { font-size: 0.85rem; }
+    .kt-talep-title i { font-size: 1rem; }
 
     .kt-talep-type {
-        font-size: 0.6rem;
-        padding: 2px 6px;
-        border-radius: 10px;
+        font-size: 0.75rem;
+        padding: 4px 10px;
+        border-radius: 20px;
         font-weight: 600;
     }
 
@@ -205,207 +213,218 @@
     .kt-talep-type.paket { background: #d1fae5; color: #059669; }
     .kt-talep-type.rehber { background: #e0e7ff; color: #4f46e5; }
 
-    /* Status Badge - Compact */
+    /* Status Badge */
     .kt-status-badge {
-        padding: 4px 8px;
-        border-radius: 10px;
+        padding: 6px 12px;
+        border-radius: 20px;
         font-weight: 600;
-        font-size: 0.65rem;
+        font-size: 0.8rem;
         white-space: nowrap;
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 6px;
     }
 
-    .kt-status-badge i { font-size: 0.7rem; }
+    .kt-status-badge i { font-size: 0.85rem; }
 
     .kt-status-badge.beklemede { background: #fef3c7; color: #b45309; }
     .kt-status-badge.onaylandi { background: #d1fae5; color: #047857; }
     .kt-status-badge.reddedildi { background: #fee2e2; color: #b91c1c; }
 
-    /* Meta Info - Compact */
+    /* Meta Info */
     .kt-meta-row {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px 12px;
+        gap: 8px 16px;
     }
 
     .kt-meta-item {
         display: flex;
         align-items: center;
-        gap: 4px;
-        font-size: 0.75rem;
+        gap: 6px;
+        font-size: 0.9rem;
         color: var(--kt-text-muted);
     }
 
-    .kt-meta-item i { font-size: 0.7rem; }
+    .kt-meta-item i { font-size: 0.85rem; }
     .kt-meta-item strong { color: var(--kt-text); font-weight: 600; }
 
-    /* Details Grid - Compact */
+    /* Details Grid */
     .kt-details-grid {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px 16px;
+        gap: 12px 24px;
         background: var(--kt-bg);
         border-radius: var(--kt-radius-sm);
-        padding: 8px 10px;
-        margin-top: 8px;
+        padding: 14px 16px;
+        margin-top: 12px;
     }
 
     .kt-detail-item {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 6px;
     }
 
     .kt-detail-label {
-        font-size: 0.65rem;
+        font-size: 0.8rem;
         color: var(--kt-text-muted);
         font-weight: 600;
     }
 
     .kt-detail-value {
-        font-size: 0.75rem;
+        font-size: 0.9rem;
         color: var(--kt-text);
         font-weight: 500;
     }
 
-    /* Aciklama Box - Compact */
+    /* Aciklama Box */
     .kt-aciklama-box {
         background: #fffbeb;
-        border-left: 3px solid var(--kt-warning);
+        border-left: 4px solid var(--kt-warning);
         border-radius: 0 var(--kt-radius-sm) var(--kt-radius-sm) 0;
-        padding: 8px 10px;
-        margin-top: 8px;
+        padding: 12px 16px;
+        margin-top: 12px;
     }
 
     .kt-aciklama-box h6 {
-        font-size: 0.7rem;
+        font-size: 0.85rem;
         color: #92400e;
         font-weight: 600;
-        margin: 0 0 3px 0;
+        margin: 0 0 6px 0;
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 6px;
     }
 
     .kt-aciklama-box p {
-        font-size: 0.75rem;
+        font-size: 0.9rem;
         color: #78350f;
         margin: 0;
-        line-height: 1.4;
+        line-height: 1.5;
     }
 
-    /* Yanit Box - Compact */
+    /* Yanit Box */
     .kt-yanit-box {
         background: #ecfdf5;
-        border-left: 3px solid var(--kt-success);
+        border-left: 4px solid var(--kt-success);
         border-radius: 0 var(--kt-radius-sm) var(--kt-radius-sm) 0;
-        padding: 8px 10px;
-        margin-top: 6px;
+        padding: 12px 16px;
+        margin-top: 10px;
     }
 
     .kt-yanit-box h6 {
-        font-size: 0.7rem;
+        font-size: 0.85rem;
         color: #047857;
         font-weight: 600;
-        margin: 0 0 3px 0;
+        margin: 0 0 6px 0;
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 6px;
     }
 
     .kt-yanit-box p {
-        font-size: 0.75rem;
+        font-size: 0.9rem;
         color: #065f46;
         margin: 0;
-        line-height: 1.4;
+        line-height: 1.5;
     }
 
-    /* Action Buttons - Mini, Right Aligned */
+    /* Action Buttons */
     .kt-action-buttons {
         display: flex;
-        gap: 6px;
-        margin-top: 8px;
-        padding-top: 8px;
+        gap: 10px;
+        margin-top: 16px;
+        padding-top: 16px;
         border-top: 1px solid var(--kt-border);
         justify-content: flex-end;
     }
 
     .kt-btn {
-        padding: 5px 10px;
-        border-radius: 4px;
+        padding: 10px 18px;
+        border-radius: 10px;
         border: none;
         font-weight: 600;
-        font-size: 0.7rem;
+        font-size: 0.9rem;
         cursor: pointer;
-        transition: all 0.15s;
+        transition: all 0.3s ease;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 4px;
+        gap: 6px;
     }
 
-    .kt-btn i { font-size: 0.65rem; }
+    .kt-btn i { font-size: 0.85rem; }
 
     .kt-btn-success {
         background: var(--kt-success);
         color: white;
     }
 
-    .kt-btn-success:hover { background: #059669; }
+    .kt-btn-success:hover {
+        background: #059669;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
 
     .kt-btn-danger {
         background: var(--kt-danger);
         color: white;
     }
 
-    .kt-btn-danger:hover { background: #dc2626; }
+    .kt-btn-danger:hover {
+        background: #dc2626;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
 
-    /* Empty State - Compact */
+    /* Empty State */
     .kt-empty-state {
         text-align: center;
-        padding: 40px 20px;
+        padding: 60px 30px;
         background: var(--kt-card);
         border-radius: var(--kt-radius);
-        border: 1px dashed var(--kt-border);
+        border: 2px dashed var(--kt-border);
     }
 
     .kt-empty-icon {
-        width: 60px;
-        height: 60px;
+        width: 80px;
+        height: 80px;
         background: var(--kt-bg);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 auto 12px;
+        margin: 0 auto 20px;
     }
 
     .kt-empty-icon i {
-        font-size: 1.5rem;
+        font-size: 2rem;
         color: var(--kt-text-muted);
     }
 
     .kt-empty-state h4 {
-        font-size: 0.95rem;
-        font-weight: 600;
+        font-size: 1.25rem;
+        font-weight: 700;
         color: var(--kt-text);
-        margin-bottom: 4px;
+        margin-bottom: 8px;
     }
 
     .kt-empty-state p {
-        font-size: 0.8rem;
+        font-size: 1rem;
         color: var(--kt-text-muted);
         margin: 0;
     }
 
     /* Mobile */
     @media (max-width: 576px) {
-        .kt-card-header { flex-direction: column; gap: 6px; }
+        .kt-page-header { padding: 30px 0; }
+        .kt-page-header h1 { font-size: 1.4rem; }
+        .kt-card-header { flex-direction: column; gap: 10px; }
         .kt-status-badge { align-self: flex-start; }
         .kt-action-buttons { flex-direction: row; }
-        .kt-details-grid { flex-direction: column; gap: 4px; }
+        .kt-details-grid { flex-direction: column; gap: 8px; }
+        .kt-btn { padding: 12px 16px; flex: 1; }
     }
 </style>
 
