@@ -99,6 +99,39 @@ function isTurso() {
   return USE_TURSO;
 }
 
+// Turso'da eksik tablolari olustur (uygulama baslarken cagirilir)
+async function ensureTursoTables() {
+  if (!USE_TURSO) return;
+
+  const tables = [
+    `CREATE TABLE IF NOT EXISTS paket_talepleri (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      veli_id INTEGER NOT NULL,
+      paket_id INTEGER NOT NULL,
+      durum TEXT DEFAULT 'beklemede',
+      aciklama TEXT,
+      yanit TEXT,
+      ad_soyad TEXT,
+      telefon TEXT,
+      email TEXT,
+      talep_tarihi DATETIME DEFAULT CURRENT_TIMESTAMP,
+      yanitlanma_tarihi DATETIME
+    )`
+  ];
+
+  for (const sql of tables) {
+    try {
+      await tursoClient.execute(sql);
+      console.log('Turso table ensured:', sql.substring(0, 50) + '...');
+    } catch (err) {
+      // Tablo zaten varsa sorun yok
+      if (!err.message.includes('already exists')) {
+        console.error('Turso table creation warning:', err.message);
+      }
+    }
+  }
+}
+
 module.exports = {
   initConnection,
   dbGet,
@@ -106,5 +139,6 @@ module.exports = {
   dbRun,
   getDb,
   isTurso,
-  USE_TURSO
+  USE_TURSO,
+  ensureTursoTables
 };

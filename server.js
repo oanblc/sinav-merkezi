@@ -14,7 +14,7 @@ const { PDFDocument } = require('pdf-lib');
 require('dotenv').config();
 
 // Turso/SQLite Database Module
-const { initConnection, dbGet, dbAll, dbRun, getDb, isTurso, USE_TURSO } = require('./db');
+const { initConnection, dbGet, dbAll, dbRun, getDb, isTurso, USE_TURSO, ensureTursoTables } = require('./db');
 const { initDatabase } = require('./init-db');
 
 const app = express();
@@ -527,8 +527,12 @@ const answerKeyUpload = multer({
 initConnection();
 
 // Initialize database tables (async)
-initDatabase().then(() => {
+initDatabase().then(async () => {
   console.log('Database ready');
+  // Turso icin eksik tablolari olustur
+  if (USE_TURSO) {
+    await ensureTursoTables();
+  }
 }).catch(err => {
   console.error('Database init failed:', err);
 });
