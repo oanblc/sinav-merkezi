@@ -3858,10 +3858,11 @@ app.post('/kurum/ogrenci-kayit-ekle', requireAuth, async (req, res) => {
       if (!mevcutVeli) {
         // Yeni veli hesabi olustur - TC hem kullanici adi hem sifre
         const hashedPassword = await bcrypt.hash(tcTemiz, 10);
+        const tempEmail = tcTemiz + '@temp.veli.com';
         await dbRun(
-          `INSERT INTO users (username, password_hash, user_type, ad_soyad, telefon, created_at)
-           VALUES (?, ?, 'veli', ?, ?, datetime('now'))`,
-          [tcTemiz, hashedPassword, veli_adi || ogrenci_adi_soyadi + ' Velisi', veli_telefon || telefon]
+          `INSERT INTO users (username, password_hash, user_type, ad_soyad, telefon, email, created_at)
+           VALUES (?, ?, 'veli', ?, ?, ?, datetime('now'))`,
+          [tcTemiz, hashedPassword, veli_adi || ogrenci_adi_soyadi + ' Velisi', veli_telefon || telefon, tempEmail]
         );
         veliHesabiMesaji = ' Veli hesabi otomatik olusturuldu (TC: ' + tcTemiz + ')';
         console.log('Otomatik veli hesabi olusturuldu - TC:', tcTemiz);
@@ -4116,10 +4117,11 @@ app.post('/kurum/ogrenci-import-excel', requireAuth, upload.single('excelFile'),
 
           if (!mevcutVeli) {
             const hashedPassword = await bcrypt.hash(tc_kimlik_no, 10);
+            const tempEmail = tc_kimlik_no + '@temp.veli.com';
             await dbRun(
-              `INSERT INTO users (username, password_hash, user_type, ad_soyad, telefon, created_at)
-               VALUES (?, ?, 'veli', ?, ?, datetime('now'))`,
-              [tc_kimlik_no, hashedPassword, veli_adi || ogrenci_adi_soyadi + ' Velisi', veli_telefon || telefon]
+              `INSERT INTO users (username, password_hash, user_type, ad_soyad, telefon, email, created_at)
+               VALUES (?, ?, 'veli', ?, ?, ?, datetime('now'))`,
+              [tc_kimlik_no, hashedPassword, veli_adi || ogrenci_adi_soyadi + ' Velisi', veli_telefon || telefon, tempEmail]
             );
             veliOlusturulan++;
           }
