@@ -9008,19 +9008,30 @@ server.on('error', (err) => {
   process.exit(1);
 });
 
-// Graceful shutdown
-// Rehber - Manuel Eslestirme KALDIRILDI (Sadece kurum yapabilir)
-
-process.on('SIGINT', () => {
-  db.close((err) => {
-    if (err) {
-      console.error('Veritabani kapatma hatasi:', err);
-    } else {
-      console.log('Database connected:', DB_PATH);
-    }
-    process.exit(0);
-  });
+// Global hata yakalayicilar - stray async hatalar sureci OLDURMESIN
+// (production'da yakalanmamis bir hata uygulamayi cokertip healthcheck'i
+//  basarisiz birakir; logla ama ayakta kal)
+process.on('uncaughtException', (err) => {
+  console.error('uncaughtException (devam ediliyor):', err && err.stack ? err.stack : err);
 });
+process.on('unhandledRejection', (reason) => {
+  console.error('unhandledRejection (devam ediliyor):', reason && reason.stack ? reason.stack : reason);
+});
+
+// Graceful shutdown - hem SIGINT hem SIGTERM (Railway SIGTERM gonderir)
+function gracefulShutdown(signal) {
+  console.log(`${signal} alindi, sunucu kapatiliyor...`);
+  let kapandi = false;
+  const cik = () => { if (!kapandi) { kapandi = true; process.exit(0); } };
+  // HTTP sunucusunu kapat
+  try { server.close(cik); } catch (e) { /* yoksay */ }
+  // Local SQLite ise baglantiyi kapat (Turso modunda getDb() null doner)
+  try { const localDb = getDb(); if (localDb && typeof localDb.close === 'function') localDb.close(() => {}); } catch (e) { /* yoksay */ }
+  // En fazla 8sn bekle, sonra zorla cik
+  setTimeout(cik, 8000).unref();
+}
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 
 
