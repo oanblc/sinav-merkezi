@@ -484,38 +484,34 @@ async function initDatabase() {
 }
 
 // Mevcut velileri ogrenci_kayitlari tablosuna bagla (TC eslesmesi ile)
+// NOT: Tek bir toplu UPDATE kullanir - onceki N+1 dongu Turso'da binlerce
+// round-trip yapip deploy'u stall/crash ettirebiliyordu.
 async function migrateVeliBaglantisi() {
   try {
     console.log('Veli baglantisi migration basliyor...');
 
-    // Bagli olmayan velileri bul ve bagla
-    const veliler = await dbAll("SELECT id, username FROM users WHERE user_type = 'veli'");
-    let baglantiSayisi = 0;
+    const sonuc = await dbRun(`
+      UPDATE ogrenci_kayitlari
+      SET veli_id = (
+        SELECT u.id FROM users u
+        WHERE u.user_type = 'veli'
+          AND REPLACE(CAST(u.username AS TEXT), '.0', '') = REPLACE(CAST(ogrenci_kayitlari.tc_kimlik_no AS TEXT), '.0', '')
+          AND LENGTH(REPLACE(CAST(u.username AS TEXT), '.0', '')) = 11
+        LIMIT 1
+      )
+      WHERE veli_id IS NULL
+        AND tc_kimlik_no IS NOT NULL
+        AND EXISTS (
+          SELECT 1 FROM users u2
+          WHERE u2.user_type = 'veli'
+            AND REPLACE(CAST(u2.username AS TEXT), '.0', '') = REPLACE(CAST(ogrenci_kayitlari.tc_kimlik_no AS TEXT), '.0', '')
+            AND LENGTH(REPLACE(CAST(u2.username AS TEXT), '.0', '')) = 11
+        )
+    `);
 
-    for (const veli of veliler) {
-      // TC temizle (.0 kaldir)
-      let tc = veli.username ? veli.username.toString().replace('.0', '').trim() : null;
-
-      if (!tc || tc.length !== 11) {
-        continue;
-      }
-
-      // ogrenci_kayitlari'nda TC eslesmesi ara
-      const ogrenci = await dbGet(`
-        SELECT id, ogrenci_adi_soyadi, veli_id
-        FROM ogrenci_kayitlari
-        WHERE REPLACE(CAST(tc_kimlik_no AS TEXT), '.0', '') = ?
-      `, [tc]);
-
-      if (ogrenci && !ogrenci.veli_id) {
-        // veli_id bagla
-        await dbRun('UPDATE ogrenci_kayitlari SET veli_id = ? WHERE id = ?', [veli.id, ogrenci.id]);
-        baglantiSayisi++;
-      }
-    }
-
-    if (baglantiSayisi > 0) {
-      console.log('Veli baglantisi migration: ' + baglantiSayisi + ' yeni baglanti yapildi');
+    const sayi = sonuc && sonuc.changes ? sonuc.changes : 0;
+    if (sayi > 0) {
+      console.log('Veli baglantisi migration: ' + sayi + ' yeni baglanti yapildi');
     } else {
       console.log('Veli baglantisi migration: Tum veliler zaten bagli');
     }
