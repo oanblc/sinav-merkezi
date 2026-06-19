@@ -77,7 +77,11 @@ async function dbRun(query, params = []) {
       const result = await tursoClient.execute({ sql: query, args: params });
       return { lastID: Number(result.lastInsertRowid) || 0, changes: result.rowsAffected || 0 };
     } catch (err) {
-      console.error('Turso dbRun error:', err.message);
+      // "duplicate column name" hatalari beklenen migration gurultusudur
+      // (safeAlterTable bunlari zaten yutuyor) - loglamadan tekrar firlat
+      if (!/duplicate column name/i.test(err.message)) {
+        console.error('Turso dbRun error:', err.message);
+      }
       throw err;
     }
   } else {
