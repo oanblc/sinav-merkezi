@@ -294,7 +294,7 @@
             function paraFormat(n){ return n.toLocaleString('tr-TR'); }
             %>
             <% ogrenciler.forEach(ogr => { %>
-            <tr>
+            <tr class="ogr-row" style="cursor: pointer;" data-ogr='<%= JSON.stringify(ogr) %>'>
                 <td><strong><%= ogr.sinif %></strong></td>
                 <td><%= ogr.ogrenci_adi_soyadi %></td>
                 <td>
@@ -898,6 +898,32 @@
     </div>
 </div>
 
+<!-- Öğrenci Detay Modal -->
+<div class="modal fade" id="detayModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-vcard"></i> Öğrenci Detayı <span id="detay_baslik" style="font-weight:400; opacity:.9;"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detay_govde" style="padding: 24px;">
+                <!-- JS ile doldurulur -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" id="detay_odemeBtn">
+                    <i class="bi bi-cash-coin"></i> Ödeme Geçmişi
+                </button>
+                <button type="button" class="btn btn-primary" id="detay_duzenleBtn">
+                    <i class="bi bi-pencil"></i> Düzenle
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
@@ -1003,12 +1029,6 @@ $(document).ready(function() {
 
     // DataTable başlat
     table = $('#ogrenciTable').DataTable({
-        responsive: {
-            details: {
-                type: 'column',
-                target: 'tr'
-            }
-        },
         language: {
             emptyTable: "Tabloda veri yok",
             info: "_TOTAL_ kayıttan _START_ - _END_ arası gösteriliyor",
@@ -1033,43 +1053,40 @@ $(document).ready(function() {
         pageLength: 25,
         order: [[0, 'asc'], [1, 'asc']],
         columnDefs: [
-            { 
-                className: 'dtr-control',
-                orderable: false,
-                targets: 0
-            },
-            { 
-                orderable: false, 
-                targets: -1,
-                responsivePriority: 1
-            },
-            {
-                responsivePriority: 2,
-                targets: 1
-            },
-            {
-                responsivePriority: 3,
-                targets: 9
-            }
+            // Tabloda sadece ozet kolonlar gorunsun; geri kalanlar detay popup'inda
+            { targets: [2, 3, 5, 7, 8, 10, 11, 12], visible: false },
+            { orderable: false, targets: -1 }
         ],
         dom: 'Bfrtip',
         buttons: [
             {
                 extend: 'excel',
                 text: '<i class="bi bi-file-earmark-excel"></i> Excel',
-                className: 'btn-sm'
+                className: 'btn-sm',
+                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] }
             },
             {
                 extend: 'csv',
                 text: '<i class="bi bi-filetype-csv"></i> CSV',
-                className: 'btn-sm'
+                className: 'btn-sm',
+                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] }
             },
             {
                 extend: 'print',
                 text: '<i class="bi bi-printer"></i> Yazdır',
-                className: 'btn-sm'
+                className: 'btn-sm',
+                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] }
             }
         ]
+    });
+
+    // Satira tiklayinca detay popup'i ac (islem butonlari haric)
+    $('#ogrenciTable tbody').on('click', 'tr.ogr-row', function(e) {
+        if ($(e.target).closest('button, a, .action-btns').length) return;
+        try {
+            const ogr = JSON.parse(this.getAttribute('data-ogr'));
+            showDetay(ogr);
+        } catch (err) { console.error('Detay acilamadi:', err); }
     });
     
     // Filtreler
@@ -1109,6 +1126,60 @@ function hesaplaKalan(prefix){
         else if (odenen >= tutar) durumSelect.value = 'YAPILDI';
         else durumSelect.value = 'KISMEN ÖDENDİ';
     }
+}
+
+// ===== Öğrenci Detay Popup =====
+let detayModalRef = null;
+function temizle(v) {
+    if (v === null || v === undefined || v === '') return '-';
+    let s = String(v);
+    if (s.endsWith('.0')) s = s.slice(0, -2);
+    return s;
+}
+function showDetay(ogr) {
+    const tutar = paraToNumber(ogr.tutar);
+    const odenen = paraToNumber(ogr.odenen_tutar);
+    const kalan = tutar - odenen;
+
+    document.getElementById('detay_baslik').textContent = '— ' + (ogr.ogrenci_adi_soyadi || '');
+
+    const satir = (etiket, deger) =>
+        '<div class="col-md-6 mb-3"><div style="font-size:.8rem; color:#94a3b8; font-weight:600; text-transform:uppercase; letter-spacing:.3px;">' +
+        etiket + '</div><div style="font-size:1rem; color:#1e293b; font-weight:600;">' + deger + '</div></div>';
+
+    let html = '<div class="row">';
+    html += satir('Sınıf', temizle(ogr.sinif));
+    html += satir('Öğrenci Adı Soyadı', temizle(ogr.ogrenci_adi_soyadi));
+    html += satir('Telefon Kaydı', temizle(ogr.telefon));
+    html += satir('T.C. Kimlik No', temizle(ogr.tc_kimlik_no));
+    html += satir('Öğrenci Veli', temizle(ogr.veli_adi));
+    html += satir('Veli Telefon', temizle(ogr.veli_telefon));
+    html += satir('Ödeme Türü', temizle(ogr.odeme_turu));
+    html += satir('Edesis Kaydı', temizle(ogr.edessis_kaydi));
+    html += satir('Taksit', temizle(ogr.taksit));
+    html += satir('Ödeme Durumu', temizle(ogr.odeme_durumu));
+    html += '</div><hr>';
+    // Ödeme özeti
+    html += '<div class="row g-2">';
+    html += '<div class="col-4"><div style="background:#eff6ff; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:.75rem; color:#64748b;">Tutar</div><div style="font-size:1.15rem; font-weight:800; color:#1e40af;">' + (tutar > 0 ? paraFormat(tutar) + ' ₺' : '-') + '</div></div></div>';
+    html += '<div class="col-4"><div style="background:#ecfdf5; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:.75rem; color:#64748b;">Ödenen</div><div style="font-size:1.15rem; font-weight:800; color:#059669;">' + (odenen > 0 ? paraFormat(odenen) + ' ₺' : '-') + '</div></div></div>';
+    html += '<div class="col-4"><div style="background:' + (kalan > 0 ? '#fef2f2' : '#ecfdf5') + '; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:.75rem; color:#64748b;">Kalan</div><div style="font-size:1.15rem; font-weight:800; color:' + (kalan > 0 ? '#dc2626' : '#059669') + ';">' + (tutar > 0 ? paraFormat(kalan) + ' ₺' : '-') + '</div></div></div>';
+    html += '</div>';
+
+    document.getElementById('detay_govde').innerHTML = html;
+
+    // Footer aksiyon butonlari
+    document.getElementById('detay_duzenleBtn').onclick = function() {
+        detayModalRef.hide();
+        editOgrenci(ogr);
+    };
+    document.getElementById('detay_odemeBtn').onclick = function() {
+        detayModalRef.hide();
+        showOdemeGecmisi(ogr.id);
+    };
+
+    if (!detayModalRef) detayModalRef = new bootstrap.Modal(document.getElementById('detayModal'));
+    detayModalRef.show();
 }
 
 // Modal functions
