@@ -252,6 +252,7 @@
     <select id="odemeDurumuFilter" class="form-select">
         <option value="">💰 Tüm Ödeme Durumları</option>
         <option>Bekliyor</option>
+        <option>Kısmen</option>
         <option>Yapıldı</option>
         <option>Havale</option>
         <option>Ücretsiz</option>
@@ -270,6 +271,8 @@
                 <th>Öğrenci Veli</th>
                 <th>Veli Telefon</th>
                 <th>Tutar</th>
+                <th>Ödenen</th>
+                <th>Kalan</th>
                 <th>Ödeme Durumu</th>
                 <th>Ödeme Türü</th>
                 <th>Edesis Kaydı</th>
@@ -278,6 +281,18 @@
             </tr>
         </thead>
         <tbody>
+            <%
+            // TR para formatini sayiya cevir ("4.000 TRY" -> 4000, "5.000,50" -> 5000.50)
+            function paraToNumber(v){
+                if(v===null||v===undefined) return 0;
+                let s=String(v).replace(/[^0-9.,]/g,'').trim();
+                if(!s) return 0;
+                if(s.includes(',')) s=s.replace(/\./g,'').replace(',', '.');
+                else s=s.replace(/\.(?=\d{3}(\D|$))/g,'');
+                const n=parseFloat(s); return isNaN(n)?0:n;
+            }
+            function paraFormat(n){ return n.toLocaleString('tr-TR'); }
+            %>
             <% ogrenciler.forEach(ogr => { %>
             <tr>
                 <td><strong><%= ogr.sinif %></strong></td>
@@ -317,8 +332,29 @@
                         -
                     <% } %>
                 </td>
+                <%
+                    const _tutar = paraToNumber(ogr.tutar);
+                    const _odenen = paraToNumber(ogr.odenen_tutar);
+                    const _kalan = _tutar - _odenen;
+                %>
                 <td>
-                    <% 
+                    <% if (_odenen > 0) { %>
+                        <span style="color: #059669; font-weight: 600;"><%= paraFormat(_odenen) %> ₺</span>
+                    <% } else { %>
+                        -
+                    <% } %>
+                </td>
+                <td>
+                    <% if (_tutar > 0) { %>
+                        <span class="badge bg-<%= _kalan > 0 ? 'danger' : 'success' %>" style="font-size: 0.85rem;">
+                            <%= paraFormat(_kalan) %> ₺
+                        </span>
+                    <% } else { %>
+                        -
+                    <% } %>
+                </td>
+                <td>
+                    <%
                     let badgeClass = 'secondary';
                     let durumText = ogr.odeme_durumu || '-';
                     
@@ -331,6 +367,9 @@
                     } else if (ogr.odeme_durumu === 'HAVALE') {
                         badgeClass = 'info';
                         durumText = 'Havale';
+                    } else if (ogr.odeme_durumu && ogr.odeme_durumu.toUpperCase().indexOf('KISMEN') !== -1) {
+                        badgeClass = 'danger';
+                        durumText = 'Kısmen Ödendi';
                     }
                     %>
                     <span class="badge bg-<%= badgeClass %>">
@@ -351,6 +390,9 @@
                         %>
                         <button class="btn btn-info btn-action" onclick="showVeliBilgileri('<%= veliTelForBtn %>', '<%= ogr.veli_adi %>')" title="Veli Giriş Bilgileri">
                             <i class="bi bi-person-lock"></i>
+                        </button>
+                        <button class="btn btn-success btn-action" onclick="showOdemeGecmisi(<%= ogr.id %>)" title="Ödeme Geçmişi / Taksitler">
+                            <i class="bi bi-cash-coin"></i>
                         </button>
                         <button class="btn btn-primary btn-action" onclick='editOgrenci(<%= JSON.stringify(ogr) %>)' title="Düzenle">
                             <i class="bi bi-pencil"></i>
@@ -421,14 +463,23 @@
                             <input type="tel" class="form-control telefon-input" name="veli_telefon" placeholder="05XX XXX XX XX" maxlength="14">
                             <small class="text-muted">Ornek: 0532 123 45 67</small>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Tutar</label>
-                            <input type="text" class="form-control" name="tutar" placeholder="Örn: 4.000 TRY">
+                        <div class="col-md-4">
+                            <label class="form-label">Tutar (Toplam)</label>
+                            <input type="text" class="form-control" id="add_tutar" name="tutar" placeholder="Örn: 5.000" oninput="hesaplaKalan('add')">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Ödenen</label>
+                            <input type="text" class="form-control" id="add_odenen_tutar" name="odenen_tutar" placeholder="Örn: 2.000" oninput="hesaplaKalan('add')">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Kalan</label>
+                            <input type="text" class="form-control" id="add_kalan" readonly style="background:#f8fafc; font-weight:700;">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Ödeme Durumu</label>
-                            <select class="form-select" name="odeme_durumu">
+                            <select class="form-select" id="add_odeme_durumu" name="odeme_durumu">
                                 <option value="BEKLİYOR">BEKLİYOR</option>
+                                <option value="KISMEN ÖDENDİ">KISMEN ÖDENDİ</option>
                                 <option value="YAPILDI">YAPILDI</option>
                                 <option value="HAVALE">HAVALE</option>
                                 <option value="ÜCRETSİZ">ÜCRETSİZ</option>
@@ -523,14 +574,24 @@
                             <input type="tel" class="form-control telefon-input" id="edit_veli_telefon" name="veli_telefon" placeholder="05XX XXX XX XX" maxlength="14">
                             <small class="text-muted">Ornek: 0532 123 45 67</small>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Tutar</label>
-                            <input type="text" class="form-control" id="edit_tutar" name="tutar">
+                        <div class="col-md-4">
+                            <label class="form-label">Tutar (Toplam)</label>
+                            <input type="text" class="form-control" id="edit_tutar" name="tutar" oninput="hesaplaKalan('edit')">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Ödenen</label>
+                            <input type="text" class="form-control" id="edit_odenen_tutar" name="odenen_tutar" placeholder="Örn: 2.000" oninput="hesaplaKalan('edit')">
+                            <small class="text-muted">Taksitli takip için <i class="bi bi-cash-coin"></i> Ödeme Geçmişi'ni kullanın</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Kalan</label>
+                            <input type="text" class="form-control" id="edit_kalan" readonly style="background:#f8fafc; font-weight:700;">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Ödeme Durumu</label>
                             <select class="form-select" id="edit_odeme_durumu" name="odeme_durumu">
                                 <option value="BEKLİYOR">BEKLİYOR</option>
+                                <option value="KISMEN ÖDENDİ">KISMEN ÖDENDİ</option>
                                 <option value="YAPILDI">YAPILDI</option>
                                 <option value="HAVALE">HAVALE</option>
                                 <option value="ÜCRETSİZ">ÜCRETSİZ</option>
@@ -569,6 +630,77 @@
     </div>
 </div>
 
+<!-- Ödeme Geçmişi / Taksit Modal -->
+<div class="modal fade" id="odemeGecmisiModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white;">
+                <h5 class="modal-title">
+                    <i class="bi bi-cash-coin"></i> Ödeme Geçmişi <span id="og_ogrenciAd" style="font-weight:400; opacity:.9;"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <!-- Özet -->
+                <div class="row g-2 mb-4">
+                    <div class="col-4">
+                        <div style="background:#eff6ff; border-radius:12px; padding:14px; text-align:center;">
+                            <div style="font-size:.8rem; color:#64748b;">Toplam Tutar</div>
+                            <div id="og_tutar" style="font-size:1.3rem; font-weight:800; color:#1e40af;">-</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div style="background:#ecfdf5; border-radius:12px; padding:14px; text-align:center;">
+                            <div style="font-size:.8rem; color:#64748b;">Ödenen</div>
+                            <div id="og_odenen" style="font-size:1.3rem; font-weight:800; color:#059669;">-</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div id="og_kalanBox" style="background:#fef2f2; border-radius:12px; padding:14px; text-align:center;">
+                            <div style="font-size:.8rem; color:#64748b;">Kalan</div>
+                            <div id="og_kalan" style="font-size:1.3rem; font-weight:800; color:#dc2626;">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Yeni Ödeme Ekle -->
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:20px;">
+                    <h6 style="font-weight:700; color:#334155; margin-bottom:12px;"><i class="bi bi-plus-circle"></i> Yeni Ödeme Ekle</h6>
+                    <form id="odemeEkleForm">
+                        <input type="hidden" id="og_ogrenciId">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label" style="font-size:.85rem;">Tutar *</label>
+                                <input type="text" class="form-control" id="og_tutarInput" placeholder="Örn: 1.000" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" style="font-size:.85rem;">Tarih</label>
+                                <input type="date" class="form-control" id="og_tarihInput">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" style="font-size:.85rem;">Açıklama</label>
+                                <input type="text" class="form-control" id="og_aciklamaInput" placeholder="Örn: 1. taksit / nakit">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success mt-3 w-100">
+                            <i class="bi bi-check-lg"></i> Ödemeyi Kaydet
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Zaman Çizelgesi -->
+                <h6 style="font-weight:700; color:#334155; margin-bottom:12px;"><i class="bi bi-clock-history"></i> Ödeme Zaman Çizelgesi</h6>
+                <div id="og_liste">
+                    <div class="text-center py-4 text-muted">Yükleniyor...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Excel Import Modal -->
 <div class="modal fade" id="importModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -594,7 +726,7 @@
                     <p style="color: #065f46; margin: 0 0 12px 0; font-size: 0.9rem;">
                         <strong>📋 Gerekli Sütunlar:</strong><br>
                         <code style="background: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; display: inline-block; margin-top: 6px;">
-                            ÖĞRENCI SINIF BİLGİSİ, ÖĞRENCI ADI SOYADI, TELEFON KAYDI, T.C KİMLİK NO, ÖĞRENCİ VELİ, VELİ TELEFON, TUTAR, ÖDEME DURUMU, ÖDEME TÜRÜ, EDESIS KAYDI, TAKSİT
+                            ÖĞRENCI SINIF BİLGİSİ, ÖĞRENCI ADI SOYADI, TELEFON KAYDI, T.C KİMLİK NO, ÖĞRENCİ VELİ, VELİ TELEFON, TUTAR, ÖDENEN, ÖDEME DURUMU, ÖDEME TÜRÜ, EDESIS KAYDI, TAKSİT
                         </code>
                     </p>
                     <p style="color: #065f46; margin: 0; font-size: 0.85rem;">
@@ -917,7 +1049,7 @@ $(document).ready(function() {
             },
             {
                 responsivePriority: 3,
-                targets: 7
+                targets: 9
             }
         ],
         dom: 'Bfrtip',
@@ -946,13 +1078,43 @@ $(document).ready(function() {
     });
     
     $('#odemeDurumuFilter').on('change', function() {
-        table.column(7).search(this.value).draw();
+        table.column(9).search(this.value).draw();
     });
 });
+
+// TR para formatini sayiya cevir ("4.000 TRY" -> 4000, "5.000,50" -> 5000.50)
+function paraToNumber(v){
+    if(v===null||v===undefined) return 0;
+    let s=String(v).replace(/[^0-9.,]/g,'').trim();
+    if(!s) return 0;
+    if(s.includes(',')) s=s.replace(/\./g,'').replace(',', '.');
+    else s=s.replace(/\.(?=\d{3}(\D|$))/g,'');
+    const n=parseFloat(s); return isNaN(n)?0:n;
+}
+
+// Kalan tutari canli hesapla + odeme durumunu otomatik oner (add / edit)
+function hesaplaKalan(prefix){
+    const tutar = paraToNumber(document.getElementById(prefix + '_tutar').value);
+    const odenen = paraToNumber(document.getElementById(prefix + '_odenen_tutar').value);
+    const kalan = tutar - odenen;
+    const kalanInput = document.getElementById(prefix + '_kalan');
+    if (kalanInput) {
+        kalanInput.value = tutar > 0 ? kalan.toLocaleString('tr-TR') + ' ₺' : '';
+        kalanInput.style.color = kalan > 0 ? '#dc2626' : '#059669';
+    }
+    // Odeme durumunu otomatik oner (kullanici elle degistirebilir)
+    const durumSelect = document.getElementById(prefix + '_odeme_durumu');
+    if (durumSelect && tutar > 0) {
+        if (odenen <= 0) durumSelect.value = 'BEKLİYOR';
+        else if (odenen >= tutar) durumSelect.value = 'YAPILDI';
+        else durumSelect.value = 'KISMEN ÖDENDİ';
+    }
+}
 
 // Modal functions
 function showAddModal() {
     document.getElementById('addForm').reset();
+    document.getElementById('add_kalan').value = '';
     new bootstrap.Modal(document.getElementById('addModal')).show();
 }
 
@@ -966,6 +1128,99 @@ function showDeleteAllModal() {
     document.getElementById('onayKodu').value = '';
     new bootstrap.Modal(document.getElementById('deleteAllModal')).show();
 }
+
+// ===== Ödeme Geçmişi / Taksit =====
+function formatPara(n){ return Number(n||0).toLocaleString('tr-TR'); }
+
+let odemeGecmisiModalRef = null;
+async function showOdemeGecmisi(ogrenciId){
+    document.getElementById('og_ogrenciId').value = ogrenciId;
+    document.getElementById('og_liste').innerHTML = '<div class="text-center py-4 text-muted">Yükleniyor...</div>';
+    document.getElementById('odemeEkleForm').reset();
+    if(!odemeGecmisiModalRef) odemeGecmisiModalRef = new bootstrap.Modal(document.getElementById('odemeGecmisiModal'));
+    odemeGecmisiModalRef.show();
+    await loadOdemeGecmisi(ogrenciId);
+}
+
+async function loadOdemeGecmisi(ogrenciId){
+    const data = await apiCall('/kurum/odeme-gecmisi/' + ogrenciId);
+    if(!data || !data.success){
+        document.getElementById('og_liste').innerHTML = '<div class="alert alert-danger">' + ((data && data.message) || 'Hata') + '</div>';
+        return;
+    }
+    document.getElementById('og_ogrenciAd').textContent = '— ' + data.ogrenci.ad;
+    document.getElementById('og_tutar').textContent = formatPara(data.ozet.tutar) + ' ₺';
+    document.getElementById('og_odenen').textContent = formatPara(data.ozet.odenen) + ' ₺';
+    const kalan = data.ozet.kalan;
+    document.getElementById('og_kalan').textContent = formatPara(kalan) + ' ₺';
+    const kalanBox = document.getElementById('og_kalanBox');
+    const kalanVal = document.getElementById('og_kalan');
+    if(kalan > 0){ kalanBox.style.background = '#fef2f2'; kalanVal.style.color = '#dc2626'; }
+    else { kalanBox.style.background = '#ecfdf5'; kalanVal.style.color = '#059669'; }
+
+    if(!data.odemeler.length){
+        document.getElementById('og_liste').innerHTML = '<div class="text-center py-4 text-muted"><i class="bi bi-inbox" style="font-size:2rem;"></i><br>Henüz ödeme kaydı yok.</div>';
+        return;
+    }
+    let html = '<div class="table-responsive"><table class="table table-sm align-middle">';
+    html += '<thead><tr><th>#</th><th>Tarih</th><th>Tutar</th><th>Açıklama</th><th></th></tr></thead><tbody>';
+    data.odemeler.forEach((o, i) => {
+        const tarih = o.odeme_tarihi ? o.odeme_tarihi : (o.created_at ? String(o.created_at).substring(0,10) : '-');
+        html += '<tr>'
+            + '<td>' + (i+1) + '</td>'
+            + '<td>' + tarih + '</td>'
+            + '<td><strong style="color:#059669;">' + formatPara(o.tutar) + ' ₺</strong></td>'
+            + '<td>' + (o.aciklama ? o.aciklama.replace(/</g,'&lt;') : '-') + '</td>'
+            + '<td class="text-end"><button class="btn btn-sm btn-outline-danger" onclick="deleteOdeme(' + o.id + ', ' + ogrenciId + ')"><i class="bi bi-trash"></i></button></td>'
+            + '</tr>';
+    });
+    html += '</tbody></table></div>';
+    document.getElementById('og_liste').innerHTML = html;
+}
+
+document.getElementById('odemeEkleForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const ogrenciId = document.getElementById('og_ogrenciId').value;
+    const tutar = document.getElementById('og_tutarInput').value;
+    const odeme_tarihi = document.getElementById('og_tarihInput').value;
+    const aciklama = document.getElementById('og_aciklamaInput').value;
+    if(paraToNumber(tutar) <= 0){ alert('Geçerli bir tutar girin!'); return; }
+
+    const data = await apiCall('/kurum/odeme-ekle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ ogrenci_id: ogrenciId, tutar, odeme_tarihi, aciklama })
+    });
+    if(data && data.success){
+        document.getElementById('odemeEkleForm').reset();
+        await loadOdemeGecmisi(ogrenciId);
+        odemeKayitDegisti = true;
+    } else if(data){
+        alert(data.message || 'Ödeme eklenemedi');
+    }
+});
+
+async function deleteOdeme(pid, ogrenciId){
+    if(!confirm('Bu ödeme kaydını silmek istediğinize emin misiniz?')) return;
+    const data = await apiCall('/kurum/odeme-sil/' + pid, { method: 'POST' });
+    if(data && data.success){
+        await loadOdemeGecmisi(ogrenciId);
+        odemeKayitDegisti = true;
+    } else if(data){
+        alert(data.message || 'Silinemedi');
+    }
+}
+
+// Modal kapaninca tabloyu tazele (odenen/kalan guncel gorunsun)
+let odemeKayitDegisti = false;
+document.addEventListener('DOMContentLoaded', function(){
+    const ogModal = document.getElementById('odemeGecmisiModal');
+    if(ogModal){
+        ogModal.addEventListener('hidden.bs.modal', function(){
+            if(odemeKayitDegisti){ odemeKayitDegisti = false; location.reload(); }
+        });
+    }
+});
 
 function editOgrenci(ogr) {
     document.getElementById('edit_id').value = ogr.id;
@@ -986,6 +1241,8 @@ function editOgrenci(ogr) {
     }
     document.getElementById('edit_veli_telefon').value = veliTel;
     document.getElementById('edit_tutar').value = ogr.tutar || '';
+    document.getElementById('edit_odenen_tutar').value = ogr.odenen_tutar || '';
+    hesaplaKalan('edit');
     document.getElementById('edit_odeme_durumu').value = ogr.odeme_durumu || 'BEKLİYOR';
     document.getElementById('edit_odeme_turu').value = ogr.odeme_turu || '';
     document.getElementById('edit_edessis_kaydi').value = ogr.edessis_kaydi || '';

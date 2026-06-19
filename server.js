@@ -907,6 +907,7 @@ db.serialize(() => {
       veli_adi TEXT,
       veli_telefon TEXT,
       tutar TEXT,
+      odenen_tutar TEXT DEFAULT '0',
       odeme_durumu TEXT DEFAULT 'BEKLIYOR',
       odeme_turu TEXT,
       edessis_kaydi TEXT,
@@ -924,6 +925,26 @@ db.serialize(() => {
       // Sutun zaten var, sorun yok
     }
   });
+
+  // ogrenci_kayitlari tablosuna odenen_tutar kolonu ekle (parcali odeme takibi)
+  db.run(`ALTER TABLE ogrenci_kayitlari ADD COLUMN odenen_tutar TEXT DEFAULT '0'`, (err) => {
+    if (err && !err.message.includes('duplicate column')) {
+      // Sutun zaten var, sorun yok
+    }
+  });
+
+  // Odeme Gecmisi Tablosu (her taksit/odeme ayri kayit - zaman cizelgesi)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS odeme_gecmisi (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ogrenci_kayit_id INTEGER NOT NULL,
+      tutar REAL NOT NULL DEFAULT 0,
+      odeme_tarihi TEXT,
+      aciklama TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (ogrenci_kayit_id) REFERENCES ogrenci_kayitlari(id)
+    )
+  `);
 
   // WhatsApp API Ayarlari Tablosu
   db.run(`
@@ -1058,10 +1079,10 @@ db.serialize(() => {
   `);
   
   // Varsayilan site ayarlarini ekle
-  db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_adi', 'Sinav Merkezi')`);
-  db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_adres', 'Ankara, Turkiye')`);
-  db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_telefon', '+90 (312) 123 45 67')`);
-  db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_email', 'info@sinavmerkezi.com')`);
+  db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_adi', 'Adana Sınav Kulübü')`);
+  db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_adres', 'Toros Mah. Ahmet Sapmaz Blv. Yusuf Atlı Apt. A Blok No:61D, Çukurova / Adana')`);
+  db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_telefon', '0 (541) 190 24 25')`);
+  db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_email', 'adanasinavkulubu@outlook.com.tr')`);
   db.run(`INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_aciklama', '30 yillik egitim tecrubesiyle ogrencilerimizi gelecege hazirliyoruz.')`);
 
   
@@ -1146,7 +1167,7 @@ db.serialize(() => {
         </ul>
       </div>
     </div>', 1),
-    ('iletisim', 'Iletisim', 'Iletisim', '<p><strong>Adres:</strong> Istanbul, Turkiye</p><p><strong>Email:</strong> info@sinavmerkezi.com</p><p><strong>Telefon:</strong> 0 (505) 354 12 30</p>', 2),
+    ('iletisim', 'Iletisim', 'Iletisim', '<p><strong>Adres:</strong> Toros Mah. Ahmet Sapmaz Blv. Yusuf Atlı Apt. A Blok No:61D, Çukurova / Adana</p><p><strong>Email:</strong> adanasinavkulubu@outlook.com.tr</p><p><strong>Telefon:</strong> 0 (541) 190 24 25</p>', 2),
     ('sinav-merkezleri', 'Sinav Merkezleri', 'Sinav Merkezlerimiz', '<p>Tum Turkiye genelinde sinav merkezlerimiz bulunmaktadir.</p>', 3)
   `);
   
@@ -1385,11 +1406,11 @@ app.use(async (req, res, next) => {
     });
   } catch (error) {
     res.locals.siteAyarlari = {
-      site_adi: 'Sinav Merkezi',
-      site_adres: 'Ankara, Turkiye',
-      site_telefon: '+90 (312) 123 45 67',
-      site_email: 'info@sinavmerkezi.com',
-      site_aciklama: '30 yillik egitim tecrubesiyle ogrencilerimizi gelecege hazirliyoruz.'
+      site_adi: 'Adana Sınav Kulübü',
+      site_adres: 'Toros Mah. Ahmet Sapmaz Blv. Yusuf Atlı Apt. A Blok No:61D, Çukurova / Adana',
+      site_telefon: '0 (541) 190 24 25',
+      site_email: 'adanasinavkulubu@outlook.com.tr',
+      site_aciklama: '30 yıllık eğitim tecrübesiyle öğrencilerimizi geleceğe hazırlıyoruz.'
     };
   }
   next();
@@ -3878,7 +3899,7 @@ app.post('/kurum/ogrenci-kayit-ekle', requireAuth, async (req, res) => {
   try {
     const {
       sinif, ogrenci_adi_soyadi, telefon, tc_kimlik_no,
-      veli_adi, veli_telefon, tutar, odeme_durumu,
+      veli_adi, veli_telefon, tutar, odenen_tutar, odeme_durumu,
       odeme_turu, edessis_kaydi, taksit, tcOnaylanmis
     } = req.body;
 
@@ -3907,11 +3928,11 @@ app.post('/kurum/ogrenci-kayit-ekle', requireAuth, async (req, res) => {
     await dbRun(
       `INSERT INTO ogrenci_kayitlari (
         sinif, ogrenci_adi_soyadi, telefon, tc_kimlik_no,
-        veli_adi, veli_telefon, tutar, odeme_durumu,
+        veli_adi, veli_telefon, tutar, odenen_tutar, odeme_durumu,
         odeme_turu, edessis_kaydi, taksit
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [sinif, ogrenci_adi_soyadi, telefon, tc_kimlik_no,
-       veli_adi, veli_telefon, tutar, odeme_durumu,
+       veli_adi, veli_telefon, tutar, odenen_tutar || '0', odeme_durumu,
        odeme_turu, edessis_kaydi, taksit]
     );
 
@@ -4030,22 +4051,28 @@ app.post('/kurum/ogrenci-kayit-guncelle/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     const {
       sinif, ogrenci_adi_soyadi, telefon, tc_kimlik_no,
-      veli_adi, veli_telefon, tutar, odeme_durumu,
+      veli_adi, veli_telefon, tutar, odenen_tutar, odeme_durumu,
       odeme_turu, edessis_kaydi, taksit
     } = req.body;
-    
+
     await dbRun(
       `UPDATE ogrenci_kayitlari SET
         sinif = ?, ogrenci_adi_soyadi = ?, telefon = ?, tc_kimlik_no = ?,
-        veli_adi = ?, veli_telefon = ?, tutar = ?, odeme_durumu = ?,
+        veli_adi = ?, veli_telefon = ?, tutar = ?, odenen_tutar = ?, odeme_durumu = ?,
         odeme_turu = ?, edessis_kaydi = ?, taksit = ?,
         updated_at = datetime('now')
       WHERE id = ?`,
       [sinif, ogrenci_adi_soyadi, telefon, tc_kimlik_no,
-       veli_adi, veli_telefon, tutar, odeme_durumu,
+       veli_adi, veli_telefon, tutar, odenen_tutar || '0', odeme_durumu,
        odeme_turu, edessis_kaydi, taksit, id]
     );
-    
+
+    // Odeme gecmisi varsa odenen/durum bilgisini gecmis toplamindan yeniden hesapla
+    const gecmis = await dbGet('SELECT COUNT(*) as c FROM odeme_gecmisi WHERE ogrenci_kayit_id = ?', [id]);
+    if (gecmis && gecmis.c > 0) {
+      await recomputeOdenen(id);
+    }
+
     res.json({ success: true, message: 'Ogrenci kaydi guncellendi!' });
   } catch (error) {
     console.error('Ogrenci kayit guncelleme hatasi:', error);
@@ -4068,6 +4095,8 @@ app.post('/kurum/ogrenci-kayit-sil/:id', requireAuth, async (req, res) => {
 
     // Ogrenciyi sil
     await dbRun('DELETE FROM ogrenci_kayitlari WHERE id = ?', [id]);
+    // Bu ogrenciye ait odeme gecmisini de temizle
+    await dbRun('DELETE FROM odeme_gecmisi WHERE ogrenci_kayit_id = ?', [id]);
 
     // TC varsa, bu TC ile baska ogrenci var mi kontrol et
     let veliSilindi = false;
@@ -4095,6 +4124,139 @@ app.post('/kurum/ogrenci-kayit-sil/:id', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Ogrenci kayit silme hatasi:', error);
     res.json({ success: false, message: 'Silme sirasinda bir hata olustu!' });
+  }
+});
+
+// ============ ODEME GECMISI (Taksit / Zaman Cizelgesi) ============
+
+// TR para formatini sayiya cevir ("4.000 TRY" -> 4000, "5.000,50" -> 5000.50)
+function paraToNumberSrv(v) {
+  if (v === null || v === undefined) return 0;
+  let s = String(v).replace(/[^0-9.,]/g, '').trim();
+  if (!s) return 0;
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  else s = s.replace(/\.(?=\d{3}(\D|$))/g, '');
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+// Mevcut odenen_tutar > 0 ama hic odeme gecmisi yoksa, devir kaydi olustur
+// (eski/elle girilmis odemeleri zaman cizelgesine tasir - idempotent)
+async function ensureSeedPayment(ogrenciId) {
+  const ogr = await dbGet('SELECT odenen_tutar, created_at FROM ogrenci_kayitlari WHERE id = ?', [ogrenciId]);
+  if (!ogr) return;
+  const odenen = paraToNumberSrv(ogr.odenen_tutar);
+  if (odenen <= 0) return;
+  const mevcut = await dbGet('SELECT COUNT(*) as c FROM odeme_gecmisi WHERE ogrenci_kayit_id = ?', [ogrenciId]);
+  if (mevcut && mevcut.c > 0) return;
+  const tarih = (ogr.created_at || '').toString().substring(0, 10) || null;
+  await dbRun(
+    'INSERT INTO odeme_gecmisi (ogrenci_kayit_id, tutar, odeme_tarihi, aciklama) VALUES (?, ?, ?, ?)',
+    [ogrenciId, odenen, tarih, 'Mevcut ödeme (devir)']
+  );
+}
+
+// odeme_gecmisi toplamindan odenen_tutar ve odeme_durumu'nu yeniden hesapla
+async function recomputeOdenen(ogrenciId) {
+  const ogr = await dbGet('SELECT tutar, odeme_durumu FROM ogrenci_kayitlari WHERE id = ?', [ogrenciId]);
+  if (!ogr) return null;
+  const row = await dbGet('SELECT COALESCE(SUM(tutar),0) as toplam FROM odeme_gecmisi WHERE ogrenci_kayit_id = ?', [ogrenciId]);
+  const odenen = Number(row?.toplam || 0);
+  const tutar = paraToNumberSrv(ogr.tutar);
+  // Durumu otomatik belirle (ÜCRETSİZ elle ayarliysa korunur)
+  let durum = ogr.odeme_durumu;
+  if (durum !== 'ÜCRETSİZ') {
+    if (tutar > 0 && odenen >= tutar) durum = 'YAPILDI';
+    else if (odenen > 0) durum = 'KISMEN ÖDENDİ';
+    else durum = 'BEKLİYOR';
+  }
+  await dbRun(
+    "UPDATE ogrenci_kayitlari SET odenen_tutar = ?, odeme_durumu = ?, updated_at = datetime('now') WHERE id = ?",
+    [String(odenen), durum, ogrenciId]
+  );
+  return { tutar, odenen, kalan: tutar - odenen, durum };
+}
+
+// Kurum - Ogrencinin odeme gecmisini getir
+app.get('/kurum/odeme-gecmisi/:id', requireAuth, async (req, res) => {
+  if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
+    return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
+  }
+  try {
+    const { id } = req.params;
+    const ogrenci = await dbGet(
+      'SELECT id, ogrenci_adi_soyadi, veli_adi, tutar, odenen_tutar FROM ogrenci_kayitlari WHERE id = ?',
+      [id]
+    );
+    if (!ogrenci) return res.json({ success: false, message: 'Öğrenci bulunamadı!' });
+
+    // Eski elle girilmis odemeyi zaman cizelgesine tasi (varsa)
+    await ensureSeedPayment(id);
+
+    const odemeler = await dbAll(
+      'SELECT id, tutar, odeme_tarihi, aciklama, created_at FROM odeme_gecmisi WHERE ogrenci_kayit_id = ? ORDER BY COALESCE(odeme_tarihi, created_at) ASC, id ASC',
+      [id]
+    );
+    const tutar = paraToNumberSrv(ogrenci.tutar);
+    const odenen = odemeler.reduce((t, o) => t + Number(o.tutar || 0), 0);
+    res.json({
+      success: true,
+      ogrenci: { id: ogrenci.id, ad: ogrenci.ogrenci_adi_soyadi, veli: ogrenci.veli_adi },
+      ozet: { tutar, odenen, kalan: tutar - odenen },
+      odemeler
+    });
+  } catch (error) {
+    console.error('Odeme gecmisi getirme hatasi:', error);
+    res.json({ success: false, message: 'Ödeme geçmişi alınamadı: ' + error.message });
+  }
+});
+
+// Kurum - Yeni odeme (taksit) ekle
+app.post('/kurum/odeme-ekle', requireAuth, async (req, res) => {
+  if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
+    return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
+  }
+  try {
+    const { ogrenci_id, tutar, odeme_tarihi, aciklama } = req.body;
+    const miktar = paraToNumberSrv(tutar);
+    if (!ogrenci_id) return res.json({ success: false, message: 'Öğrenci belirtilmedi!' });
+    if (miktar <= 0) return res.json({ success: false, message: 'Geçerli bir ödeme tutarı girin!' });
+
+    const ogrenci = await dbGet('SELECT id FROM ogrenci_kayitlari WHERE id = ?', [ogrenci_id]);
+    if (!ogrenci) return res.json({ success: false, message: 'Öğrenci bulunamadı!' });
+
+    // Eski elle girilmis odemeyi once zaman cizelgesine tasi
+    await ensureSeedPayment(ogrenci_id);
+
+    await dbRun(
+      'INSERT INTO odeme_gecmisi (ogrenci_kayit_id, tutar, odeme_tarihi, aciklama) VALUES (?, ?, ?, ?)',
+      [ogrenci_id, miktar, (odeme_tarihi && odeme_tarihi.trim()) || null, (aciklama || '').trim()]
+    );
+
+    const ozet = await recomputeOdenen(ogrenci_id);
+    res.json({ success: true, message: 'Ödeme kaydedildi!', ozet });
+  } catch (error) {
+    console.error('Odeme ekleme hatasi:', error);
+    res.json({ success: false, message: 'Ödeme eklenirken hata oluştu: ' + error.message });
+  }
+});
+
+// Kurum - Odeme (taksit) sil
+app.post('/kurum/odeme-sil/:pid', requireAuth, async (req, res) => {
+  if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
+    return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
+  }
+  try {
+    const { pid } = req.params;
+    const odeme = await dbGet('SELECT ogrenci_kayit_id FROM odeme_gecmisi WHERE id = ?', [pid]);
+    if (!odeme) return res.json({ success: false, message: 'Ödeme kaydı bulunamadı!' });
+
+    await dbRun('DELETE FROM odeme_gecmisi WHERE id = ?', [pid]);
+    const ozet = await recomputeOdenen(odeme.ogrenci_kayit_id);
+    res.json({ success: true, message: 'Ödeme silindi!', ozet });
+  } catch (error) {
+    console.error('Odeme silme hatasi:', error);
+    res.json({ success: false, message: 'Ödeme silinirken hata oluştu: ' + error.message });
   }
 });
 
@@ -4152,6 +4314,44 @@ app.post('/kurum/ogrenci-kayitlari-tumunu-sil', requireAuth, async (req, res) =>
   }
 });
 
+// Kurum - Ogrenci Import Excel Sablonu Indir
+app.get('/kurum/ogrenci-sablon-indir', requireAuth, async (req, res) => {
+  if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
+    return res.status(403).send('Yetkiniz yok!');
+  }
+  try {
+    // Basliklar import'un bekledigi ASCII anahtarlarla birebir ayni olmali
+    const basliklar = [
+      'OGRENCI SINIF BILGISI', 'OGRENCI ADI SOYADI', 'TELEFON KAYDI', 'T.C KIMLIK NO',
+      'OGRENCI VELI', 'VELI TELEFON', 'TUTAR', 'ODENEN', 'ODEME DURUMU',
+      'ODEME TURU', 'EDESIS KAYDI', 'TAKSIT'
+    ];
+    const ornek = [
+      '8', 'Ornek Ogrenci', '0532 123 45 67', '12345678901',
+      'Ornek Veli', '0533 765 43 21', '5000', '2000', 'KISMEN ODENDI',
+      'Nakit', '', '3'
+    ];
+
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet('Ogrenciler');
+    ws.addRow(basliklar);
+    ws.addRow(ornek);
+
+    // Baslik satirini bicimlendir + sutun genisligi
+    ws.getRow(1).font = { bold: true };
+    ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+    ws.columns.forEach((col) => { col.width = 22; });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="ogrenci-kayit-sablonu.xlsx"');
+    res.send(Buffer.from(buffer));
+  } catch (error) {
+    console.error('Sablon olusturma hatasi:', error);
+    res.status(500).send('Sablon olusturulurken hata olustu: ' + error.message);
+  }
+});
+
 // Kurum - Ogrenci Kayitlari Excel Import (Otomatik Veli Hesabi Olusturma ile)
 app.post('/kurum/ogrenci-import-excel', requireAuth, upload.single('excelFile'), async (req, res) => {
   if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
@@ -4199,6 +4399,7 @@ app.post('/kurum/ogrenci-import-excel', requireAuth, upload.single('excelFile'),
         const veli_adi = normalizedRow['OGRENCI VELI'] || normalizedRow['VELI ADI'] || '';
         const veli_telefon = normalizedRow['VELI TELEFON'] || '';
         const tutar = normalizedRow['TUTAR'] || 0;
+        const odenen_tutar = normalizedRow['ODENEN'] || normalizedRow['ODENEN TUTAR'] || '0';
         const odeme_durumu = normalizedRow['ODEME DURUMU'] || 'BEKLIYOR';
         const odeme_turu = normalizedRow['ODEME TURU'] || '';
         const edessis_kaydi = normalizedRow['EDESIS KAYDI'] || normalizedRow['EDESSIS KAYDI'] || '';
@@ -4218,11 +4419,11 @@ app.post('/kurum/ogrenci-import-excel', requireAuth, upload.single('excelFile'),
         await dbRun(
           `INSERT INTO ogrenci_kayitlari (
             sinif, ogrenci_adi_soyadi, telefon, tc_kimlik_no,
-            veli_adi, veli_telefon, tutar, odeme_durumu,
+            veli_adi, veli_telefon, tutar, odenen_tutar, odeme_durumu,
             odeme_turu, edessis_kaydi, taksit
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [sinif, ogrenci_adi_soyadi, telefon, tc_kimlik_no,
-           veli_adi, veli_telefon, tutar, odeme_durumu,
+           veli_adi, veli_telefon, tutar, odenen_tutar, odeme_durumu,
            odeme_turu, edessis_kaydi, taksit]
         );
 

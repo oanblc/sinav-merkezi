@@ -144,12 +144,23 @@ const createTableStatements = [
     veli_adi TEXT,
     veli_telefon TEXT,
     tutar TEXT,
+    odenen_tutar TEXT DEFAULT '0',
     odeme_durumu TEXT DEFAULT 'BEKLIYOR',
     odeme_turu TEXT,
     edessis_kaydi TEXT,
     taksit TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS odeme_gecmisi (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ogrenci_kayit_id INTEGER NOT NULL,
+    tutar REAL NOT NULL DEFAULT 0,
+    odeme_tarihi TEXT,
+    aciklama TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ogrenci_kayit_id) REFERENCES ogrenci_kayitlari(id)
   )`,
 
   `CREATE TABLE IF NOT EXISTS whatsapp_ayarlari (
@@ -346,10 +357,10 @@ const createTableStatements = [
 
 // Default data inserts
 const defaultInserts = [
-  `INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_adi', 'Sinav Merkezi')`,
-  `INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_adres', 'Ankara, Turkiye')`,
-  `INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_telefon', '+90 (312) 123 45 67')`,
-  `INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_email', 'info@sinavmerkezi.com')`,
+  `INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_adi', 'Adana Sınav Kulübü')`,
+  `INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_adres', 'Toros Mah. Ahmet Sapmaz Blv. Yusuf Atlı Apt. A Blok No:61D, Çukurova / Adana')`,
+  `INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_telefon', '0 (541) 190 24 25')`,
+  `INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_email', 'adanasinavkulubu@outlook.com.tr')`,
   `INSERT OR IGNORE INTO site_ayarlari (anahtar, deger) VALUES ('site_aciklama', '30 yillik egitim tecrubesiyle ogrencilerimizi gelecege hazirliyoruz.')`
 ];
 
@@ -451,7 +462,8 @@ async function initDatabase() {
       'ALTER TABLE sinav_paketleri ADD COLUMN fiyat REAL DEFAULT 0',
       'ALTER TABLE satinalma ADD COLUMN merchant_oid TEXT',
       'ALTER TABLE satinalma ADD COLUMN paytr_token TEXT',
-      'ALTER TABLE ogrenci_kayitlari ADD COLUMN veli_id INTEGER'
+      'ALTER TABLE ogrenci_kayitlari ADD COLUMN veli_id INTEGER',
+      'ALTER TABLE ogrenci_kayitlari ADD COLUMN odenen_tutar TEXT DEFAULT \'0\''
     ];
 
     for (const sql of alterStatements) {
