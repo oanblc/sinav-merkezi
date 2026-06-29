@@ -4,7 +4,7 @@
 <style>
     /* Mor tema header */
     .vp-calendar-header {
-        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
         padding: clamp(16px, 4vw, 24px) 0;
         margin: -20px -12px clamp(16px, 4vw, 24px);
@@ -38,7 +38,7 @@
     .vp-student-info-avatar {
         width: clamp(44px, 10vw, 52px);
         height: clamp(44px, 10vw, 52px);
-        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         border-radius: var(--vp-radius);
         display: flex;
         align-items: center;
@@ -70,7 +70,7 @@
     }
 
     .vp-exam-date-box {
-        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
         border-radius: var(--vp-radius);
         padding: clamp(10px, 2.5vw, 14px);
@@ -105,7 +105,7 @@
 
     /* Mor Header icin */
     .vp-purple-section {
-        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
         padding: clamp(12px, 3vw, 16px);
         border-radius: var(--vp-radius) var(--vp-radius) 0 0;
@@ -122,21 +122,21 @@
 <!-- Page Header -->
 <div class="vp-calendar-header">
     <div class="container">
-        <h2><i class="bi bi-calendar-event"></i> Sinav Takvimi</h2>
-        <p><%= ogrenci.ad_soyad %> - Yaklasan sinavlar</p>
+        <h2><i class="bi bi-calendar-event"></i> Sınav Takvimi</h2>
+        <p><%= ogrenci.ad_soyad %> - Yaklaşan sınavlar</p>
     </div>
 </div>
 
 <div class="container">
     <% if (error) { %>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.875rem;">
         <i class="bi bi-exclamation-triangle"></i> <%= error %>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
     <% } %>
 
     <% if (success) { %>
-    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.875rem;">
         <i class="bi bi-check-circle"></i> <%= success %>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
@@ -159,7 +159,7 @@
     <!-- Sinav Listesi -->
     <div class="vp-card" style="padding: 0; overflow: hidden;">
         <div class="vp-purple-section">
-            <h5><i class="bi bi-calendar-check"></i> Yaklasan Sinavlar</h5>
+            <h5><i class="bi bi-calendar-check"></i> Yaklaşan Sınavlar</h5>
         </div>
 
         <div style="padding: clamp(12px, 3vw, 16px);">
@@ -223,8 +223,8 @@
             <% } else { %>
                 <div class="vp-empty" style="margin: 0;">
                     <i class="bi bi-calendar-x"></i>
-                    <h4>Henuz Sinav Yok</h4>
-                    <p>Bu ogrenci icin henuz planlanmis bir sinav bulunmamaktadir.</p>
+                    <h4>Henüz Sınav Yok</h4>
+                    <p>Bu öğrenci için henüz planlanmış bir sınav bulunmamaktadır.</p>
                 </div>
             <% } %>
         </div>
@@ -234,7 +234,7 @@
     <div class="vp-info-box" style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-color: #93c5fd; margin-top: 16px;">
         <h5 style="color: #1e40af;"><i class="bi bi-info-circle-fill"></i> Bilgi</h5>
         <p style="color: #1e40af; margin: 0; font-size: clamp(0.8rem, 3vw, 0.9rem);">
-            Sinav takvimi rehber ogretmeniniz tarafindan olusturulur ve guncellenir.
+            Sınav takvimi rehber öğretmeniniz tarafından oluşturulur ve güncellenir.
         </p>
     </div>
 

@@ -2,7 +2,7 @@
 
 <style>
     .page-header {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
         padding: 40px 0;
         margin: -30px -15px 40px;
@@ -38,7 +38,7 @@
         border: 3px solid #e8ecf0;
         border-radius: 16px;
         padding: 20px 60px 20px 60px;
-        font-size: 1.1rem;
+        font-size: 1.125rem;
         transition: all 0.3s ease;
     }
     
@@ -62,7 +62,7 @@
         right: 8px;
         top: 50%;
         transform: translateY(-50%);
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         border: none;
         padding: 12px 28px;
         border-radius: 12px;
@@ -94,7 +94,7 @@
     .student-avatar {
         width: 60px;
         height: 60px;
-        background: linear-gradient(135deg, #667eea, #764ba2);
+        background: linear-gradient(135deg, #3b82f6, #1e40af);
         border-radius: 14px;
         display: flex;
         align-items: center;
@@ -108,7 +108,7 @@
         padding: 6px 12px;
         border-radius: 8px;
         font-weight: 600;
-        font-size: 0.85rem;
+        font-size: 0.875rem;
         margin-right: 8px;
     }
     
@@ -116,7 +116,7 @@
         border: 2px solid #e8ecf0;
         border-radius: 12px;
         padding: 10px 16px;
-        font-size: 0.95rem;
+        font-size: 1rem;
         transition: all 0.3s ease;
     }
     
@@ -127,7 +127,7 @@
     }
     
     .btn-add {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         border: none;
         padding: 10px 24px;
         border-radius: 10px;
@@ -199,7 +199,7 @@
                     </button>
                 </div>
                 
-                <div class="text-muted" style="font-size: 0.9rem;">
+                <div class="text-muted" style="font-size: 0.875rem;">
                     <i class="bi bi-lightbulb"></i> 
                     <strong>İpucu:</strong> Öğrenci numarası (örn: 2024001) veya ad soyad (örn: Ahmet Yılmaz) ile arayabilirsiniz
                 </div>
@@ -233,17 +233,17 @@
                 <% if (veliler && veliler.length > 0) { %>
                     <% veliler.forEach(function(veli) { %>
                     <div style="padding: 10px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center;">
-                        <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #06b6d4, #3b82f6); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.85rem; margin-right: 10px;">
+                        <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #06b6d4, #3b82f6); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.875rem; margin-right: 10px;">
                             <%= veli.username.charAt(0).toUpperCase() %>
                         </div>
                         <div style="flex: 1;">
-                            <div style="font-weight: 600; color: #1e293b; font-size: 0.9rem;"><%= veli.username %></div>
+                            <div style="font-weight: 600; color: #1e293b; font-size: 0.875rem;"><%= veli.username %></div>
                             <div style="font-size: 0.75rem; color: #64748b;"><%= veli.email %></div>
                         </div>
                     </div>
                     <% }); %>
                 <% } else { %>
-                    <p style="color: #94a3b8; margin: 0; font-size: 0.9rem;">Henüz kayıtlı veli yok</p>
+                    <p style="color: #94a3b8; margin: 0; font-size: 0.875rem;">Henüz kayıtlı veli yok</p>
                 <% } %>
             </div>
         </div>
@@ -353,9 +353,9 @@ function gosterSonuclar(sonuclar) {
                     </div>
                     <div class="col-auto">
                         ${ogr.zatenOnaylanmis ? 
-                            '<span class="badge bg-success" style="padding: 10px 20px; border-radius: 10px; font-size: 0.9rem;"><i class="bi bi-check-circle"></i> Kayıtlı</span>' :
+                            '<span class="badge bg-success" style="padding: 10px 20px; border-radius: 10px; font-size: 0.875rem;"><i class="bi bi-check-circle"></i> Kayıtlı</span>' :
                             ogr.talepGonderilmis ? 
-                            '<span class="badge bg-warning text-dark" style="padding: 10px 20px; border-radius: 10px; font-size: 0.9rem;"><i class="bi bi-clock-history"></i> Talep Gönderildi</span>' : 
+                            '<span class="badge bg-warning text-dark" style="padding: 10px 20px; border-radius: 10px; font-size: 0.875rem;"><i class="bi bi-clock-history"></i> Talep Gönderildi</span>' : 
                             `<button class="btn-add" onclick="talepGonder(${ogr.id}, '${ogr.ad_soyad.replace(/'/g, "\\'")}')">
                                 <i class="bi bi-send"></i> Talep Gönder
                             </button>`

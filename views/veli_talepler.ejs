@@ -112,21 +112,21 @@
 <!-- Page Header -->
 <div class="vp-talepler-header">
     <div class="container">
-        <h2><i class="bi bi-bell-fill"></i> Ogrenci Talepleri</h2>
-        <p>Rehber ogretmenlerden gelen ekleme taleplerini goruntuleyiniz</p>
+        <h2><i class="bi bi-bell-fill"></i> Öğrenci Talepleri</h2>
+        <p>Rehber öğretmenlerden gelen ekleme taleplerini görüntüleyiniz</p>
     </div>
 </div>
 
 <div class="container">
     <% if (error) { %>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.875rem;">
         <i class="bi bi-exclamation-triangle"></i> <%= error %>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
     <% } %>
 
     <% if (success) { %>
-    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.875rem;">
         <i class="bi bi-check-circle"></i> <%= success %>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
@@ -184,7 +184,7 @@
         <div class="vp-empty">
             <i class="bi bi-inbox"></i>
             <h4>Bekleyen Talep Yok</h4>
-            <p>Su anda bekleyen ogrenci ekleme talebiniz bulunmamaktadir.</p>
+            <p>Su anda bekleyen öğrenci ekleme talebiniz bulunmamaktadır.</p>
         </div>
     <% } %>
 

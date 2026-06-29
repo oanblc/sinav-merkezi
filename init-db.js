@@ -121,6 +121,17 @@ const createTableStatements = [
     FOREIGN KEY (paket_id) REFERENCES sinav_paketleri(id) ON DELETE CASCADE
   )`,
 
+  `CREATE TABLE IF NOT EXISTS sinav_merkezleri (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ad TEXT NOT NULL,
+    adres TEXT,
+    telefon TEXT,
+    eposta TEXT,
+    sira INTEGER DEFAULT 0,
+    aktif INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`,
+
   `CREATE TABLE IF NOT EXISTS kurumsal_icerik (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sayfa_adi TEXT NOT NULL UNIQUE,

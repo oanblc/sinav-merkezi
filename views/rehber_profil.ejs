@@ -2,12 +2,12 @@
 
 <style>
     .page-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
         padding: 40px 0;
         margin: -30px -15px 40px;
         border-radius: 0 0 24px 24px;
-        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+        box-shadow: 0 8px 32px rgba(37, 99, 235, 0.3);
     }
     
     .profile-card {
@@ -19,7 +19,7 @@
     }
     
     .profile-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         padding: 40px;
         text-align: center;
         color: white;
@@ -36,7 +36,7 @@
         margin: 0 auto 20px;
         font-size: 3rem;
         font-weight: 800;
-        color: #667eea;
+        color: #3b82f6;
         box-shadow: 0 8px 24px rgba(0,0,0,0.1);
     }
     
@@ -48,7 +48,7 @@
         font-weight: 600;
         color: #1e293b;
         margin-bottom: 12px;
-        font-size: 0.95rem;
+        font-size: 1rem;
     }
     
     .form-control-modern {
@@ -60,8 +60,8 @@
     }
     
     .form-control-modern:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
         outline: none;
     }
     
@@ -71,7 +71,7 @@
         top: 50%;
         transform: translateY(-50%);
         color: #64748b;
-        font-size: 1.1rem;
+        font-size: 1.125rem;
     }
     
     .input-with-icon {
@@ -79,19 +79,19 @@
     }
     
     .btn-update {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         border: none;
         padding: 14px 40px;
         border-radius: 12px;
         font-weight: 600;
-        font-size: 1.1rem;
+        font-size: 1.125rem;
         color: white;
         transition: all 0.3s ease;
     }
     
     .btn-update:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4);
         color: white;
     }
     
@@ -113,14 +113,14 @@
     .stat-mini h3 {
         font-size: 2rem;
         font-weight: 800;
-        color: #667eea;
+        color: #3b82f6;
         margin: 0;
     }
     
     .stat-mini p {
         margin: 8px 0 0;
         color: #64748b;
-        font-size: 0.9rem;
+        font-size: 0.875rem;
     }
 </style>
 
@@ -284,16 +284,16 @@
             <div style="color: #047857;">
                 <p style="margin-bottom: 12px;">
                     <strong>Kullanıcı Adı:</strong><br>
-                    <span style="font-size: 1.1rem; font-weight: 600;"><%= kullanici.username %></span>
+                    <span style="font-size: 1.125rem; font-weight: 600;"><%= kullanici.username %></span>
                 </p>
                 <p style="margin-bottom: 12px;">
                     <strong>Hesap Türü:</strong><br>
-                    <span class="badge bg-success" style="font-size: 0.9rem;">Rehber Öğretmen</span>
+                    <span class="badge bg-success" style="font-size: 0.875rem;">Rehber Öğretmen</span>
                 </p>
                 <% if (kullanici.brans) { %>
                 <p style="margin-bottom: 12px;">
                     <strong>Branş:</strong><br>
-                    <span class="badge bg-primary" style="font-size: 0.9rem;"><%= kullanici.brans %></span>
+                    <span class="badge bg-primary" style="font-size: 0.875rem;"><%= kullanici.brans %></span>
                 </p>
                 <% } %>
                 <p style="margin: 0;">
@@ -314,7 +314,7 @@
         <div class="row g-3">
             <div class="col-12">
                 <div class="stat-mini">
-                    <i class="bi bi-calendar-check" style="font-size: 2rem; color: #667eea; margin-bottom: 8px;"></i>
+                    <i class="bi bi-calendar-check" style="font-size: 2rem; color: #3b82f6; margin-bottom: 8px;"></i>
                     <h3><%= Math.floor((new Date() - new Date(kullanici.created_at)) / (1000 * 60 * 60 * 24)) %></h3>
                     <p>Gün Sistemde</p>
                 </div>

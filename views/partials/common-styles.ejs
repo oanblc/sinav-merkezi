@@ -1,14 +1,45 @@
 <style>
     :root {
-        --primary: #003b78;
+        /* ===== Ana renk: Mavi ve türevleri (kararlı palet) ===== */
+        --primary: #003b78;        /* lacivert - marka */
         --primary-light: #0056b3;
         --primary-dark: #002752;
+        --primary-50:  #eff6ff;
+        --primary-100: #dbeafe;
+        --primary-300: #93c5fd;
+        --primary-500: #3b82f6;    /* canlı mavi - vurgular */
+        --primary-600: #2563eb;
+        --accent: #06b6d4;         /* cyan - bilgi/aksan (mavi türevi) */
+        --gradient-primary: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
+
+        /* ===== Semantik (sadece anlam için: durum/rozet/uyarı) ===== */
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger:  #ef4444;
+
+        /* ===== Nötr (slate) ===== */
+        --text: #1e293b;
+        --text-muted: #64748b;
+        --border: #e2e8f0;
+        --bg-soft: #f8fafc;
+
         --secondary: #f39c12;
-        --text: #2c3e50;
         --bg-light: #f8f9fa;
         --shadow: 0 2px 8px rgba(0,0,0,0.08);
         --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
         --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+        /* ===== Tipografi Ölçeği (ortak düzen) ===== */
+        --fs-2xs: 0.625rem;  /* 10px - rozet/etiket */
+        --fs-xs:  0.75rem;   /* 12px - küçük not */
+        --fs-sm:  0.875rem;  /* 14px - ikincil metin */
+        --fs-base:1rem;      /* 16px - gövde */
+        --fs-md:  1.125rem;  /* 18px - vurgulu metin */
+        --fs-lg:  1.25rem;   /* 20px - kart başlığı */
+        --fs-xl:  1.5rem;    /* 24px - alt başlık */
+        --fs-2xl: 2rem;      /* 32px - sayfa başlığı */
+        --fs-3xl: 2.5rem;    /* 40px - hero */
+        --fs-4xl: 3rem;      /* 48px - büyük hero */
     }
 
     * {
@@ -23,7 +54,18 @@
         line-height: 1.6;
         background: #f5f7fa;
         overflow-x: hidden;
+        font-size: var(--fs-base);
+        -webkit-text-size-adjust: 100%; /* mobil otomatik metin büyütmeyi engelle */
     }
+
+    /* Temel başlık ölçeği (inline override yoksa geçerli) */
+    h1 { font-size: var(--fs-2xl); }
+    h2 { font-size: var(--fs-xl); }
+    h3 { font-size: var(--fs-lg); }
+    h4 { font-size: var(--fs-md); }
+    h5 { font-size: var(--fs-base); }
+    h6 { font-size: var(--fs-sm); }
+    small, .text-small { font-size: var(--fs-sm); }
 
     /* ========================================
        NAVBAR - Full Responsive
@@ -346,4 +388,24 @@
             align-items: center;
         }
     }
+
+    /* Breadcrumb (tum sayfalarda ortak) */
+    .breadcrumb-container {
+        background: #f8f9fa;
+        padding: 16px 0;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .breadcrumb {
+        display: flex; align-items: center; gap: 8px;
+        list-style: none; padding: 0; margin: 0; flex-wrap: wrap;
+    }
+    .breadcrumb-item { display: flex; align-items: center; gap: 8px; font-size: 1rem; }
+    .breadcrumb-item a {
+        color: var(--primary); text-decoration: none; transition: all 0.2s ease;
+        display: flex; align-items: center; gap: 6px;
+    }
+    .breadcrumb-item a:hover { color: var(--primary-dark); text-decoration: underline; }
+    .breadcrumb-item a i { font-size: 1rem; }
+    .breadcrumb-separator { color: #999; font-size: 0.875rem; }
+    .breadcrumb-item.active { color: #666; font-weight: 500; }
 </style>

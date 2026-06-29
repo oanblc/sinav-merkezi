@@ -51,7 +51,7 @@
         padding: 12px 20px;
         border-radius: 12px;
         font-weight: 600;
-        font-size: 0.95rem;
+        font-size: 1rem;
         display: inline-flex;
         align-items: center;
         gap: 8px;
@@ -113,7 +113,7 @@
     .kt-stat-card.reddedildi .kt-stat-number { color: var(--kt-danger); }
 
     .kt-stat-label {
-        font-size: 0.85rem;
+        font-size: 0.875rem;
         color: var(--kt-text-muted);
         font-weight: 600;
         margin-top: 8px;
@@ -147,7 +147,7 @@
 
     .kt-search-box i {
         color: var(--kt-text-muted);
-        font-size: 1.1rem;
+        font-size: 1.125rem;
     }
 
     /* Talep Cards */
@@ -190,7 +190,7 @@
     }
 
     .kt-talep-title {
-        font-size: 1.1rem;
+        font-size: 1.125rem;
         font-weight: 700;
         color: var(--kt-text);
         margin: 0 0 8px 0;
@@ -218,14 +218,14 @@
         padding: 6px 12px;
         border-radius: 20px;
         font-weight: 600;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         white-space: nowrap;
         display: flex;
         align-items: center;
         gap: 6px;
     }
 
-    .kt-status-badge i { font-size: 0.85rem; }
+    .kt-status-badge i { font-size: 0.875rem; }
 
     .kt-status-badge.beklemede { background: #fef3c7; color: #b45309; }
     .kt-status-badge.onaylandi { background: #d1fae5; color: #047857; }
@@ -242,11 +242,11 @@
         display: flex;
         align-items: center;
         gap: 6px;
-        font-size: 0.9rem;
+        font-size: 0.875rem;
         color: var(--kt-text-muted);
     }
 
-    .kt-meta-item i { font-size: 0.85rem; }
+    .kt-meta-item i { font-size: 0.875rem; }
     .kt-meta-item strong { color: var(--kt-text); font-weight: 600; }
 
     /* Details Grid */
@@ -267,13 +267,13 @@
     }
 
     .kt-detail-label {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         color: var(--kt-text-muted);
         font-weight: 600;
     }
 
     .kt-detail-value {
-        font-size: 0.9rem;
+        font-size: 0.875rem;
         color: var(--kt-text);
         font-weight: 500;
     }
@@ -288,7 +288,7 @@
     }
 
     .kt-aciklama-box h6 {
-        font-size: 0.85rem;
+        font-size: 0.875rem;
         color: #92400e;
         font-weight: 600;
         margin: 0 0 6px 0;
@@ -298,7 +298,7 @@
     }
 
     .kt-aciklama-box p {
-        font-size: 0.9rem;
+        font-size: 0.875rem;
         color: #78350f;
         margin: 0;
         line-height: 1.5;
@@ -314,7 +314,7 @@
     }
 
     .kt-yanit-box h6 {
-        font-size: 0.85rem;
+        font-size: 0.875rem;
         color: #047857;
         font-weight: 600;
         margin: 0 0 6px 0;
@@ -324,7 +324,7 @@
     }
 
     .kt-yanit-box p {
-        font-size: 0.9rem;
+        font-size: 0.875rem;
         color: #065f46;
         margin: 0;
         line-height: 1.5;
@@ -345,7 +345,7 @@
         border-radius: 10px;
         border: none;
         font-weight: 600;
-        font-size: 0.9rem;
+        font-size: 0.875rem;
         cursor: pointer;
         transition: all 0.3s ease;
         display: flex;
@@ -354,7 +354,7 @@
         gap: 6px;
     }
 
-    .kt-btn i { font-size: 0.85rem; }
+    .kt-btn i { font-size: 0.875rem; }
 
     .kt-btn-success {
         background: var(--kt-success);
@@ -419,7 +419,7 @@
     /* Mobile */
     @media (max-width: 576px) {
         .kt-page-header { padding: 30px 0; }
-        .kt-page-header h1 { font-size: 1.4rem; }
+        .kt-page-header h1 { font-size: 1.5rem; }
         .kt-card-header { flex-direction: column; gap: 10px; }
         .kt-status-badge { align-self: flex-start; }
         .kt-action-buttons { flex-direction: row; }
@@ -433,12 +433,12 @@
     <div class="container">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>
-                <h1><i class="bi bi-inbox-fill"></i> Talep Yonetimi</h1>
-                <p>Gelen talepleri inceleyin, onaylayin veya reddedin</p>
+                <h1><i class="bi bi-inbox-fill"></i> Talep Yönetimi</h1>
+                <p>Gelen talepleri inceleyin, onaylayın veya reddedin</p>
             </div>
             <button class="kt-header-btn" onclick="showRehberTalepModal()">
                 <i class="bi bi-person-plus-fill"></i>
-                <span class="d-none d-sm-inline">Rehber Ogretmene Talep</span>
+                <span class="d-none d-sm-inline">Rehber Öğretmene Talep</span>
                 <span class="d-sm-none">Talep</span>
             </button>
         </div>
@@ -469,7 +469,7 @@
     <!-- Search Box -->
     <div class="kt-search-box">
         <i class="bi bi-search"></i>
-        <input type="text" id="searchInput" placeholder="Veli adi, sinav/paket adi veya telefon ile ara..." onkeyup="searchTalepler()">
+        <input type="text" id="searchInput" placeholder="Veli adı, sınav/paket adı veya telefon ile ara..." onkeyup="searchTalepler()">
     </div>
 
 <!-- Talepler Listesi -->
@@ -479,7 +479,7 @@
                 <div class="kt-empty-icon">
                     <i class="bi bi-inbox"></i>
                 </div>
-                <h4>Henuz talep bulunmamaktadir</h4>
+                <h4>Henüz talep bulunmamaktadir</h4>
                 <p>Gelen talepler burada goruntulenecektir.</p>
             </div>
         <% } else { %>
@@ -501,7 +501,7 @@
                                     <% } else { %>
                                         <i class="bi bi-journal-bookmark-fill" style="color: #2563eb;"></i>
                                         <%= talep.sinav_adi %>
-                                        <span class="kt-talep-type sinav">Sinav Talebi</span>
+                                        <span class="kt-talep-type sinav">Sınav Talebi</span>
                                     <% } %>
                                 </h4>
                                 <div class="kt-meta-row">
@@ -525,7 +525,7 @@
                                 <% if (talep.durum === 'beklemede') { %>
                                     <i class="bi bi-hourglass-split"></i> Beklemede
                                 <% } else if (talep.durum === 'onaylandi') { %>
-                                    <i class="bi bi-check-circle-fill"></i> Onaylandi
+                                    <i class="bi bi-check-circle-fill"></i> Onaylandı
                                 <% } else { %>
                                     <i class="bi bi-x-circle-fill"></i> Reddedildi
                                 <% } %>
@@ -539,7 +539,7 @@
                             </div>
                             <% if (talep.talep_tipi === 'sinav' && talep.sinav_tarihi) { %>
                             <div class="kt-detail-item">
-                                <span class="kt-detail-label">Sinav Tarihi</span>
+                                <span class="kt-detail-label">Sınav Tarihi</span>
                                 <span class="kt-detail-value"><%= new Date(talep.sinav_tarihi).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) %></span>
                             </div>
                             <% } %>
@@ -551,13 +551,13 @@
                             <% } %>
                             <% if (talep.sinif) { %>
                             <div class="kt-detail-item">
-                                <span class="kt-detail-label">Sinif</span>
+                                <span class="kt-detail-label">Sınıf</span>
                                 <span class="kt-detail-value"><%= talep.sinif %></span>
                             </div>
                             <% } %>
                             <% if (talep.talep_tipi === 'rehber' && talep.rehber_ad_soyad) { %>
                             <div class="kt-detail-item">
-                                <span class="kt-detail-label">Rehber Ogretmen</span>
+                                <span class="kt-detail-label">Rehber Öğretmen</span>
                                 <span class="kt-detail-value"><%= talep.rehber_ad_soyad %> <%= talep.rehber_brans ? `(${talep.rehber_brans})` : '' %></span>
                             </div>
                             <% } %>
@@ -565,7 +565,7 @@
 
                         <% if (talep.aciklama || talep.mesaj) { %>
                         <div class="kt-aciklama-box">
-                            <h6><i class="bi bi-chat-left-text-fill"></i> <% if (talep.talep_tipi === 'rehber') { %>Kurum Mesaji<% } else { %>Veli Aciklamasi<% } %></h6>
+                            <h6><i class="bi bi-chat-left-text-fill"></i> <% if (talep.talep_tipi === 'rehber') { %>Kurum Mesajı<% } else { %>Veli Açıklaması<% } %></h6>
                             <p><%= talep.aciklama || talep.mesaj %></p>
                         </div>
                         <% } %>
@@ -1102,7 +1102,7 @@ async function veliBilgisiniYukle(veliId) {
         }
 
         if (!telefon && !email) {
-            veliHtml += '<div class="small text-muted">Iletisim bilgisi bulunmuyor</div>';
+            veliHtml += '<div class="small text-muted">İletişim bilgisi bulunmuyor</div>';
         }
 
         veliHtml += '</div></div>';
@@ -1200,7 +1200,7 @@ async function rehberTalepGonder() {
         }
 
         if (result.success) {
-            alert('Basarili: ' + result.message);
+            alert('Başarılı: ' + result.message);
             const modal = bootstrap.Modal.getInstance(document.getElementById('rehberTalepModal'));
             modal.hide();
             location.reload();

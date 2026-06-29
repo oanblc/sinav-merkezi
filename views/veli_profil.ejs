@@ -141,14 +141,14 @@
 
 <div class="container">
     <% if (error) { %>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.875rem;">
         <i class="bi bi-exclamation-triangle"></i> <%= error %>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
     <% } %>
 
     <% if (success) { %>
-    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.875rem;">
         <i class="bi bi-check-circle"></i> <%= success %>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
@@ -176,9 +176,9 @@
                         </div>
                         <div class="col-md-6">
                             <div class="vp-form-group">
-                                <label><i class="bi bi-person-badge"></i> Kullanici Adi</label>
+                                <label><i class="bi bi-person-badge"></i> Kullanıcı Adı</label>
                                 <input type="text" class="vp-form-control" value="<%= kullanici.username %>" disabled style="background: #f8fafc;">
-                                <small style="color: var(--vp-text-muted); font-size: 0.75rem;">Kullanici adi degistirilemez</small>
+                                <small style="color: var(--vp-text-muted); font-size: 0.75rem;">Kullanıcı adı degistirilemez</small>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -192,21 +192,21 @@
 
                     <!-- Sifre Degistirme -->
                     <div class="vp-password-box">
-                        <h6><i class="bi bi-shield-lock"></i> Sifre Degistir</h6>
+                        <h6><i class="bi bi-shield-lock"></i> Şifre Değiştir</h6>
                         <p class="small" style="color: #92400e; margin-bottom: 12px;">
-                            Sifrenizi degistirmek isterseniz asagidaki alani doldurun.
+                            Şifrenizi degistirmek isterseniz asagidaki alani doldurun.
                         </p>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="vp-form-group">
-                                    <label><i class="bi bi-key"></i> Mevcut Sifre</label>
-                                    <input type="password" name="current_password" class="vp-form-control" placeholder="Mevcut sifreniz">
+                                    <label><i class="bi bi-key"></i> Mevcut Şifre</label>
+                                    <input type="password" name="current_password" class="vp-form-control" placeholder="Mevcut şifreniz">
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="vp-form-group">
-                                    <label><i class="bi bi-key"></i> Yeni Sifre</label>
-                                    <input type="password" name="new_password" class="vp-form-control" placeholder="Yeni sifreniz (min. 6 karakter)">
+                                    <label><i class="bi bi-key"></i> Yeni Şifre</label>
+                                    <input type="password" name="new_password" class="vp-form-control" placeholder="Yeni şifreniz (min. 6 karakter)">
                                 </div>
                             </div>
                         </div>
@@ -214,7 +214,7 @@
 
                     <div class="d-flex gap-2 flex-wrap">
                         <button type="submit" class="vp-btn vp-btn-primary flex-grow-1">
-                            <i class="bi bi-check-circle"></i> Profili Guncelle
+                            <i class="bi bi-check-circle"></i> Profili Güncelle
                         </button>
                         <a href="/veli/dashboard" class="vp-btn vp-btn-secondary">
                             Iptal
@@ -228,17 +228,17 @@
         <div class="col-lg-4">
             <div class="vp-info-box">
                 <h5><i class="bi bi-info-circle-fill"></i> Hesap Bilgileri</h5>
-                <p><strong>Kullanici Adi:</strong> <%= kullanici.username %></p>
+                <p><strong>Kullanıcı Adı:</strong> <%= kullanici.username %></p>
                 <p><strong>Hesap Turu:</strong> <span class="vp-badge vp-badge-primary">Veli</span></p>
-                <p style="margin: 0;"><strong>Kayit Tarihi:</strong> <%= new Date(kullanici.created_at).toLocaleDateString('tr-TR') %></p>
+                <p style="margin: 0;"><strong>Kayıt Tarihi:</strong> <%= new Date(kullanici.created_at).toLocaleDateString('tr-TR') %></p>
             </div>
 
             <div class="vp-card" style="text-align: center;">
                 <i class="bi bi-calendar-check" style="font-size: 2rem; color: var(--vp-primary); margin-bottom: 8px;"></i>
-                <h3 style="font-size: 1.8rem; font-weight: 700; color: var(--vp-primary); margin: 0;">
+                <h3 style="font-size: 1.75rem; font-weight: 700; color: var(--vp-primary); margin: 0;">
                     <%= Math.floor((new Date() - new Date(kullanici.created_at)) / (1000 * 60 * 60 * 24)) %>
                 </h3>
-                <p style="color: var(--vp-text-muted); margin: 4px 0 0; font-size: 0.85rem;">Gun Sistemde</p>
+                <p style="color: var(--vp-text-muted); margin: 4px 0 0; font-size: 0.875rem;">Gün Sistemde</p>
             </div>
         </div>
     </div>
@@ -246,7 +246,7 @@
     <!-- Talep Edilen Sinavlar -->
     <div class="vp-section-title" style="margin-top: 24px;">
         <i class="bi bi-send-check"></i>
-        <span>Talep Edilen Sinavlar</span>
+        <span>Talep Edilen Sınavlar</span>
     </div>
 
     <% if (talepEdilenSinavlar && talepEdilenSinavlar.length > 0) { %>
@@ -268,7 +268,7 @@
                         <% if (sinav.durum === 'beklemede') { %>
                             <span class="vp-badge vp-badge-warning">Beklemede</span>
                         <% } else if (sinav.durum === 'onaylandi') { %>
-                            <span class="vp-badge vp-badge-success">Onaylandi</span>
+                            <span class="vp-badge vp-badge-success">Onaylandı</span>
                         <% } else if (sinav.durum === 'reddedildi') { %>
                             <span class="vp-badge vp-badge-danger">Reddedildi</span>
                         <% } %>
@@ -283,7 +283,7 @@
                         <div style="font-weight: 600; font-size: 0.75rem; color: var(--vp-text-muted); margin-bottom: 4px;">
                             <i class="bi bi-chat-left-text"></i> Yanit:
                         </div>
-                        <div style="font-size: 0.85rem; color: var(--vp-text);">
+                        <div style="font-size: 0.875rem; color: var(--vp-text);">
                             <%= sinav.yanit %>
                         </div>
                     </div>
@@ -295,10 +295,10 @@
     <% } else { %>
         <div class="vp-empty">
             <i class="bi bi-inbox"></i>
-            <h4>Henuz Talep Gonderilmedi</h4>
-            <p>Sinav paketleri sayfasindan sinav erisimi icin talep gonderebilirsiniz.</p>
+            <h4>Henüz Talep Gönderilmedi</h4>
+            <p>Sınav paketleri sayfasından sınav erişimi için talep gönderebilirsiniz.</p>
             <a href="/sinav-paketleri" class="vp-btn vp-btn-primary">
-                <i class="bi bi-journals"></i> Sinav Paketleri
+                <i class="bi bi-journals"></i> Sınav Paketleri
             </a>
         </div>
     <% } %>

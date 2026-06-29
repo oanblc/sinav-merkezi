@@ -3,12 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= typeof title !== 'undefined' ? title : 'Adana Sınav Kulübü' %></title>
+    <% var _siteName = typeof siteName !== 'undefined' ? siteName : 'Adana Sınav Kulübü'; %>
+    <% var _pageTitle = (typeof title !== 'undefined' ? title : 'Ana Sayfa'); %>
+    <% var _fullTitle = _pageTitle + ' | ' + _siteName; %>
+    <% var _desc = typeof metaDescription !== 'undefined' ? metaDescription : ''; %>
+    <title><%= _fullTitle %></title>
+    <meta name="description" content="<%= _desc %>">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#003b78">
+    <!-- PWA / mobil -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="<%= _siteName %>">
+    <% if (typeof canonicalUrl !== 'undefined') { %><link rel="canonical" href="<%= canonicalUrl %>"><% } %>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23003b78'/><text x='16' y='23' font-size='20' font-family='Arial,sans-serif' font-weight='bold' fill='white' text-anchor='middle'>A</text></svg>">
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="<%= _siteName %>">
+    <meta property="og:title" content="<%= _fullTitle %>">
+    <meta property="og:description" content="<%= _desc %>">
+    <meta property="og:locale" content="tr_TR">
+    <% if (typeof canonicalUrl !== 'undefined') { %><meta property="og:url" content="<%= canonicalUrl %>"><% } %>
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="<%= _fullTitle %>">
+    <meta name="twitter:description" content="<%= _desc %>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/mobile-fixes.css">
+
+    <% var _base = typeof baseUrl !== 'undefined' ? baseUrl : ''; %>
+    <!-- JSON-LD: Kurum -->
+    <script type="application/ld+json"><%- JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "EducationalOrganization",
+      "name": _siteName,
+      "url": _base + "/",
+      "description": (typeof metaDescription !== 'undefined' ? metaDescription : ''),
+      "email": "adanasinavkulubu@outlook.com.tr",
+      "telephone": "+90 541 190 24 25",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Toros Mah. Ahmet Sapmaz Blv. Yusuf Atlı Apt. A Blok No:61D",
+        "addressLocality": "Çukurova",
+        "addressRegion": "Adana",
+        "addressCountry": "TR"
+      }
+    }) %></script>
+    <!-- JSON-LD: WebSite -->
+    <script type="application/ld+json"><%- JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": _siteName,
+      "url": _base + "/",
+      "inLanguage": "tr-TR"
+    }) %></script>
+    <% if (typeof title !== 'undefined' && title && title !== 'Ana Sayfa' && typeof canonicalUrl !== 'undefined') { %>
+    <!-- JSON-LD: Breadcrumb -->
+    <script type="application/ld+json"><%- JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Ana Sayfa", "item": _base + "/" },
+        { "@type": "ListItem", "position": 2, "name": title, "item": canonicalUrl }
+      ]
+    }) %></script>
+    <% } %>
 </head>
 <body>
     <!-- Navbar -->

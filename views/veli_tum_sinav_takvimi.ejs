@@ -4,7 +4,7 @@
 <style>
     /* Mor tema header */
     .vp-calendar-header {
-        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
         padding: clamp(16px, 4vw, 24px) 0;
         margin: -20px -12px clamp(16px, 4vw, 24px);
@@ -53,7 +53,7 @@
     }
 
     .vp-exam-date-box {
-        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
         border-radius: var(--vp-radius);
         padding: clamp(10px, 2.5vw, 14px);
@@ -88,7 +88,7 @@
 
     /* Ogrenci Badge */
     .vp-student-badge {
-        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
         padding: 4px 10px;
         border-radius: 8px;
@@ -99,7 +99,7 @@
 
     /* Mor Header icin */
     .vp-purple-section {
-        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
         padding: clamp(12px, 3vw, 16px);
         border-radius: var(--vp-radius) var(--vp-radius) 0 0;
@@ -136,21 +136,21 @@
 <!-- Page Header -->
 <div class="vp-calendar-header">
     <div class="container">
-        <h2><i class="bi bi-calendar-event"></i> Sinav Takvimi</h2>
-        <p>Tum ogrencilerinizin yaklasan sinavlari</p>
+        <h2><i class="bi bi-calendar-event"></i> Sınav Takvimi</h2>
+        <p>Tüm öğrencilerinizin yaklaşan sınavları</p>
     </div>
 </div>
 
 <div class="container">
     <% if (error) { %>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.875rem;">
         <i class="bi bi-exclamation-triangle"></i> <%= error %>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
     <% } %>
 
     <% if (success) { %>
-    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.875rem;">
         <i class="bi bi-check-circle"></i> <%= success %>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
@@ -159,19 +159,19 @@
     <!-- Istatistikler -->
     <div class="row g-3 mb-4">
         <div class="col-4">
-            <div class="vp-stat-card" style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);">
+            <div class="vp-stat-card" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);">
                 <div class="number"><%= ogrenciler.length %></div>
-                <div class="label">Ogrenci</div>
+                <div class="label">Öğrenci</div>
             </div>
         </div>
         <div class="col-4">
-            <div class="vp-stat-card" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+            <div class="vp-stat-card" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);">
                 <div class="number"><%= tumTakvim.length %></div>
-                <div class="label">Sinav</div>
+                <div class="label">Sınav</div>
             </div>
         </div>
         <div class="col-4">
-            <div class="vp-stat-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <div class="vp-stat-card" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);">
                 <div class="number">
                     <%= tumTakvim.filter(s => {
                         const tarih = new Date(s.tarih);
@@ -188,7 +188,7 @@
     <!-- Sinav Listesi -->
     <div class="vp-card" style="padding: 0; overflow: hidden;">
         <div class="vp-purple-section">
-            <h5><i class="bi bi-calendar-check"></i> Yaklasan Sinavlar</h5>
+            <h5><i class="bi bi-calendar-check"></i> Yaklaşan Sınavlar</h5>
         </div>
 
         <div style="padding: clamp(12px, 3vw, 16px);">
@@ -255,8 +255,8 @@
             <% } else { %>
                 <div class="vp-empty" style="margin: 0;">
                     <i class="bi bi-calendar-x"></i>
-                    <h4>Henuz Sinav Yok</h4>
-                    <p>Ogrencileriniz icin henuz planlanmis bir sinav bulunmamaktadir.</p>
+                    <h4>Henüz Sınav Yok</h4>
+                    <p>Öğrencileriniz için henüz planlanmış bir sınav bulunmamaktadır.</p>
                 </div>
             <% } %>
         </div>

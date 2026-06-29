@@ -77,7 +77,7 @@
     }
 
     .vp-teacher-branch {
-        color: #8b5cf6;
+        color: #3b82f6;
         font-weight: 600;
         font-size: clamp(0.75rem, 2.8vw, 0.85rem);
     }
@@ -129,7 +129,7 @@
 
     /* Mor Header */
     .vp-purple-header {
-        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
         padding: clamp(14px, 3vw, 20px);
         border-radius: var(--vp-radius) var(--vp-radius) 0 0;
@@ -145,21 +145,21 @@
 <!-- Page Header -->
 <div class="vp-edit-header">
     <div class="container">
-        <h2><i class="bi bi-pencil-square"></i> Ogrenci Duzenle</h2>
-        <p>Ogrenci bilgilerini guncelleyin</p>
+        <h2><i class="bi bi-pencil-square"></i> Öğrenci Düzenle</h2>
+        <p>Öğrenci bilgilerini güncelleyin</p>
     </div>
 </div>
 
 <div class="container">
     <% if (error) { %>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.875rem;">
         <i class="bi bi-exclamation-triangle"></i> <%= error %>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
     <% } %>
 
     <% if (success) { %>
-    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.875rem;">
         <i class="bi bi-check-circle"></i> <%= success %>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
@@ -171,7 +171,7 @@
             <!-- Rehber Ogretmenler -->
             <div class="vp-card" style="padding: 0; overflow: hidden;">
                 <div class="vp-purple-header">
-                    <h5><i class="bi bi-people-fill"></i> Rehber Ogretmenler</h5>
+                    <h5><i class="bi bi-people-fill"></i> Rehber Öğretmenler</h5>
                 </div>
                 <div style="padding: clamp(14px, 3vw, 20px);">
                     <% if (rehberOgretmenler && rehberOgretmenler.length > 0) { %>
@@ -203,12 +203,12 @@
                                         <i class="bi bi-<%= ogretmen.sonuc_goruntuleme_aktif == 1 ? 'eye-fill' : 'eye-slash-fill' %>"
                                            style="color: <%= ogretmen.sonuc_goruntuleme_aktif == 1 ? '#16a34a' : '#dc2626' %>"></i>
                                         <strong style="color: <%= ogretmen.sonuc_goruntuleme_aktif == 1 ? '#16a34a' : '#dc2626' %>;">
-                                            Sonuclar <%= ogretmen.sonuc_goruntuleme_aktif == 1 ? 'Aktif' : 'Pasif' %>
+                                            Sonuçlar <%= ogretmen.sonuc_goruntuleme_aktif == 1 ? 'Aktif' : 'Pasif' %>
                                         </strong>
                                     </div>
                                 </div>
-                                <div style="font-size: 0.7rem; color: #64748b; margin-top: 4px;">
-                                    Kurum yoneticisi tarafindan yonetilir
+                                <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">
+                                    Kurum yöneticisi tarafından yönetilir
                                 </div>
                             </div>
                         </div>
@@ -216,7 +216,7 @@
                     <% } else { %>
                         <div class="text-center" style="padding: 24px 12px; color: #94a3b8;">
                             <i class="bi bi-person-x" style="font-size: 2.5rem; margin-bottom: 8px; display: block;"></i>
-                            <div style="font-weight: 600; font-size: 0.9rem;">Henuz rehber ogretmen yok</div>
+                            <div style="font-weight: 600; font-size: 0.875rem;">Henüz rehber öğretmen yok</div>
                         </div>
                     <% } %>
                 </div>
@@ -224,7 +224,7 @@
 
             <div class="vp-info-yellow">
                 <h5><i class="bi bi-exclamation-triangle-fill"></i> Dikkat</h5>
-                <p>Ogrenci bilgilerini guncelledikten sonra sinav sonuclari etkilenmeyecektir.</p>
+                <p>Öğrenci bilgilerini güncelledikten sonra sınav sonuçları etkilenmeyecektir.</p>
             </div>
         </div>
 
@@ -235,7 +235,7 @@
             <div class="vp-student-no-card">
                 <i class="bi bi-person-badge"></i>
                 <div>
-                    <div class="label">Ogrenci Numarasi</div>
+                    <div class="label">Öğrenci Numarası</div>
                     <div class="value"><%= ogrenci.ogrenci_no %></div>
                 </div>
             </div>
@@ -246,7 +246,7 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="vp-form-group">
-                                <label><i class="bi bi-person"></i> Ogrenci Adi Soyadi *</label>
+                                <label><i class="bi bi-person"></i> Öğrenci Adı Soyadı *</label>
                                 <input type="text" name="ad_soyad" class="vp-form-control"
                                        value="<%= ogrenci.ad_soyad %>" placeholder="Orn: Ahmet Yilmaz" required>
                             </div>
@@ -263,7 +263,7 @@
 
                         <div class="col-md-6">
                             <div class="vp-form-group">
-                                <label><i class="bi bi-phone"></i> Ogrenci Cep Telefonu</label>
+                                <label><i class="bi bi-phone"></i> Öğrenci Cep Telefonu</label>
                                 <input type="tel" name="telefon" class="vp-form-control"
                                        value="<%= ogrenci.telefon || '' %>" placeholder="0555 555 55 55">
                                 <small style="color: var(--vp-text-muted); font-size: 0.75rem;">Opsiyonel</small>
@@ -280,13 +280,13 @@
 
                         <div class="col-12">
                             <div class="vp-form-group">
-                                <label><i class="bi bi-book"></i> Sinif *</label>
+                                <label><i class="bi bi-book"></i> Sınıf *</label>
                                 <select name="sinif" class="vp-form-control" required>
-                                    <option value="">Seciniz...</option>
-                                    <option value="9. Sinif" <%= ogrenci.sinif === '9. Sınıf' || ogrenci.sinif === '9. Sinif' ? 'selected' : '' %>>9. Sinif</option>
-                                    <option value="10. Sinif" <%= ogrenci.sinif === '10. Sınıf' || ogrenci.sinif === '10. Sinif' ? 'selected' : '' %>>10. Sinif</option>
-                                    <option value="11. Sinif" <%= ogrenci.sinif === '11. Sınıf' || ogrenci.sinif === '11. Sinif' ? 'selected' : '' %>>11. Sinif</option>
-                                    <option value="12. Sinif" <%= ogrenci.sinif === '12. Sınıf' || ogrenci.sinif === '12. Sinif' ? 'selected' : '' %>>12. Sinif</option>
+                                    <option value="">Seçiniz...</option>
+                                    <option value="9. Sinif" <%= ogrenci.sinif === '9. Sınıf' || ogrenci.sinif === '9. Sinif' ? 'selected' : '' %>>9. Sınıf</option>
+                                    <option value="10. Sinif" <%= ogrenci.sinif === '10. Sınıf' || ogrenci.sinif === '10. Sinif' ? 'selected' : '' %>>10. Sınıf</option>
+                                    <option value="11. Sinif" <%= ogrenci.sinif === '11. Sınıf' || ogrenci.sinif === '11. Sinif' ? 'selected' : '' %>>11. Sınıf</option>
+                                    <option value="12. Sinif" <%= ogrenci.sinif === '12. Sınıf' || ogrenci.sinif === '12. Sinif' ? 'selected' : '' %>>12. Sınıf</option>
                                     <option value="Mezun" <%= ogrenci.sinif === 'Mezun' ? 'selected' : '' %>>Mezun</option>
                                 </select>
                             </div>
@@ -319,7 +319,7 @@
 
                 <h4 style="font-weight: 700; color: var(--vp-text); margin-bottom: 12px; font-size: clamp(1rem, 4vw, 1.2rem);">Yetkiyi Kaldir</h4>
                 <p id="confirmMessage" style="color: var(--vp-text-muted); font-size: clamp(0.85rem, 3vw, 1rem); margin-bottom: 20px;">
-                    Bu rehber ogretmenin yetkisini kaldirmak istediginize emin misiniz?
+                    Bu rehber öğretmenin yetkisini kaldirmak istediginize emin misiniz?
                 </p>
 
                 <div class="d-flex gap-2 justify-content-center flex-wrap">
@@ -341,9 +341,9 @@
                     <i class="bi bi-check-lg" style="font-size: 2rem; color: white;"></i>
                 </div>
 
-                <h4 style="font-weight: 700; color: var(--vp-text); margin-bottom: 12px; font-size: clamp(1rem, 4vw, 1.2rem);">Islem Basarili!</h4>
+                <h4 style="font-weight: 700; color: var(--vp-text); margin-bottom: 12px; font-size: clamp(1rem, 4vw, 1.2rem);">Işlem Başarılı!</h4>
                 <p id="successMessage" style="color: var(--vp-text-muted); font-size: clamp(0.85rem, 3vw, 1rem); margin-bottom: 20px;">
-                    Rehber ogretmen yetkisi kaldirildi!
+                    Rehber öğretmen yetkisi kaldirildi!
                 </p>
 
                 <button type="button" class="vp-btn vp-btn-success" data-bs-dismiss="modal">Tamam</button>

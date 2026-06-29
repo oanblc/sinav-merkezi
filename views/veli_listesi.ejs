@@ -2,7 +2,7 @@
 
 <style>
     .page-header {
-        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
         padding: 40px 0;
         margin: -30px -15px 40px;
@@ -24,12 +24,12 @@
     }
     
     .stat-card-mini.cyan {
-        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
     }
     
     .stat-card-mini.green {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
     }
     
@@ -69,7 +69,7 @@
         padding: 20px;
         font-weight: 600;
         color: #64748b;
-        font-size: 0.85rem;
+        font-size: 0.875rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
@@ -92,14 +92,14 @@
         padding: 6px 14px;
         border-radius: 8px;
         font-weight: 600;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
     }
     
     .btn-action {
         padding: 8px 14px;
         border-radius: 8px;
         font-weight: 600;
-        font-size: 0.85rem;
+        font-size: 0.875rem;
         transition: all 0.3s ease;
         margin: 0 2px;
     }
@@ -137,7 +137,7 @@
                 </div>
                 <div>
                     <div style="font-size: 2rem; font-weight: 800; line-height: 1;"><%= veliler.length %></div>
-                    <div style="opacity: 0.9; font-size: 0.9rem;">Toplam Veli</div>
+                    <div style="opacity: 0.9; font-size: 0.875rem;">Toplam Veli</div>
                 </div>
             </div>
         </div>
@@ -150,7 +150,7 @@
                 </div>
                 <div>
                     <div style="font-size: 2rem; font-weight: 800; line-height: 1;"><%= veliler.filter(v => v.ogrenci_sayisi > 0).length %></div>
-                    <div style="opacity: 0.9; font-size: 0.9rem;">Öğrencisi Olan</div>
+                    <div style="opacity: 0.9; font-size: 0.875rem;">Öğrencisi Olan</div>
                 </div>
             </div>
         </div>
@@ -163,7 +163,7 @@
                 </div>
                 <div>
                     <div style="font-size: 2rem; font-weight: 800; line-height: 1;"><%= veliler.filter(v => v.ogrenci_sayisi == 0).length %></div>
-                    <div style="opacity: 0.9; font-size: 0.9rem;">Öğrencisiz</div>
+                    <div style="opacity: 0.9; font-size: 0.875rem;">Öğrencisiz</div>
                 </div>
             </div>
         </div>
@@ -268,7 +268,7 @@
                                 <span style="color: #cbd5e1;">-</span>
                             <% } %>
                         </td>
-                        <td style="color: #64748b; font-size: 0.85rem;">
+                        <td style="color: #64748b; font-size: 0.875rem;">
                             <%= new Date(veli.created_at).toLocaleDateString('tr-TR') %>
                         </td>
                         <td>

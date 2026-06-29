@@ -167,21 +167,21 @@
 <!-- Page Header -->
 <div class="vp-sonuc-header">
     <div class="container">
-        <h2><i class="bi bi-file-earmark-text"></i> Sinav Sonuclari</h2>
-        <p>Ogrencilerinizin sinav sonuclarini goruntuleyiniz</p>
+        <h2><i class="bi bi-file-earmark-text"></i> Sınav Sonuçları</h2>
+        <p>Öğrencilerinizin sınav sonuçlarını görüntüleyiniz</p>
     </div>
 </div>
 
 <div class="container">
     <% if (error) { %>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.875rem;">
         <i class="bi bi-exclamation-triangle"></i> <%= error %>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
     <% } %>
 
     <% if (success) { %>
-    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.875rem;">
         <i class="bi bi-check-circle"></i> <%= success %>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
@@ -190,17 +190,17 @@
     <% if (sonuclar.length === 0) { %>
         <div class="vp-empty">
             <i class="bi bi-inbox"></i>
-            <h4>Henuz sonuc yok</h4>
-            <p>Ogrencilerinizin sinav sonuclari aciklandiginda buradan goruntuleyebileceksiniz.</p>
+            <h4>Henüz sonuç yok</h4>
+            <p>Öğrencilerinizin sınav sonuçları açıklandığında buradan görüntüleyebileceksiniz.</p>
         </div>
     <% } else { %>
         <!-- Filtreler -->
         <div class="vp-filter-box">
             <div class="row g-3">
                 <div class="col-12 col-md-4">
-                    <label>Ogrenci</label>
+                    <label>Öğrenci</label>
                     <select id="ogrenciFiltre">
-                        <option value="">Tum Ogrenciler</option>
+                        <option value="">Tüm Öğrenciler</option>
                         <%
                         const uniqueOgrenciler = [...new Set(sonuclar.map(s => s.ogrenci_adi_soyadi))];
                         uniqueOgrenciler.forEach(o => {
@@ -210,9 +210,9 @@
                     </select>
                 </div>
                 <div class="col-12 col-md-4">
-                    <label>Sinav</label>
+                    <label>Sınav</label>
                     <select id="sinavFiltre">
-                        <option value="">Tum Sinavlar</option>
+                        <option value="">Tüm Sınavlar</option>
                         <%
                         const uniqueSinavlar = [...new Set(sonuclar.map(s => s.sinav_adi))];
                         uniqueSinavlar.forEach(s => {
@@ -224,8 +224,8 @@
                 <div class="col-12 col-md-4">
                     <label>Durum</label>
                     <select id="durumFiltre">
-                        <option value="">Tum Durumlar</option>
-                        <option value="yuklendi">Yuklendi</option>
+                        <option value="">Tüm Durumlar</option>
+                        <option value="yuklendi">Yüklendi</option>
                         <option value="bildirildi">Bildirildi</option>
                     </select>
                 </div>
@@ -301,7 +301,7 @@
                             </span>
                         <% } else { %>
                             <span class="vp-badge vp-durum-yuklendi">
-                                <i class="bi bi-upload"></i> Yuklendi
+                                <i class="bi bi-upload"></i> Yüklendi
                             </span>
                         <% } %>
                     </div>
@@ -312,7 +312,7 @@
                             PDF Indir
                         </a>
                     <% } else { %>
-                        <span style="color: var(--vp-text-muted); font-size: 0.8rem;">PDF hazirlaniyor...</span>
+                        <span style="color: var(--vp-text-muted); font-size: 0.75rem;">PDF hazırlanıyor...</span>
                     <% } %>
                 </div>
             </div>
@@ -320,7 +320,7 @@
         </div>
 
         <div id="noResultsMessage" class="alert alert-info" style="display: none; border-radius: var(--vp-radius);">
-            <i class="bi bi-info-circle"></i> Secilen filtrelere uygun sonuc bulunamadi.
+            <i class="bi bi-info-circle"></i> Seçilen filtrelere uygun sonuç bulunamadı.
         </div>
     <% } %>
 

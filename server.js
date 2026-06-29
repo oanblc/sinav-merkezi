@@ -50,7 +50,7 @@ app.set('trust proxy', 1);
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 dakika
   max: 1000, // IP basina maksimum 1000 istek
-  message: 'Cok fazla istek gonderdiniz. Lutfen 15 dakika sonra tekrar deneyin.',
+  message: 'Çok fazla istek gönderdiniz. Lütfen 15 dakika sonra tekrar deneyin.',
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -59,7 +59,7 @@ const generalLimiter = rateLimit({
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 dakika
   max: 5, // IP basina maksimum 5 deneme
-  message: 'Cok fazla giris denemesi. Lutfen 15 dakika sonra tekrar deneyin.',
+  message: 'Cok fazla giriş denemesi. Lütfen 15 dakika sonra tekrar deneyin.',
   skipSuccessfulRequests: true,
 });
 
@@ -67,7 +67,7 @@ const loginLimiter = rateLimit({
 const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 saat
   max: 50, // IP basina maksimum 50 upload
-  message: 'Cok fazla dosya yukleme istegi. Lutfen 1 saat sonra tekrar deneyin.',
+  message: 'Cok fazla dosya yükleme istegi. Lütfen 1 saat sonra tekrar deneyin.',
 });
 
 app.use(generalLimiter);
@@ -129,7 +129,7 @@ async function whatsappBildirimGonder(telefon, mesaj, bildirimTipi = 'genel') {
         [bildirimTipi, telefon, mesaj]
       );
       
-      return { success: true, message: 'Bildirim gonderildi (simulasyon - API token yok)' };
+      return { success: true, message: 'Bildirim gönderildi (simulasyon - API token yok)' };
     }
     
     // Whapi.cloud API'ye istek gonder
@@ -189,7 +189,7 @@ async function whatsappBildirimGonder(telefon, mesaj, bildirimTipi = 'genel') {
               [bildirimTipi, telefon, mesaj]
             );
             
-            resolve({ success: true, message: 'WhatsApp bildirimi basariyla gonderildi!' });
+            resolve({ success: true, message: 'WhatsApp bildirimi başarıyla gönderildi!' });
           } else {
             // API hatasi
             const errorMsg = `API Error: ${res.statusCode} - ${data}`;
@@ -201,7 +201,7 @@ async function whatsappBildirimGonder(telefon, mesaj, bildirimTipi = 'genel') {
               [bildirimTipi, telefon, mesaj, errorMsg]
             );
             
-            resolve({ success: false, message: 'WhatsApp bildirimi gonderilemedi', error: errorMsg });
+            resolve({ success: false, message: 'WhatsApp bildirimi gönderilemedi', error: errorMsg });
           }
         });
       });
@@ -241,7 +241,7 @@ async function whatsappBildirimGonder(telefon, mesaj, bildirimTipi = 'genel') {
       console.error(' Bildirim gecmisi kayit hatasi:', logError);
     }
     
-    return { success: false, message: 'Bildirim gonderilemedi', error: error.message };
+    return { success: false, message: 'Bildirim gönderilemedi', error: error.message };
   }
 }
 
@@ -251,7 +251,7 @@ function talepBildirimMesaji(veli, sinav) {
 
  Veli: ${veli.ad_soyad}
  Telefon: ${veli.telefon}
- E-posta: ${veli.email}
+ E-posta: ${veli.email || 'Belirtilmemiş'}
 
  Sinav: ${sinav.ad}
  Fiyat: ${sinav.fiyat} TL
@@ -490,7 +490,7 @@ const pdfUpload = multer({
     if (file.mimetype === 'application/pdf') {
       cb(null, true);
     } else {
-      cb(new Error('Sadece PDF dosyasi yukleyebilirsiniz!'), false);
+      cb(new Error('Sadece PDF dosyası yükleyebilirsiniz!'), false);
     }
   }
 });
@@ -518,7 +518,7 @@ const answerKeyUpload = multer({
     if (file.mimetype === 'application/pdf') {
       cb(null, true);
     } else {
-      cb(new Error('Sadece PDF dosyasi yukleyebilirsiniz!'), false);
+      cb(new Error('Sadece PDF dosyası yükleyebilirsiniz!'), false);
     }
   }
 });
@@ -532,6 +532,24 @@ initDatabase().then(async () => {
   // Turso icin eksik tablolari olustur
   if (USE_TURSO) {
     await ensureTursoTables();
+  }
+  // Sinav merkezleri tablosu bos ise varsayilan subeleri ekle
+  try {
+    const sayim = await dbGet('SELECT COUNT(*) as adet FROM sinav_merkezleri');
+    if (sayim && sayim.adet === 0) {
+      const varsayilan = [
+        ['Ankara Merkez Şube', 'Kızılay Mahallesi, Atatürk Bulvarı No: 123, Çankaya/Ankara', '+90 (312) 123 45 67', 'ankara@sinavmerkezi.com', 1],
+        ['İstanbul Kadıköy Şube', 'Moda Mahallesi, Bahariye Caddesi No: 45, Kadıköy/İstanbul', '+90 (216) 456 78 90', 'istanbul@sinavmerkezi.com', 2],
+        ['İzmir Alsancak Şube', 'Kültür Mahallesi, Cumhuriyet Bulvarı No: 78, Konak/İzmir', '+90 (232) 234 56 78', 'izmir@sinavmerkezi.com', 3],
+        ['Antalya Lara Şube', 'Lara Mahallesi, Atatürk Caddesi No: 234, Muratpaşa/Antalya', '+90 (242) 345 67 89', 'antalya@sinavmerkezi.com', 4]
+      ];
+      for (const m of varsayilan) {
+        await dbRun('INSERT INTO sinav_merkezleri (ad, adres, telefon, eposta, sira) VALUES (?, ?, ?, ?, ?)', m);
+      }
+      console.log('Varsayilan sinav merkezleri eklendi:', varsayilan.length);
+    }
+  } catch (e) {
+    console.error('Sinav merkezleri seed hatasi:', e.message);
   }
 }).catch(err => {
   console.error('Database init failed:', err);
@@ -694,23 +712,23 @@ db.serialize(() => {
     if (err && !err.message.includes('duplicate column')) console.log(' durum kolonu zaten var veya hata:', err.message);
   });
   
-  db.run(`ALTER TABLE sinavlar ADD COLUMN sonuclar_aciklandi INTEGER DEFAULT 0`, (err) => {
+  db.run(`ALTER TABLE sınavlar ADD COLUMN sonuclar_aciklandi INTEGER DEFAULT 0`, (err) => {
     if (err && !err.message.includes('duplicate column')) console.log(' sonuclar_aciklandi kolonu zaten var veya hata:', err.message);
   });
-  db.run(`ALTER TABLE sinavlar ADD COLUMN katilimci_sayisi INTEGER DEFAULT 0`, (err) => {
+  db.run(`ALTER TABLE sınavlar ADD COLUMN katilimci_sayisi INTEGER DEFAULT 0`, (err) => {
     if (err && !err.message.includes('duplicate column')) console.log(' katilimci_sayisi kolonu zaten var veya hata:', err.message);
   });
-  db.run(`ALTER TABLE sinavlar ADD COLUMN sonuc_yuklendi INTEGER DEFAULT 0`, (err) => {
+  db.run(`ALTER TABLE sınavlar ADD COLUMN sonuc_yuklendi INTEGER DEFAULT 0`, (err) => {
     if (err && !err.message.includes('duplicate column')) console.log(' sonuc_yuklendi kolonu zaten var veya hata:', err.message);
   });
-  db.run(`ALTER TABLE sinavlar ADD COLUMN cevap_anahtari_pdf TEXT`, (err) => {
+  db.run(`ALTER TABLE sınavlar ADD COLUMN cevap_anahtari_pdf TEXT`, (err) => {
     if (err && !err.message.includes('duplicate column')) console.log(' cevap_anahtari_pdf kolonu zaten var veya hata:', err.message);
   });
-  db.run(`ALTER TABLE sinavlar ADD COLUMN sinav_durumu TEXT DEFAULT 'Basvuru asamasinda'`, (err) => {
+  db.run(`ALTER TABLE sınavlar ADD COLUMN sinav_durumu TEXT DEFAULT 'Basvuru asamasinda'`, (err) => {
     if (err && !err.message.includes('duplicate column')) console.log(' sinav_durumu kolonu zaten var veya hata:', err.message);
   });
   
-  // Sinav Katilimcilari Tablosu (Sinav-Ogrenci Iliskisi + PDF Sonuclari)
+  // Sınav Katilimcilari Tablosu (Sınav-Öğrenci Iliskisi + PDF Sonuçları)
   db.run(`
     CREATE TABLE IF NOT EXISTS sinav_katilimcilari (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -743,7 +761,7 @@ db.serialize(() => {
     if (err && !err.message.includes('duplicate column')) console.log(' pdf_indirilme_sayisi kolonu zaten var veya hata:', err.message);
   });
   db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_sinav_katilimci_unique ON sinav_katilimcilari (sinav_id, ogrenci_id, ogrenci_kaynak)", (err) => {
-    if (err && !err.message.includes("already exists")) console.log("idx_sinav_katilimci_unique olusturulamadi:", err.message);
+    if (err && !err.message.includes("already exists")) console.log("idx_sinav_katilimci_unique oluşturulamadı:", err.message);
   });
 
   
@@ -755,12 +773,12 @@ db.serialize(() => {
       sayfa_no INTEGER NOT NULL,
       sonuc_verisi TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (sinav_id) REFERENCES sinavlar(id),
-      FOREIGN KEY (ogrenci_id) REFERENCES ogrenciler(id)
+      FOREIGN KEY (sinav_id) REFERENCES sınavlar(id),
+      FOREIGN KEY (ogrenci_id) REFERENCES öğrenciler(id)
     )
   `);
   
-  // Sinav Talepleri Tablosu (Satin alma sistemi kaldirildi)
+  // Sınav Talepleri Tablosu (Satin alma sistemi kaldırıldı)
   db.run(`
     CREATE TABLE IF NOT EXISTS sinav_talepleri (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1848,6 +1866,93 @@ app.use(session({
   proxy: true // Railway proxy destegi
 }));
 
+// ===== SEO: her istekte canonical + dinamik meta bilgileri =====
+const SEO_SITE_NAME = 'Adana Sınav Kulübü';
+const SEO_DEFAULT_DESC = 'Adana Sınav Kulübü — LGS, YKS, TYT/AYT ve 3-12. sınıflar için profesyonel deneme (simülasyon) sınavları, sınav takvimi, cevap anahtarları ve gelişim raporları.';
+const SEO_PATH_DESC = {
+  '/': SEO_DEFAULT_DESC,
+  '/sinav-takvimi': 'Yaklaşan deneme sınavı tarihlerini görüntüleyin. LGS, YKS ve tüm sınıflar için Adana Sınav Kulübü sınav takvimi.',
+  '/sinav-paketleri': 'Sınıf bazlı deneme sınavı paketleri ve fiyatları. LGS, TYT/AYT ve 3-12. sınıf simülasyon sınav programları.',
+  '/cevap-anahtarlari': 'Sınav cevap anahtarlarını ve sonuçlarınızı görüntüleyin — Adana Sınav Kulübü.',
+  '/duyurular': 'Adana Sınav Kulübü duyuruları, sınav haberleri ve önemli güncellemeler.',
+  '/hakkimizda': '30 yıllık eğitim tecrübesiyle Adana Sınav Kulübü hakkında — simülasyon deneme sınav merkezi.',
+  '/iletisim': 'Adana Sınav Kulübü iletişim bilgileri. Bize ulaşın.',
+  '/sinav-merkezleri': 'Sınav merkezlerimiz ve şubelerimiz — adres, telefon ve iletişim bilgileri.'
+};
+function seoBaseUrl(req) {
+  const proto = req.headers['x-forwarded-proto'] || req.protocol;
+  return `${proto}://${req.get('host')}`;
+}
+app.use((req, res, next) => {
+  res.locals.siteName = SEO_SITE_NAME;
+  res.locals.baseUrl = seoBaseUrl(req);
+  res.locals.canonicalUrl = res.locals.baseUrl + req.path;
+  res.locals.metaDescription = SEO_PATH_DESC[req.path] || SEO_DEFAULT_DESC;
+  next();
+});
+
+// Flash mesaj temizligi: success/error bir kez gosterilsin.
+// res.render cagrisi mesaji ciktiya yansitir; render'dan hemen sonra session'dan silinir.
+app.use((req, res, next) => {
+  const origRender = res.render.bind(res);
+  res.render = function (...args) {
+    origRender(...args);
+    if (req.session) {
+      req.session.success = null;
+      req.session.error = null;
+    }
+  };
+  next();
+});
+
+// ===== robots.txt =====
+app.get('/robots.txt', (req, res) => {
+  const base = seoBaseUrl(req);
+  res.type('text/plain').send(
+`User-agent: *
+Allow: /
+Disallow: /kurum/
+Disallow: /veli/
+Disallow: /rehber/
+Disallow: /api/
+Disallow: /uploads/
+Disallow: /login
+Disallow: /register
+
+Sitemap: ${base}/sitemap.xml
+`);
+});
+
+// ===== sitemap.xml (dinamik) =====
+app.get('/sitemap.xml', async (req, res) => {
+  const base = seoBaseUrl(req);
+  const items = [
+    { loc: '/', prio: '1.0', freq: 'daily' },
+    { loc: '/sinav-takvimi', prio: '0.9', freq: 'daily' },
+    { loc: '/sinav-paketleri', prio: '0.9', freq: 'weekly' },
+    { loc: '/cevap-anahtarlari', prio: '0.8', freq: 'weekly' },
+    { loc: '/duyurular', prio: '0.7', freq: 'daily' },
+    { loc: '/hakkimizda', prio: '0.5', freq: 'monthly' },
+    { loc: '/iletisim', prio: '0.5', freq: 'monthly' },
+    { loc: '/sinav-merkezleri', prio: '0.6', freq: 'monthly' }
+  ];
+  const seen = new Set(items.map(i => i.loc));
+  // Aktif kurumsal sayfalari dinamik ekle (yeni slug'lar icin)
+  try {
+    const sayfalar = await dbAll("SELECT sayfa_slug FROM kurumsal_sayfalar WHERE aktif = 1");
+    sayfalar.forEach(s => {
+      const loc = '/' + s.sayfa_slug;
+      if (!seen.has(loc)) { items.push({ loc, prio: '0.5', freq: 'monthly' }); seen.add(loc); }
+    });
+  } catch (e) { /* tablo yoksa sorun degil */ }
+
+  const body = items.map(i =>
+    `  <url><loc>${base}${i.loc}</loc><changefreq>${i.freq}</changefreq><priority>${i.prio}</priority></url>`
+  ).join('\n');
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</urlset>`;
+  res.type('application/xml').send(xml);
+});
+
 // Upload klasoru
 const uploadDir = 'uploads';
 if (!fs.existsSync(uploadDir)) {
@@ -1874,7 +1979,7 @@ const upload = multer({
     if (allowedTypes.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error('Sadece Excel ve CSV dosyalari yuklenebilir!'));
+      cb(new Error('Sadece Excel ve CSV dosyaları yüklenebilir!'));
     }
   }
 });
@@ -1893,7 +1998,7 @@ function requireAuth(req, res, next) {
     if (isApiRequest) {
       return res.status(401).json({
         success: false,
-        message: 'Oturum suresi doldu. Lutfen tekrar giris yapin.',
+        message: 'Oturum suresi doldu. Lütfen tekrar giriş yapin.',
         redirect: '/login'
       });
     }
@@ -1918,7 +2023,7 @@ function requireRole(role) {
     if (isApiRequest) {
       return res.status(403).json({
         success: false,
-        message: 'Bu islemi yapmaya yetkiniz yok!'
+        message: 'Bu işlemi yapmaya yetkiniz yok!'
       });
     }
 
@@ -2253,7 +2358,7 @@ app.get('/kurum/sinav-paketleri-yonet', requireAuth, requireRole(['kurum_yonetic
       paketler: [],
       user: { username: req.session.username, type: req.session.userType, id: req.session.userId },
       success: null,
-      error: 'Sinav paketleri alinamadi',
+      error: 'Sınav paketleri alınamadı',
       isYonetim: true
     });
   }
@@ -2294,7 +2399,7 @@ app.get('/kurum/sinav-paketi-olustur', requireAuth, requireRole(['kurum_yonetici
 app.post('/kurum/sinav-paketi-kaydet', requireAuth, requireRole(['kurum_yonetici','kurum_admin']), async (req, res) => {
   try {
     const { ad, aciklama, sinif, fiyat, sinav_ids } = req.body || {};
-    if (!ad) return res.status(400).json({ success: false, message: 'Paket adi zorunludur!' });
+    if (!ad) return res.status(400).json({ success: false, message: 'Paket adı zorunludur!' });
     const sinavIds = Array.isArray(sinav_ids) ? sinav_ids : [];
     const pkgFiyat = parseFloat(fiyat) || 0;
 
@@ -2306,10 +2411,10 @@ app.post('/kurum/sinav-paketi-kaydet', requireAuth, requireRole(['kurum_yonetici
       await dbRun('INSERT INTO paket_sinavlari (paket_id, sinav_id) VALUES (?, ?)', [paketId, sid]);
     }
 
-    return res.json({ success: true, message: 'Paket olusturuldu', paketId });
+    return res.json({ success: true, message: 'Paket oluşturuldu', paketId });
   } catch (error) {
     console.error('Sinav paketi kaydetme hatasi:', error);
-    return res.status(500).json({ success: false, message: 'Paket olusturulamadi' });
+    return res.status(500).json({ success: false, message: 'Paket oluşturulamadı' });
   }
 });
 
@@ -2354,12 +2459,12 @@ app.post('/kurum/sinav-paketi-guncelle/:id', requireAuth, requireRole(['kurum_yo
   try {
     const paketId = req.params.id;
     const { ad, aciklama, sinif, fiyat, sinav_ids } = req.body || {};
-    if (!ad) return res.status(400).json({ success: false, message: 'Paket adi zorunludur!' });
+    if (!ad) return res.status(400).json({ success: false, message: 'Paket adı zorunludur!' });
     const sinavIds = Array.isArray(sinav_ids) ? sinav_ids : [];
     const pkgFiyat = parseFloat(fiyat) || 0;
 
     const paket = await dbGet('SELECT * FROM sinav_paketleri WHERE id = ?', [paketId]);
-    if (!paket) return res.status(404).json({ success: false, message: 'Paket bulunamadi!' });
+    if (!paket) return res.status(404).json({ success: false, message: 'Paket bulunamadı!' });
 
     await dbRun('UPDATE sinav_paketleri SET ad = ?, aciklama = ?, sinif = ?, fiyat = ?, toplam_sinav_sayisi = ? WHERE id = ?',
       [ad.trim(), aciklama || null, sinif || null, pkgFiyat, sinavIds.length, paketId]);
@@ -2369,10 +2474,10 @@ app.post('/kurum/sinav-paketi-guncelle/:id', requireAuth, requireRole(['kurum_yo
       await dbRun('INSERT INTO paket_sinavlari (paket_id, sinav_id) VALUES (?, ?)', [paketId, sid]);
     }
 
-    return res.json({ success: true, message: 'Paket guncellendi' });
+    return res.json({ success: true, message: 'Paket güncellendi' });
   } catch (error) {
     console.error('Sinav paketi guncelleme hatasi:', error);
-    return res.status(500).json({ success: false, message: 'Paket guncellenemedi' });
+    return res.status(500).json({ success: false, message: 'Paket güncellenemedi' });
   }
 });
 
@@ -2383,13 +2488,13 @@ app.post('/kurum/sinav-paketi-aktif/:id', requireAuth, requireRole(['kurum_yonet
     const { aktif } = req.body || {};
 
     const paket = await dbGet('SELECT * FROM sinav_paketleri WHERE id = ? AND (kurum_id = ? OR ? IS NULL)', [paketId, req.session.userId || null, req.session.userId || null]);
-    if (!paket) return res.status(404).json({ success: false, message: 'Paket bulunamadi!' });
+    if (!paket) return res.status(404).json({ success: false, message: 'Paket bulunamadı!' });
 
     await dbRun('UPDATE sinav_paketleri SET aktif = ? WHERE id = ?', [aktif ? 1 : 0, paketId]);
     return res.json({ success: true, message: `Paket ${aktif ? 'aktiflestirildi' : 'pasiflestirildi'}` });
   } catch (error) {
     console.error('Sinav paketi aktif/pasif hatasi:', error);
-    return res.status(500).json({ success: false, message: 'Guncellenemedi' });
+    return res.status(500).json({ success: false, message: 'Güncellenemedi' });
   }
 });
 
@@ -2447,13 +2552,13 @@ app.post('/kurum/paket-ogrenci-ata', requireAuth, requireRole(['kurum_yonetici',
     const { paket_id, ogrenci_ids } = req.body;
 
     if (!paket_id || !ogrenci_ids || ogrenci_ids.length === 0) {
-      return res.json({ success: false, message: 'Paket ve ogrenci secimi gerekli' });
+      return res.json({ success: false, message: 'Paket ve öğrenci seçimi gerekli' });
     }
 
     // Paketi kontrol et
     const paket = await dbGet('SELECT * FROM sinav_paketleri WHERE id = ?', [paket_id]);
     if (!paket) {
-      return res.json({ success: false, message: 'Paket bulunamadi' });
+      return res.json({ success: false, message: 'Paket bulunamadı' });
     }
 
     let eklenenSayisi = 0;
@@ -2510,7 +2615,7 @@ app.post('/kurum/paket-ogrenci-ata', requireAuth, requireRole(['kurum_yonetici',
     res.json({ success: true, message: mesaj });
   } catch (error) {
     console.error('Paket ogrenci atama hatasi:', error);
-    res.json({ success: false, message: 'Bir hata olustu: ' + error.message });
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
@@ -2523,7 +2628,7 @@ app.post('/sinav-talep-gonder', async (req, res) => {
     // Sinavi kontrol et
     const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinav_id]);
     if (!sinav) {
-      return res.json({ success: false, message: 'Sinav bulunamadi!' });
+      return res.json({ success: false, message: 'Sınav bulunamadı!' });
     }
     
     // DURUM 1: Giris yapilmamis - Yeni hesap olustur veya temp hesap kullan
@@ -2532,16 +2637,18 @@ app.post('/sinav-talep-gonder', async (req, res) => {
       if (!ad_soyad || !telefon) {
         return res.json({ 
           success: false, 
-          message: 'Lutfen tum bilgileri eksiksiz doldurun!' 
+          message: 'Lütfen tüm bilgileri eksiksiz doldurun!' 
         });
       }
       
       // Email ve password yoksa, otomatik olustur
-      const tempEmail = email || `${telefon.replace(/\D/g, '')}@temp.com`;
+      const tempEmail = email || null; // gercek e-posta yoksa NULL (sahte uretme)
       const tempPassword = password || telefon.replace(/\D/g, '').slice(-6);
-      
-      // E-posta daha once kullanilmis mi?
-      const mevcutKullanici = await dbGet('SELECT id FROM users WHERE email = ?', [tempEmail]);
+
+      // Mevcut veli? Gercek e-posta varsa onunla, yoksa telefon ile kontrol et
+      const mevcutKullanici = tempEmail
+        ? await dbGet('SELECT id FROM users WHERE email = ?', [tempEmail])
+        : await dbGet("SELECT id FROM users WHERE user_type = 'veli' AND telefon = ?", [telefon]);
       if (mevcutKullanici) {
         veli_id = mevcutKullanici.id;
       } else {
@@ -2576,7 +2683,7 @@ app.post('/sinav-talep-gonder', async (req, res) => {
     );
     
     if (mevcutTalep) {
-      return res.json({ success: false, message: 'Bu sinav icin zaten bir talebiniz bulunmaktadir!' });
+      return res.json({ success: false, message: 'Bu sınav icin zaten bir talebiniz bulunmaktadir!' });
     }
     
     // Talep kaydet
@@ -2610,14 +2717,14 @@ app.post('/sinav-talep-gonder', async (req, res) => {
     
     res.json({ 
       success: true, 
-      message: `${sinav.ad} icin talebiniz basariyla gonderildi! En kisa surede degerlendirilecektir.`,
+      message: `${sinav.ad} icin talebiniz başarıyla gönderildi! En kisa surede degerlendirilecektir.`,
       yeniHesap: (ad_soyad && email) ? true : false,
       veli_id: veli_id
     });
     
   } catch (error) {
     console.error('Talep gonderme hatasi:', error);
-    res.json({ success: false, message: 'Talep gonderilirken bir hata olustu: ' + error.message });
+    res.json({ success: false, message: 'Talep gönderilirken bir hata oluştu: ' + error.message });
   }
 });
 
@@ -2630,7 +2737,7 @@ app.post('/paket-talep-gonder', async (req, res) => {
     // Paketi kontrol et
     const paket = await dbGet('SELECT * FROM sinav_paketleri WHERE id = ? AND aktif = 1', [paket_id]);
     if (!paket) {
-      return res.json({ success: false, message: 'Paket bulunamadi!' });
+      return res.json({ success: false, message: 'Paket bulunamadı!' });
     }
     
     // DURUM 1: Giris yapilmamis - Yeni hesap olustur veya temp hesap kullan
@@ -2639,16 +2746,18 @@ app.post('/paket-talep-gonder', async (req, res) => {
       if (!ad_soyad || !telefon) {
         return res.json({ 
           success: false, 
-          message: 'Lutfen tum bilgileri eksiksiz doldurun!' 
+          message: 'Lütfen tüm bilgileri eksiksiz doldurun!' 
         });
       }
       
       // Email ve password yoksa, otomatik olustur
-      const tempEmail = email || `${telefon.replace(/\D/g, '')}@temp.com`;
+      const tempEmail = email || null; // gercek e-posta yoksa NULL (sahte uretme)
       const tempPassword = password || telefon.replace(/\D/g, '').slice(-6);
-      
-      // E-posta daha once kullanilmis mi?
-      const mevcutKullanici = await dbGet('SELECT id FROM users WHERE email = ?', [tempEmail]);
+
+      // Mevcut veli? Gercek e-posta varsa onunla, yoksa telefon ile kontrol et
+      const mevcutKullanici = tempEmail
+        ? await dbGet('SELECT id FROM users WHERE email = ?', [tempEmail])
+        : await dbGet("SELECT id FROM users WHERE user_type = 'veli' AND telefon = ?", [telefon]);
       if (mevcutKullanici) {
         veli_id = mevcutKullanici.id;
       } else {
@@ -2765,7 +2874,7 @@ app.post('/paket-talep-gonder', async (req, res) => {
     
   } catch (error) {
     console.error('Paket talep gonderme hatasi:', error);
-    res.json({ success: false, message: 'Talep gonderilirken bir hata olustu: ' + error.message });
+    res.json({ success: false, message: 'Talep gönderilirken bir hata oluştu: ' + error.message });
   }
 });
 
@@ -2815,11 +2924,11 @@ app.post('/login', loginLimiter, async (req, res) => {
     }
     
     console.log('    GIRI BAARISIZ!\n');
-    req.session.error = 'Kullanici adi veya sifre hatali!';
+    req.session.error = 'Kullanıcı adı veya şifre hatalı!';
     res.redirect('/login');
   } catch (error) {
     console.error('Login hatasi:', error);
-    req.session.error = 'Giris sirasinda bir hata olustu!';
+    req.session.error = 'Giriş sırasında bir hata oluştu!';
     res.redirect('/login');
   }
 });
@@ -2844,12 +2953,12 @@ app.post('/sifre-degistir', async (req, res) => {
   try {
     // ifre kontrolu
     if (yeni_sifre.length < 6) {
-      req.session.error = 'ifre en az 6 karakter olmalidir!';
+      req.session.error = 'Şifre en az 6 karakter olmalıdır!';
       return res.redirect('/sifre-degistir');
     }
     
     if (yeni_sifre !== yeni_sifre_tekrar) {
-      req.session.error = 'ifreler uyusmuyor!';
+      req.session.error = 'Şifreler uyuşmuyor!';
       return res.redirect('/sifre-degistir');
     }
     
@@ -2867,7 +2976,7 @@ app.post('/sifre-degistir', async (req, res) => {
     console.log(`   User ID: ${req.session.userId}`);
     console.log(`    ifre basariyla degistirildi\n`);
     
-    req.session.success = 'ifreniz basariyla degistirildi!';
+    req.session.success = 'Şifreniz başarıyla değiştirildi!';
     
     // Kullanici tipine gore yonlendir
     const user = await dbGet('SELECT user_type FROM users WHERE id = ?', [req.session.userId]);
@@ -2880,7 +2989,7 @@ app.post('/sifre-degistir', async (req, res) => {
     
   } catch (error) {
     console.error('ifre degistirme hatasi:', error);
-    req.session.error = 'ifre degistirme sirasinda bir hata olustu!';
+    req.session.error = 'Şifre değiştirme sırasında bir hata oluştu!';
     res.redirect('/sifre-degistir');
   }
 });
@@ -2936,7 +3045,7 @@ app.get('/reset-admin-password-secret-endpoint-12345', async (req, res) => {
       'UPDATE users SET password_hash = ? WHERE username = ?',
       [password_hash, 'kurum_admin']
     );
-    res.send(' Admin sifresi sifirlandi! Username: kurum_admin, Password: Admin2024!');
+    res.send(' Admin şifresi sıfırlandı! Username: kurum_admin, Password: Admin2024!');
   } catch (error) {
     res.status(500).send(' Hata: ' + error.message);
   }
@@ -3106,7 +3215,7 @@ app.post('/kurum/whatsapp-test', requireAuth, async (req, res) => {
     if (!ayarlar || !ayarlar.phone_number) {
       return res.json({ 
         success: false, 
-        message: 'WhatsApp ayarlari yapilmamis veya telefon numarasi eksik!' 
+        message: 'WhatsApp ayarlari yapilmamis veya telefon numarası eksik!' 
       });
     }
     
@@ -3123,17 +3232,17 @@ Bu bir test mesajidir.
     if (result.success) {
       return res.json({ 
         success: true, 
-        message: 'Test mesaji basariyla gonderildi! Console loglari kontrol edin.' 
+        message: 'Test mesajı başarıyla gönderildi! Console loglari kontrol edin.' 
       });
     } else {
       return res.json({ 
         success: false, 
-        message: 'Test mesaji gonderilemedi: ' + result.message 
+        message: 'Test mesajı gönderilemedi: ' + result.message 
       });
     }
   } catch (error) {
     console.error('Test bildirimi hatasi:', error);
-    res.json({ success: false, message: 'Test sirasinda bir hata olustu: ' + error.message });
+    res.json({ success: false, message: 'Test sırasında bir hata oluştu: ' + error.message });
   }
 });
 
@@ -3331,7 +3440,7 @@ app.post('/kurum/talep-yanitla', requireAuth, async (req, res) => {
     const { talep_id, durum, yanit, talep_tipi } = req.body;
     
     if (!talep_id || !durum || !['onaylandi', 'reddedildi'].includes(durum)) {
-      return res.json({ success: false, message: 'Gecersiz parametreler!' });
+      return res.json({ success: false, message: 'Geçersiz parametreler!' });
     }
     
     // Talep tipine gore farkli tablolardan guncelle
@@ -3435,12 +3544,12 @@ app.post('/kurum/talep-yanitla', requireAuth, async (req, res) => {
 
     res.json({
       success: true,
-      message: durum === 'onaylandi' ? 'Talep basariyla onaylandi!' : 'Talep reddedildi.'
+      message: durum === 'onaylandi' ? 'Talep başarıyla onaylandı!' : 'Talep reddedildi.'
     });
 
   } catch (error) {
     console.error('Talep yanitlama hatasi:', error);
-    res.json({ success: false, message: 'Talep islenirken bir hata olustu!' });
+    res.json({ success: false, message: 'Talep işlenirken bir hata oluştu!' });
   }
 });
 
@@ -3468,7 +3577,7 @@ app.get('/kurum/veliler-api', requireAuth, async (req, res) => {
     res.json(veliler);
   } catch (error) {
     console.error(' Veli listesi hatasi:', error);
-    res.status(500).json({ success: false, message: 'Bir hata olustu!' });
+    res.status(500).json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
 
@@ -3495,7 +3604,7 @@ app.get('/kurum/rehberler-api', requireAuth, async (req, res) => {
     res.json(rehberler);
   } catch (error) {
     console.error('Rehber listesi hatasi:', error);
-    res.status(500).json({ success: false, message: 'Bir hata olustu!' });
+    res.status(500).json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
 
@@ -3566,7 +3675,7 @@ app.get('/kurum/tum-ogrenciler-api', requireAuth, async (req, res) => {
 */
   } catch (error) {
     console.error(' Tum ogrenci listesi hatasi:', error);
-    res.status(500).json({ success: false, message: 'Bir hata olustu: ' + error.message });
+    res.status(500).json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
@@ -3595,13 +3704,13 @@ app.get('/kurum/veli-bilgi-api', requireAuth, async (req, res) => {
     `, [veli_id]);
     
     if (!veli) {
-      return res.status(404).json({ success: false, message: 'Veli bulunamadi!' });
+      return res.status(404).json({ success: false, message: 'Veli bulunamadı!' });
     }
     
     res.json(veli);
   } catch (error) {
     console.error('Veli bilgisi hatasi:', error);
-    res.status(500).json({ success: false, message: 'Bir hata olustu!' });
+    res.status(500).json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
 
@@ -3615,7 +3724,7 @@ app.get('/kurum/veli-bul-telefon', requireAuth, async (req, res) => {
     const { telefon } = req.query;
     
     if (!telefon) {
-      return res.status(400).json({ success: false, message: 'Telefon numarasi gerekli!' });
+      return res.status(400).json({ success: false, message: 'Telefon numarası gerekli!' });
     }
     
     // Telefon numarasini temizle (.0 gibi ekleri kaldir)
@@ -3640,13 +3749,13 @@ app.get('/kurum/veli-bul-telefon', requireAuth, async (req, res) => {
     `, [temizTelefon, telefonNokta, temizTelefon, telefonNokta]);
     
     if (!veli) {
-      return res.status(404).json({ success: false, message: 'Veli bulunamadi!' });
+      return res.status(404).json({ success: false, message: 'Veli bulunamadı!' });
     }
     
     res.json(veli);
   } catch (error) {
     console.error('Telefon ile veli arama hatasi:', error);
-    res.status(500).json({ success: false, message: 'Bir hata olustu!' });
+    res.status(500).json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
 
@@ -3680,7 +3789,7 @@ app.get('/kurum/veli-ogrencileri-api', requireAuth, async (req, res) => {
     res.json(ogrenciler);
   } catch (error) {
     console.error('Ogrenci listesi hatasi:', error);
-    res.status(500).json({ success: false, message: 'Bir hata olustu!' });
+    res.status(500).json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
 
@@ -3711,9 +3820,9 @@ app.post('/kurum/rehber-talep-gonder', requireAuth, async (req, res) => {
       
       if (mevcutTalep) {
         if (mevcutTalep.durum === 'beklemede') {
-          return res.json({ success: false, message: 'Bu ogrenci icin bu rehber ogretmene zaten bekleyen bir talep var!' });
+          return res.json({ success: false, message: 'Bu öğrenci icin bu rehber öğretmene zaten bekleyen bir talep var!' });
         } else {
-          return res.json({ success: false, message: 'Bu ogrenci icin bu rehber ogretmene zaten onayli bir talep var!' });
+          return res.json({ success: false, message: 'Bu öğrenci icin bu rehber öğretmene zaten onayli bir talep var!' });
         }
       }
     } else {
@@ -3725,9 +3834,9 @@ app.post('/kurum/rehber-talep-gonder', requireAuth, async (req, res) => {
       
       if (mevcutTalep) {
         if (mevcutTalep.durum === 'beklemede') {
-          return res.json({ success: false, message: 'Bu ogrenci icin bu rehber ogretmene zaten bekleyen bir talep var!' });
+          return res.json({ success: false, message: 'Bu öğrenci icin bu rehber öğretmene zaten bekleyen bir talep var!' });
         } else {
-          return res.json({ success: false, message: 'Bu ogrenci icin bu rehber ogretmene zaten onayli bir talep var!' });
+          return res.json({ success: false, message: 'Bu öğrenci icin bu rehber öğretmene zaten onayli bir talep var!' });
         }
       }
     }
@@ -3778,7 +3887,7 @@ app.post('/kurum/rehber-talep-gonder', requireAuth, async (req, res) => {
     
     res.json({ 
       success: true, 
-      message: 'Rehber ogretmene talep basariyla gonderildi!' 
+      message: 'Rehber öğretmene talep başarıyla gönderildi!' 
     });
     
   } catch (error) {
@@ -3787,7 +3896,7 @@ app.post('/kurum/rehber-talep-gonder', requireAuth, async (req, res) => {
     console.error('Stack trace:', error.stack);
     res.json({ 
       success: false, 
-      message: `Talep gonderilirken bir hata olustu: ${error.message}` 
+      message: `Talep gönderilirken bir hata oluştu: ${error.message}` 
     });
   }
 });
@@ -3826,7 +3935,7 @@ app.get('/kurum/kontrol-hesapsiz-veliler', requireAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('Hesapsiz veliler kontrol hatasi:', error);
-    res.json({ success: false, message: 'Bir hata olustu!', veliler: [] });
+    res.json({ success: false, message: 'Bir hata oluştu!', veliler: [] });
   }
 });
 
@@ -3867,7 +3976,18 @@ app.get('/kurum/ogrenci-kayitlari', requireAuth, async (req, res) => {
   
   try {
     const ogrenciler = await dbAll('SELECT * FROM ogrenci_kayitlari ORDER BY created_at DESC');
-    
+
+    // Hangi velilerin hesabi var? (kullanici adi = ogrenci TC)
+    const veliKullanicilar = await dbAll("SELECT username FROM users WHERE user_type = 'veli'");
+    const hesapliTcSet = new Set(
+      veliKullanicilar.map(u => String(u.username).replace(/\.0$/, ''))
+    );
+    // Her ogrenciye hesap_var bayragi ekle
+    ogrenciler.forEach(o => {
+      const tc = o.tc_kimlik_no ? String(o.tc_kimlik_no).replace(/\.0$/, '') : '';
+      o.hesap_var = tc && hesapliTcSet.has(tc) ? 1 : 0;
+    });
+
     // Benzersiz sinif listesi
     const siniflar = [...new Set(ogrenciler.map(o => o.sinif).filter(s => s))].sort();
     
@@ -3904,7 +4024,8 @@ app.post('/kurum/ogrenci-kayit-ekle', requireAuth, async (req, res) => {
     } = req.body;
 
     // TC Kimlik kontrolu - ayni TC ile kayitli ogrenci var mi?
-    if (tc_kimlik_no && !tcOnaylanmis) {
+    // Mukerrer kayit KESINLIKLE engellenir (onaylansa bile eklenmez).
+    if (tc_kimlik_no) {
       const tcTemiz = tc_kimlik_no.toString().replace('.0', '').trim();
       const mevcutOgrenci = await dbGet(
         'SELECT id, ogrenci_adi_soyadi, sinif FROM ogrenci_kayitlari WHERE tc_kimlik_no = ?',
@@ -3915,7 +4036,7 @@ app.post('/kurum/ogrenci-kayit-ekle', requireAuth, async (req, res) => {
         return res.json({
           success: false,
           duplicate: true,
-          message: 'Bu TC Kimlik No ile kayitli bir ogrenci bulunuyor!',
+          message: 'Bu TC Kimlik No ile kayıtlı bir öğrenci zaten var — mükerrer kayıt eklenemez!',
           mevcutOgrenci: {
             ad_soyad: mevcutOgrenci.ogrenci_adi_soyadi,
             sinif: mevcutOgrenci.sinif
@@ -3950,7 +4071,7 @@ app.post('/kurum/ogrenci-kayit-ekle', requireAuth, async (req, res) => {
       if (!mevcutVeli) {
         // Yeni veli hesabi olustur - TC hem kullanici adi hem sifre
         const hashedPassword = await bcrypt.hash(tcTemiz, 10);
-        const tempEmail = tcTemiz + '@temp.veli.com';
+        const tempEmail = null; // gercek e-posta yok -> NULL
         await dbRun(
           `INSERT INTO users (username, password_hash, user_type, ad_soyad, telefon, email, created_at)
            VALUES (?, ?, 'veli', ?, ?, ?, datetime('now'))`,
@@ -3961,10 +4082,10 @@ app.post('/kurum/ogrenci-kayit-ekle', requireAuth, async (req, res) => {
       }
     }
 
-    res.json({ success: true, message: 'Ogrenci kaydi basariyla eklendi!' + veliHesabiMesaji });
+    res.json({ success: true, message: 'Öğrenci kaydı başarıyla eklendi!' + veliHesabiMesaji });
   } catch (error) {
     console.error('Ogrenci kayit ekleme hatasi:', error);
-    res.json({ success: false, message: 'Kayit eklenirken bir hata olustu: ' + error.message });
+    res.json({ success: false, message: 'Kayıt eklenirken bir hata oluştu: ' + error.message });
   }
 });
 
@@ -3978,22 +4099,36 @@ app.get('/kurum/veli-giris-bilgisi', requireAuth, async (req, res) => {
   }
   
   try {
-    let { telefon } = req.query;
-    
-    if (!telefon) {
-      return res.json({ success: false, message: 'Telefon numarasi gerekli!' });
+    let { telefon, ogrenci_id } = req.query;
+
+    let veli = null;
+
+    // 1) ONCE ogrencinin TC'si ile ara (hesabin acildigi gercek anahtar - en guvenilir)
+    if (ogrenci_id) {
+      const ogr = await dbGet('SELECT tc_kimlik_no FROM ogrenci_kayitlari WHERE id = ?', [ogrenci_id]);
+      if (ogr && ogr.tc_kimlik_no) {
+        const tc = ogr.tc_kimlik_no.toString();
+        const tcTemiz = tc.endsWith('.0') ? tc.replace('.0', '') : tc;
+        veli = await dbGet(
+          "SELECT username, password_hash, created_at FROM users WHERE (username = ? OR username = ?) AND user_type = 'veli'",
+          [tcTemiz, tcTemiz + '.0']
+        );
+      }
     }
-    
-    // Telefon formatini temizle (.0 ile biten)
-    telefon = telefon.toString().trim();
-    const telefonTemiz = telefon.endsWith('.0') ? telefon.replace('.0', '') : telefon;
-    const telefonNokta = telefonTemiz + '.0';
-    
-    // Veli hesabini bul - hem temiz hem de .0 formatinda ara
-    const veli = await dbGet(
-      'SELECT username, password_hash, created_at FROM users WHERE (telefon = ? OR telefon = ? OR username = ? OR username = ?) AND user_type = ?',
-      [telefonTemiz, telefonNokta, telefonTemiz, telefonNokta, 'veli']
-    );
+
+    // 2) TC ile bulunamadiysa telefon ile dene (geriye donuk uyum)
+    if (!veli) {
+      if (!telefon) {
+        return res.json({ success: true, hesapVar: false });
+      }
+      telefon = telefon.toString().trim();
+      const telefonTemiz = telefon.endsWith('.0') ? telefon.replace('.0', '') : telefon;
+      const telefonNokta = telefonTemiz + '.0';
+      veli = await dbGet(
+        'SELECT username, password_hash, created_at FROM users WHERE (telefon = ? OR telefon = ? OR username = ? OR username = ?) AND user_type = ?',
+        [telefonTemiz, telefonNokta, telefonTemiz, telefonNokta, 'veli']
+      );
+    }
     
     if (!veli) {
       return res.json({ 
@@ -4037,7 +4172,7 @@ app.get('/kurum/veli-giris-bilgisi', requireAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('Veli bilgi getirme hatasi:', error);
-    res.json({ success: false, message: 'Bir hata olustu!' });
+    res.json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
 
@@ -4073,10 +4208,10 @@ app.post('/kurum/ogrenci-kayit-guncelle/:id', requireAuth, async (req, res) => {
       await recomputeOdenen(id);
     }
 
-    res.json({ success: true, message: 'Ogrenci kaydi guncellendi!' });
+    res.json({ success: true, message: 'Öğrenci kaydı güncellendi!' });
   } catch (error) {
     console.error('Ogrenci kayit guncelleme hatasi:', error);
-    res.json({ success: false, message: 'Guncelleme sirasinda bir hata olustu!' });
+    res.json({ success: false, message: 'Güncelleme sırasında bir hata oluştu!' });
   }
 });
 
@@ -4123,7 +4258,7 @@ app.post('/kurum/ogrenci-kayit-sil/:id', requireAuth, async (req, res) => {
     res.json({ success: true, message: mesaj });
   } catch (error) {
     console.error('Ogrenci kayit silme hatasi:', error);
-    res.json({ success: false, message: 'Silme sirasinda bir hata olustu!' });
+    res.json({ success: false, message: 'Silme sırasında bir hata oluştu!' });
   }
 });
 
@@ -4306,11 +4441,11 @@ app.post('/kurum/ogrenci-kayitlari-tumunu-sil', requireAuth, async (req, res) =>
 
     res.json({
       success: true,
-      message: `${kayitSayisi.sayi} ogrenci kaydi ve ${silinenVeliSayisi} veli hesabi silindi!`
+      message: `${kayitSayisi.sayi} öğrenci kaydı ve ${silinenVeliSayisi} veli hesabi silindi!`
     });
   } catch (error) {
     console.error('Toplu silme hatasi:', error);
-    res.json({ success: false, message: 'Silme islemi sirasinda bir hata olustu!' });
+    res.json({ success: false, message: 'Silme işlemi sırasında bir hata oluştu!' });
   }
 });
 
@@ -4379,6 +4514,7 @@ app.post('/kurum/ogrenci-import-excel', requireAuth, upload.single('excelFile'),
     let eklenen = 0;
     let hatalar = 0;
     let veliOlusturulan = 0;
+    let mukerrer = 0;
 
     for (const row of data) {
       try {
@@ -4415,6 +4551,18 @@ app.post('/kurum/ogrenci-import-excel', requireAuth, upload.single('excelFile'),
           continue;
         }
 
+        // Mukerrer TC kontrolu - ayni TC ile ogrenci varsa ATLA (cift kayit olusturma)
+        if (tc_kimlik_no) {
+          const tcVarMi = await dbGet(
+            'SELECT id FROM ogrenci_kayitlari WHERE tc_kimlik_no = ?',
+            [tc_kimlik_no]
+          );
+          if (tcVarMi) {
+            mukerrer++;
+            continue;
+          }
+        }
+
         // Veritabanina ekle
         await dbRun(
           `INSERT INTO ogrenci_kayitlari (
@@ -4438,7 +4586,7 @@ app.post('/kurum/ogrenci-import-excel', requireAuth, upload.single('excelFile'),
 
           if (!mevcutVeli) {
             const hashedPassword = await bcrypt.hash(tc_kimlik_no, 10);
-            const tempEmail = tc_kimlik_no + '@temp.veli.com';
+            const tempEmail = null; // gercek e-posta yok -> NULL
             await dbRun(
               `INSERT INTO users (username, password_hash, user_type, ad_soyad, telefon, email, created_at)
                VALUES (?, ?, 'veli', ?, ?, ?, datetime('now'))`,
@@ -4461,7 +4609,8 @@ app.post('/kurum/ogrenci-import-excel', requireAuth, upload.single('excelFile'),
 
     res.json({
       success: true,
-      message: eklenen + ' ogrenci eklendi, ' + veliOlusturulan + ' veli hesabi otomatik olusturuldu!'
+      message: eklenen + ' öğrenci eklendi, ' + veliOlusturulan + ' veli hesabı otomatik oluşturuldu' +
+               (mukerrer > 0 ? ', ' + mukerrer + ' mükerrer kayıt atlandı (aynı TC zaten vardı)' : '') + '!'
     });
 
   } catch (error) {
@@ -4484,10 +4633,10 @@ app.post('/kurum/ogrenci-import-excel-eski', requireAuth, upload.single('excelFi
     const isUploaded = !!req.file;
     const sourcePath = isUploaded ? req.file.path : pdfPath;
     if (!sinav_id) {
-      return res.status(400).json({ success: false, error: 'Sinav ID eksik!' });
+      return res.status(400).json({ success: false, error: 'Sınav ID eksik!' });
     }
     if (!sourcePath || !fs.existsSync(sourcePath)) {
-      return res.status(400).json({ success: false, error: 'PDF dosyasi bulunamadi!' });
+      return res.status(400).json({ success: false, error: 'PDF dosyasi bulunamadı!' });
     }
     console.log('SINAV SONUCU ANALIZ EDILIYOR:', isUploaded && req.file ? req.file.originalname : path.basename(sourcePath));
     console.log('Sinav ID:', sinav_id);
@@ -4567,10 +4716,10 @@ app.post('/kurum/sinav-sonuc-yukle-analiz', requireAuth, uploadLimiter, pdfUploa
     const isUploaded = !!req.file;
     const sourcePath = isUploaded ? req.file.path : pdfPath;
     if (!sinav_id) {
-      return res.status(400).json({ success: false, error: 'Sinav ID eksik!' });
+      return res.status(400).json({ success: false, error: 'Sınav ID eksik!' });
     }
     if (!sourcePath || !fs.existsSync(sourcePath)) {
-      return res.status(400).json({ success: false, error: 'PDF dosyasi bulunamadi!' });
+      return res.status(400).json({ success: false, error: 'PDF dosyasi bulunamadı!' });
     }
     console.log('SINAV SONUCU ANALIZ EDILIYOR:', isUploaded && req.file ? req.file.originalname : path.basename(sourcePath));
     console.log('Sinav ID:', sinav_id);
@@ -4725,7 +4874,7 @@ app.post('/kurum/sinav-sonuc-yukle-analiz', requireAuth, uploadLimiter, pdfUploa
     
     res.status(500).json({ 
       success: false, 
-      error: 'Analiz sirasinda bir hata olustu: ' + error.message 
+      error: 'Analiz sırasında bir hata oluştu: ' + error.message 
     });
   }
 });
@@ -4740,7 +4889,7 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
     const { sinav_id, pdfPath, selectedPattern, selectedLineNumber, manuelEslesmeler } = req.body;
     
     if (!sinav_id || !pdfPath) {
-      return res.status(400).json({ success: false, error: 'Sinav ID veya PDF dosya yolu eksik!' });
+      return res.status(400).json({ success: false, error: 'Sınav ID veya PDF dosya yolu eksik!' });
     }
     
     console.log('\n AKILLI SINAV SONUCLARI YUKLENIYOR');
@@ -4758,7 +4907,7 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
     const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinav_id]);
     
     if (!sinav) {
-      return res.status(400).json({ success: false, error: 'Sinav bulunamadi!' });
+      return res.status(400).json({ success: false, error: 'Sınav bulunamadı!' });
     }
     
     // Sonuc klasorunu olustur
@@ -4769,7 +4918,7 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
     
     // PDF'i yukle
     if (!fs.existsSync(pdfPath)) {
-      return res.status(400).json({ success: false, error: 'PDF dosyasi bulunamadi!' });
+      return res.status(400).json({ success: false, error: 'PDF dosyasi bulunamadı!' });
     }
     
     const pdfBytes = fs.readFileSync(pdfPath);
@@ -4922,8 +5071,8 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
       }
     }
     
-    // Sinavi guncelle (sonuc_yuklendi = 1)
-    await dbRun('UPDATE sinavlar SET sonuc_yuklendi = 1 WHERE id = ?', [sinav_id]);
+    // Sınavı güncelle (sonuc_yuklendi = 1)
+    await dbRun('UPDATE sınavlar SET sonuc_yuklendi = 1 WHERE id = ?', [sinav_id]);
     
     // Yuklenen PDF dosyasini temizle
     try {
@@ -4960,7 +5109,7 @@ app.post('/kurum/sinav-sonuc-yukle-kaydet', requireAuth, async (req, res) => {
     
     res.status(500).json({ 
       success: false, 
-      error: 'Kaydetme sirasinda bir hata olustu: ' + error.message 
+      error: 'Kaydetme sırasında bir hata oluştu: ' + error.message 
     });
   }
 });
@@ -5066,14 +5215,14 @@ app.post('/kurum/sinav-manuel-eslestir/:id', requireAuth, async (req, res) => {
     
     res.json({ 
       success: true, 
-      message: `${basarili} ogrenci eslestirildi! ${hatali > 0 ? `(${hatali} hata)` : ''}`,
+      message: `${basarili} öğrenci eslestirildi! ${hatali > 0 ? `(${hatali} hata)` : ''}`,
       matchedCount: istatistikler.eslesmis || 0,
       unmatchedCount: istatistikler.eslesmemis || 0,
       totalCount: istatistikler.toplam || 0
     });
   } catch (error) {
     console.error(' Manuel eslestirme hatasi:', error);
-    res.json({ success: false, message: 'Bir hata olustu!' });
+    res.json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
 
@@ -5196,7 +5345,7 @@ app.post('/kurum/sinav-pdf-yeniden-eslestir', requireAuth, async (req, res) => {
     const eskiKatilimci = await dbGet('SELECT pdf_path FROM sinav_katilimcilari WHERE id = ?', [katilimci_id]);
     
     if (!eskiKatilimci || !eskiKatilimci.pdf_path) {
-      return res.json({ success: false, message: 'PDF bulunamadi!' });
+      return res.json({ success: false, message: 'PDF bulunamadı!' });
     }
     
     // Yeni ogrenci bilgilerini al
@@ -5208,7 +5357,7 @@ app.post('/kurum/sinav-pdf-yeniden-eslestir', requireAuth, async (req, res) => {
     }
     
     if (!yeniOgrenci) {
-      return res.json({ success: false, message: 'Ogrenci bulunamadi!' });
+      return res.json({ success: false, message: 'Öğrenci bulunamadı!' });
     }
     
     // Eski PDF yolunu al
@@ -5253,12 +5402,12 @@ app.post('/kurum/sinav-pdf-yeniden-eslestir', requireAuth, async (req, res) => {
     
     res.json({ 
       success: true, 
-      message: ` PDF basariyla "${yeniOgrenci.ad_soyad}" ile eslestirildi!`
+      message: ` PDF başarıyla "${yeniOgrenci.ad_soyad}" ile eslestirildi!`
     });
     
   } catch (error) {
     console.error(' PDF yeniden eslestirme hatasi:', error);
-    res.json({ success: false, message: 'Bir hata olustu: ' + error.message });
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
@@ -5291,7 +5440,7 @@ app.post('/kurum/sinav-tek-ogrenci-eslestir', requireAuth, upload.single('pdf'),
     }
     
     if (!ogrenci) {
-      return res.json({ success: false, message: 'Ogrenci bulunamadi!' });
+      return res.json({ success: false, message: 'Öğrenci bulunamadı!' });
     }
     
     // Sinav klasorunu olustur
@@ -5325,12 +5474,12 @@ app.post('/kurum/sinav-tek-ogrenci-eslestir', requireAuth, upload.single('pdf'),
     
     res.json({ 
       success: true, 
-      message: ` ${ogrenci.ad_soyad} icin sonuc basariyla eslestirildi!`
+      message: ` ${ogrenci.ad_soyad} icin sonuç başarıyla eslestirildi!`
     });
     
   } catch (error) {
     console.error(' Tek ogrenci eslestirme hatasi:', error);
-    res.json({ success: false, message: 'Bir hata olustu: ' + error.message });
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
@@ -5349,15 +5498,15 @@ app.post('/kurum/sinav-sonuclari-yayinla/:id', requireAuth, async (req, res) => 
     const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinavId]);
     
     if (!sinav) {
-      return res.json({ success: false, message: 'Sinav bulunamadi!' });
+      return res.json({ success: false, message: 'Sınav bulunamadı!' });
     }
     
     if (!sinav.sonuc_yuklendi) {
-      return res.json({ success: false, message: 'Henuz sonuc yuklenmemis!' });
+      return res.json({ success: false, message: 'Henuz sonuç yuklenmemis!' });
     }
     
     if (sinav.sonuc_yayinlandi) {
-      return res.json({ success: false, message: 'Sonuclar zaten yayinlanmis!' });
+      return res.json({ success: false, message: 'Sonuçlar zaten yayinlanmis!' });
     }
     
     // Eslesmis sonuc sayisini kontrol et
@@ -5370,7 +5519,7 @@ app.post('/kurum/sinav-sonuclari-yayinla/:id', requireAuth, async (req, res) => 
     const eslesmeSayisi = eslesmisler[0]?.sayi || 0;
     
     if (eslesmeSayisi === 0) {
-      return res.json({ success: false, message: 'Hic eslesmis sonuc yok! Lutfen once eslestirme yapin.' });
+      return res.json({ success: false, message: 'Hic eslesmis sonuç yok! Lütfen once eslestirme yapin.' });
     }
     
     // Sinavi yayinla
@@ -5380,12 +5529,12 @@ app.post('/kurum/sinav-sonuclari-yayinla/:id', requireAuth, async (req, res) => 
     
     res.json({
       success: true,
-      message: 'Sonuclar yayinlandi! ' + eslesmeSayisi + ' ogrencinin velisi artik sonuclari gorebilir.'
+      message: 'Sonuçlar yayinlandi! ' + eslesmeSayisi + ' ogrencinin velisi artik sonuclari gorebilir.'
     });
     
   } catch (error) {
     console.error(' Yayinlama hatasi:', error);
-    res.json({ success: false, message: 'Bir hata olustu: ' + error.message });
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
@@ -5402,7 +5551,7 @@ app.post('/kurum/sinav-sonuc-whatsapp-gonder/:id', requireAuth, async (req, res)
     const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinavId]);
     
     if (!sinav) {
-      return res.json({ success: false, message: 'Sinav bulunamadi!' });
+      return res.json({ success: false, message: 'Sınav bulunamadı!' });
     }
     
     // Sonucu yuklenmis katilimcilari al (hem kurum hem veli ogrencileri)
@@ -5436,7 +5585,7 @@ app.post('/kurum/sinav-sonuc-whatsapp-gonder/:id', requireAuth, async (req, res)
     const katilimcilar = [...kurumKatilimcilari, ...veliKatilimcilari];
     
     if (katilimcilar.length === 0) {
-      return res.json({ success: false, message: 'Sonucu yuklenmis ogrenci bulunamadi!' });
+      return res.json({ success: false, message: 'Sonucu yuklenmis öğrenci bulunamadı!' });
     }
     
     console.log(`\n WHATSAPP BILDIRIMLERI GONDERILIYOR`);
@@ -5506,14 +5655,14 @@ ${katilimci.ogrenci_adi} ogrencinizin sinav sonucu aciklanmistir.
     
     res.json({ 
       success: true, 
-      message: `${basarili} bildirim gonderildi, ${basarisiz} basarisiz.`,
+      message: `${basarili} bildirim gönderildi, ${basarisiz} başarısız.`,
       basarili: basarili,
       basarisiz: basarisiz
     });
     
   } catch (error) {
     console.error('WhatsApp bildirim hatasi:', error);
-    res.json({ success: false, message: 'Bildirim gonderilirken bir hata olustu!' });
+    res.json({ success: false, message: 'Bildirim gönderilirken bir hata oluştu!' });
   }
 });
 
@@ -5549,7 +5698,7 @@ app.get('/veli/sinav-sonuclari', requireAuth, requireRole('veli'), async (req, r
         user: { username: req.session.username, type: req.session.userType },
         sonuclar: [],
         ogrenciler: [],
-        error: 'Henuz ogrenci kaydiniz bulunmuyor.',
+        error: 'Henüz öğrenci kaydınız bulunmuyor.',
         success: req.session.success
       });
     }
@@ -5777,7 +5926,7 @@ app.post('/veli/profil', requireAuth, requireRole('veli'), async (req, res) => {
       const sifreDogruMu = await bcrypt.compare(current_password, kullanici.password_hash);
       
       if (!sifreDogruMu) {
-        req.session.error = 'Mevcut sifreniz yanlis!';
+        req.session.error = 'Mevcut şifreniz yanlış!';
         res.redirect('/veli/profil');
         return;
       }
@@ -5964,10 +6113,10 @@ app.post('/veli/rehber-yetki-kaldir/:talep_id', requireAuth, requireRole('veli')
     await dbRun('DELETE FROM ogrenci_talepleri WHERE id = ?', [talepId]);
     console.log(' Yetki basariyla kaldirildi');
     
-    res.json({ success: true, message: 'Rehber ogretmen yetkisi kaldirildi!' });
+    res.json({ success: true, message: 'Rehber öğretmen yetkisi kaldırıldı!' });
   } catch (error) {
     console.error(' Yetki kaldirma hatasi:', error);
-    res.json({ success: false, message: 'Bir hata olustu!' });
+    res.json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
 
@@ -5998,11 +6147,11 @@ app.post('/veli/rehber-sonuc-yetki-degistir/:talep_id', requireAuth, requireRole
     console.log(` Sinav sonucu gorme yetkisi ${yeni_durum == 1 ? 'acildi' : 'kapatildi'}`);
     res.json({ 
       success: true, 
-      message: `Sinav sonucu gorme yetkisi ${yeni_durum == 1 ? 'acildi' : 'kapatildi'}!` 
+      message: `Sınav sonucu gorme yetkisi ${yeni_durum == 1 ? 'acildi' : 'kapatildi'}!` 
     });
   } catch (error) {
     console.error('Yetki degistirme hatasi:', error);
-    res.json({ success: false, message: 'Bir hata olustu!' });
+    res.json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
 
@@ -6106,11 +6255,11 @@ app.post('/kurum/rehber-sonuc-yetki-degistir/:talep_id', requireAuth, async (req
     console.log(` Sinav sonucu gorme yetkisi ${yeni_durum == 1 ? 'acildi' : 'kapatildi'}`);
     res.json({ 
       success: true, 
-      message: `Sinav sonucu gorme yetkisi ${yeni_durum == 1 ? 'acildi' : 'kapatildi'}!` 
+      message: `Sınav sonucu gorme yetkisi ${yeni_durum == 1 ? 'acildi' : 'kapatildi'}!` 
     });
   } catch (error) {
     console.error('Yetki degistirme hatasi:', error);
-    res.json({ success: false, message: 'Bir hata olustu!' });
+    res.json({ success: false, message: 'Bir hata oluştu!' });
   }
 });
 
@@ -6939,7 +7088,7 @@ app.post('/rehber/talep-yanitla', requireAuth, requireRole('rehber_ogretmen'), a
     const { talep_id, durum, yanit } = req.body;
     
     if (!talep_id || !durum || !['onaylandi', 'reddedildi'].includes(durum)) {
-      return res.json({ success: false, message: 'Gecersiz parametreler!' });
+      return res.json({ success: false, message: 'Geçersiz parametreler!' });
     }
     
     // Talebin bu rehber ogretmene ait oldugunu kontrol et
@@ -6951,7 +7100,7 @@ app.post('/rehber/talep-yanitla', requireAuth, requireRole('rehber_ogretmen'), a
     `, [talep_id, req.session.userId]);
     
     if (!talep) {
-      return res.json({ success: false, message: 'Talep bulunamadi veya size ait degil!' });
+      return res.json({ success: false, message: 'Talep bulunamadı veya size ait degil!' });
     }
     
     // Talebi guncelle
@@ -6984,12 +7133,12 @@ app.post('/rehber/talep-yanitla', requireAuth, requireRole('rehber_ogretmen'), a
     
     res.json({ 
       success: true, 
-      message: durum === 'onaylandi' ? 'Talep basariyla onaylandi!' : 'Talep reddedildi.' 
+      message: durum === 'onaylandi' ? 'Talep başarıyla onaylandı!' : 'Talep reddedildi.' 
     });
     
   } catch (error) {
     console.error('Rehber talep yanitlama hatasi:', error);
-    res.json({ success: false, message: 'Talep islenirken bir hata olustu!' });
+    res.json({ success: false, message: 'Talep işlenirken bir hata oluştu!' });
   }
 });
 
@@ -7020,7 +7169,7 @@ app.post('/rehber/ogrenci-talep', requireAuth, requireRole('rehber_ogretmen'), a
     
     if (!ogrenci_id) {
       console.log(' Ogrenci ID eksik!');
-      return res.json({ success: false, message: 'Ogrenci ID eksik' });
+      return res.json({ success: false, message: 'Öğrenci ID eksik' });
     }
     
     // Ogrenciyi bul
@@ -7029,7 +7178,7 @@ app.post('/rehber/ogrenci-talep', requireAuth, requireRole('rehber_ogretmen'), a
     
     if (!ogrenci) {
       console.log(' Ogrenci bulunamadi!');
-      return res.json({ success: false, message: 'Ogrenci bulunamadi' });
+      return res.json({ success: false, message: 'Öğrenci bulunamadı' });
     }
     
     // Zaten onaylanmis mi?
@@ -7041,7 +7190,7 @@ app.post('/rehber/ogrenci-talep', requireAuth, requireRole('rehber_ogretmen'), a
     
     if (onayliTalep) {
       console.log(' Zaten kayitli!');
-      return res.json({ success: false, message: 'Bu ogrenci zaten size kayitli' });
+      return res.json({ success: false, message: 'Bu öğrenci zaten size kayitli' });
     }
     
     // Bekleyen talep var mi kontrol et
@@ -7053,7 +7202,7 @@ app.post('/rehber/ogrenci-talep', requireAuth, requireRole('rehber_ogretmen'), a
     
     if (bekleyenTalep) {
       console.log(' Zaten bekleyen talep var!');
-      return res.json({ success: false, message: 'Bu ogrenci icin zaten bekleyen bir talebiniz var' });
+      return res.json({ success: false, message: 'Bu öğrenci icin zaten bekleyen bir talebiniz var' });
     }
     
     // Talep olustur (Veli onaylayacak) - Baska bransta atanmis olsa bile talep gonderilebilir
@@ -7074,7 +7223,7 @@ app.post('/rehber/ogrenci-talep', requireAuth, requireRole('rehber_ogretmen'), a
     
     res.json({ 
       success: true, 
-      message: `${ogrenci.ad_soyad} icin talep veliye gonderildi! Veli onayladiginda bu ogrenciyi gorebilirsiniz.`
+      message: `${ogrenci.ad_soyad} icin talep veliye gönderildi! Veli onayladiginda bu ogrenciyi gorebilirsiniz.`
     });
   } catch (error) {
     console.error(' Talep gonderme hatasi:', error);
@@ -7262,10 +7411,10 @@ app.post('/kurum/duyuru-ekle', requireAuth, async (req, res) => {
     console.log(`   Baslik: ${baslik}`);
     
     req.session.success = 'Duyuru basariyla eklendi!';
-    res.json({ success: true, message: 'Duyuru basariyla eklendi!' });
+    res.json({ success: true, message: 'Duyuru başarıyla eklendi!' });
   } catch (error) {
     console.error('Duyuru ekleme hatasi:', error);
-    res.json({ success: false, message: 'Bir hata olustu: ' + error.message });
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
@@ -7293,10 +7442,10 @@ app.post('/kurum/duyuru-guncelle/:id', requireAuth, async (req, res) => {
     console.log(`   Baslik: ${baslik}`);
     
     req.session.success = 'Duyuru basariyla guncellendi!';
-    res.json({ success: true, message: 'Duyuru basariyla guncellendi!' });
+    res.json({ success: true, message: 'Duyuru başarıyla güncellendi!' });
   } catch (error) {
     console.error('Duyuru guncelleme hatasi:', error);
-    res.json({ success: false, message: 'Bir hata olustu: ' + error.message });
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
@@ -7315,10 +7464,10 @@ app.post('/kurum/duyuru-sil/:id', requireAuth, async (req, res) => {
     console.log(`   ID: ${duyuruId}`);
     
     req.session.success = 'Duyuru basariyla silindi!';
-    res.json({ success: true, message: 'Duyuru basariyla silindi!' });
+    res.json({ success: true, message: 'Duyuru başarıyla silindi!' });
   } catch (error) {
     console.error('Duyuru silme hatasi:', error);
-    res.json({ success: false, message: 'Bir hata olustu: ' + error.message });
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
@@ -7347,7 +7496,7 @@ app.get('/api/kurumsal-sayfalar', async (req, res) => {
     res.json({ success: true, sayfalar: sayfalar });
   } catch (error) {
     console.error('API kurumsal sayfalar hatasi:', error);
-    res.status(500).json({ success: false, message: 'Sayfalar yuklenemedi!', error: error.message });
+    res.status(500).json({ success: false, message: 'Sayfalar yüklenemedi!', error: error.message });
   }
 });
 
@@ -7386,7 +7535,7 @@ app.post('/kurum/kurumsal-sayfa-guncelle/:id', requireAuth, async (req, res) => 
     const { sayfa_adi, baslik, icerik, seo_baslik, seo_aciklama, sira, aktif } = req.body;
     
     if (!sayfa_adi || !baslik) {
-      return res.json({ success: false, message: 'Sayfa adi ve baslik zorunludur!' });
+      return res.json({ success: false, message: 'Sayfa adı ve baslik zorunludur!' });
     }
     
     console.log('\n KURUMSAL SAYFA GUNCELLEME:');
@@ -7407,10 +7556,10 @@ app.post('/kurum/kurumsal-sayfa-guncelle/:id', requireAuth, async (req, res) => 
     
     console.log('    VERITABANINA KAYDEDILDI!');
     
-    res.json({ success: true, message: 'Sayfa basariyla guncellendi!' });
+    res.json({ success: true, message: 'Sayfa başarıyla güncellendi!' });
   } catch (error) {
     console.error('Kurumsal sayfa guncelleme hatasi:', error);
-    res.json({ success: false, message: 'Bir hata olustu: ' + error.message });
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
@@ -7455,20 +7604,82 @@ app.get('/iletisim', async (req, res) => {
 
 app.get('/sinav-merkezleri', async (req, res) => {
   try {
-    const sayfa = await dbGet('SELECT * FROM kurumsal_sayfalar WHERE sayfa_slug = ? AND aktif = 1', ['sinav-merkezleri']);
-    
+    let sayfa = await dbGet('SELECT * FROM kurumsal_sayfalar WHERE sayfa_slug = ? AND aktif = 1', ['sinav-merkezleri']);
+    // Sayfa kaydi yoksa basit bir cerceve (nav/footer/baslik) ile devam et
     if (!sayfa) {
-      return res.status(404).send('Sayfa bulunamadi!');
+      sayfa = { sayfa_slug: 'sinav-merkezleri', sayfa_adi: 'Sınav Merkezleri', baslik: 'Sınav Merkezlerimiz', seo_baslik: 'Sınav Merkezlerimiz', seo_aciklama: '', icerik: '' };
     }
-    
+
+    const merkezler = await dbAll('SELECT * FROM sinav_merkezleri WHERE aktif = 1 ORDER BY sira ASC, id ASC');
+
     res.render('kurumsal-sayfa', {
       title: sayfa.seo_baslik || sayfa.baslik,
       sayfa: sayfa,
+      merkezler: merkezler,
       user: req.session.userId ? { type: req.session.userType } : null
     });
   } catch (error) {
     console.error('Sinav merkezleri hatasi:', error);
     res.status(500).send('Bir hata olustu!');
+  }
+});
+
+// ===== SINAV MERKEZLERI YONETIMI (Kurum Paneli) =====
+app.get('/kurum/sinav-merkezleri', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
+  try {
+    const merkezler = await dbAll('SELECT * FROM sinav_merkezleri ORDER BY sira ASC, id ASC');
+    res.render('kurum/sinav-merkezleri', {
+      title: 'Sınav Merkezleri Yönetimi',
+      merkezler: merkezler,
+      user: { type: req.session.userType, username: req.session.username }
+    });
+  } catch (error) {
+    console.error('Sinav merkezleri yonetim hatasi:', error);
+    res.status(500).send('Bir hata oluştu!');
+  }
+});
+
+app.post('/kurum/sinav-merkezi-ekle', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
+  try {
+    const { ad, adres, telefon, eposta, sira, aktif } = req.body;
+    if (!ad || !ad.trim()) {
+      return res.json({ success: false, message: 'Merkez adı zorunludur!' });
+    }
+    await dbRun(
+      'INSERT INTO sinav_merkezleri (ad, adres, telefon, eposta, sira, aktif) VALUES (?, ?, ?, ?, ?, ?)',
+      [ad.trim(), adres || '', telefon || '', eposta || '', sira || 0, aktif ? 1 : 0]
+    );
+    res.json({ success: true, message: 'Sınav merkezi eklendi!' });
+  } catch (error) {
+    console.error('Sinav merkezi ekleme hatasi:', error);
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
+  }
+});
+
+app.post('/kurum/sinav-merkezi-guncelle/:id', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
+  try {
+    const { ad, adres, telefon, eposta, sira, aktif } = req.body;
+    if (!ad || !ad.trim()) {
+      return res.json({ success: false, message: 'Merkez adı zorunludur!' });
+    }
+    await dbRun(
+      'UPDATE sinav_merkezleri SET ad = ?, adres = ?, telefon = ?, eposta = ?, sira = ?, aktif = ? WHERE id = ?',
+      [ad.trim(), adres || '', telefon || '', eposta || '', sira || 0, aktif ? 1 : 0, req.params.id]
+    );
+    res.json({ success: true, message: 'Sınav merkezi güncellendi!' });
+  } catch (error) {
+    console.error('Sinav merkezi guncelleme hatasi:', error);
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
+  }
+});
+
+app.post('/kurum/sinav-merkezi-sil/:id', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
+  try {
+    await dbRun('DELETE FROM sinav_merkezleri WHERE id = ?', [req.params.id]);
+    res.json({ success: true, message: 'Sınav merkezi silindi!' });
+  } catch (error) {
+    console.error('Sinav merkezi silme hatasi:', error);
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
@@ -7484,7 +7695,7 @@ app.get('/test-pdf', (req, res) => {
 app.post('/test-pdf-upload', pdfUpload.single('pdfFile'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'Lutfen bir PDF dosyasi yukleyin!' });
+      return res.status(400).json({ error: 'Lütfen bir PDF dosyasi yukleyin!' });
     }
 
     // PDF'i oku
@@ -7538,7 +7749,7 @@ app.post('/test-pdf-upload', pdfUpload.single('pdfFile'), async (req, res) => {
     console.error('PDF parse hatasi:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'PDF parse edilirken hata olustu: ' + error.message 
+      error: 'PDF parse edilirken hata oluştu: ' + error.message 
     });
   }
 });
@@ -7944,7 +8155,7 @@ app.post('/kurum/sinav-eslestirme-kaldir', requireAuth, async (req, res) => {
     
     if (result.changes === 0) {
       console.log(`     UYARI: Hicbir satir guncellenmedi!`);
-      return res.json({ success: false, error: 'Eslesme bulunamadi!' });
+      return res.json({ success: false, error: 'Eslesme bulunamadı!' });
     }
     
     res.json({ success: true });
@@ -7997,7 +8208,7 @@ app.post('/kurum/toplu-veli-hesap-olustur', requireAuth, async (req, res) => {
           VALUES (?, ?, ?, 'veli', ?, ?, 0)
         `, [
           ogrenci.tc_kimlik_no, // username = TC
-          `veli_${ogrenci.id}_${Date.now()}@temp.com`, // benzersiz email
+          null, // e-posta yok -> NULL (sahte uretme)
           hashedPassword,
           ogrenci.veli_adi || `${ogrenci.ogrenci_adi_soyadi} Velisi`,
           ogrenci.veli_telefon || ogrenci.telefon
@@ -8035,6 +8246,64 @@ app.post('/kurum/toplu-veli-hesap-olustur', requireAuth, async (req, res) => {
   } catch (error) {
     console.error(' Toplu veli hesabi olusturma hatasi:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// TEKIL veli hesabi olustur (sadece bir ogrenci icin)
+app.post('/kurum/veli-hesap-olustur-tekil', requireAuth, async (req, res) => {
+  if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
+    return res.status(403).json({ success: false, message: 'Yetkiniz yok!' });
+  }
+  try {
+    const { ogrenci_id } = req.body;
+    if (!ogrenci_id) {
+      return res.json({ success: false, message: 'Öğrenci ID gerekli!' });
+    }
+
+    const ogrenci = await dbGet(
+      'SELECT id, ogrenci_adi_soyadi, tc_kimlik_no, telefon, veli_adi, veli_telefon FROM ogrenci_kayitlari WHERE id = ?',
+      [ogrenci_id]
+    );
+    if (!ogrenci) {
+      return res.json({ success: false, message: 'Öğrenci kaydı bulunamadı!' });
+    }
+    if (!ogrenci.tc_kimlik_no || ogrenci.tc_kimlik_no === '') {
+      return res.json({ success: false, message: 'Bu öğrencinin TC Kimlik No\'su kayıtlı değil — hesap oluşturulamaz.' });
+    }
+
+    // Zaten var mı? (kullanıcı adı = TC)
+    const mevcut = await dbGet('SELECT id FROM users WHERE username = ?', [ogrenci.tc_kimlik_no]);
+    if (mevcut) {
+      // Öğrenci kaydına veli_id'yi bağla (eksikse) ve "zaten var" bilgisini dön
+      await dbRun('UPDATE ogrenci_kayitlari SET veli_id = ? WHERE id = ? AND (veli_id IS NULL OR veli_id = 0)', [mevcut.id, ogrenci.id]);
+      return res.json({ success: true, zatenVardi: true, username: ogrenci.tc_kimlik_no, message: 'Bu veli için hesap zaten mevcut.' });
+    }
+
+    // Yeni hesap: kullanıcı adı = TC, ilk şifre = TC, e-posta = NULL
+    const hashedPassword = await bcrypt.hash(ogrenci.tc_kimlik_no, 10);
+    await dbRun(
+      `INSERT INTO users (username, email, password_hash, user_type, ad_soyad, telefon, password_changed)
+       VALUES (?, ?, ?, 'veli', ?, ?, 0)`,
+      [
+        ogrenci.tc_kimlik_no,
+        null,
+        hashedPassword,
+        ogrenci.veli_adi || `${ogrenci.ogrenci_adi_soyadi} Velisi`,
+        ogrenci.veli_telefon || ogrenci.telefon
+      ]
+    );
+    const veliUser = await dbGet('SELECT id FROM users WHERE username = ?', [ogrenci.tc_kimlik_no]);
+    await dbRun('UPDATE ogrenci_kayitlari SET veli_id = ? WHERE id = ?', [veliUser.id, ogrenci.id]);
+
+    res.json({
+      success: true,
+      username: ogrenci.tc_kimlik_no,
+      sifre: ogrenci.tc_kimlik_no,
+      message: 'Veli hesabı oluşturuldu!'
+    });
+  } catch (error) {
+    console.error('Tekil veli hesap olusturma hatasi:', error);
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
@@ -8115,7 +8384,7 @@ app.post('/kurum/sinav-sonuc-yukle-sayfalara-ayir', requireAuth, uploadLimiter, 
     const { sinav_id } = req.body;
     
     if (!sinav_id) {
-      return res.status(400).json({ success: false, error: 'Sinav ID eksik!' });
+      return res.status(400).json({ success: false, error: 'Sınav ID eksik!' });
     }
     
     if (!req.file) {
@@ -8292,7 +8561,7 @@ app.post('/kurum/sinav-otomatik-eslestir-pattern', requireAuth, requireRole(['ku
     // Sinav bilgilerini al
     const sinav = await dbGet('SELECT * FROM sinavlar WHERE id = ?', [sinav_id]);
     if (!sinav) {
-      return res.status(400).json({ success: false, error: 'Sinav bulunamadi!' });
+      return res.status(400).json({ success: false, error: 'Sınav bulunamadı!' });
     }
     
     // Katilimcilari al
@@ -8320,7 +8589,7 @@ app.post('/kurum/sinav-otomatik-eslestir-pattern', requireAuth, requireRole(['ku
     // PDF sayfalarini bul
     const sonucKlasoru = path.join('uploads', 'sinav-sonuclari', `sinav_${sinav_id}`);
     if (!fs.existsSync(sonucKlasoru)) {
-      return res.status(400).json({ success: false, error: 'PDF sayfalari bulunamadi!' });
+      return res.status(400).json({ success: false, error: 'PDF sayfalari bulunamadı!' });
     }
     
     const files = fs.readdirSync(sonucKlasoru)
@@ -8501,8 +8770,8 @@ app.post('/kurum/sinav-otomatik-eslestir-pattern', requireAuth, requireRole(['ku
       }
     }
     
-    // Sinav durumunu guncelle
-    await dbRun('UPDATE sinavlar SET sonuc_yuklendi = 1 WHERE id = ?', [sinav_id]);
+    // Sınav durumunu güncelle
+    await dbRun('UPDATE sınavlar SET sonuc_yuklendi = 1 WHERE id = ?', [sinav_id]);
     
     console.log(` Eslestirme tamamlandi: ${eslesen} basarili, ${eslesmeyen} basarisiz`);
     
@@ -8724,19 +8993,19 @@ app.post('/kurum/sinav-durumu-guncelle/:id', requireAuth, requireRole(['kurum_yo
     const { sinav_durumu } = req.body || {};
 
     if (!sinav_durumu) {
-      return res.status(400).json({ success: false, message: 'Sinav durumu gerekli!' });
+      return res.status(400).json({ success: false, message: 'Sınav durumu gerekli!' });
     }
 
     const sinav = await dbGet('SELECT id FROM sinavlar WHERE id = ?', [sinavId]);
     if (!sinav) {
-      return res.status(404).json({ success: false, message: 'Sinav bulunamadi!' });
+      return res.status(404).json({ success: false, message: 'Sınav bulunamadı!' });
     }
 
     await dbRun('UPDATE sinavlar SET sinav_durumu = ? WHERE id = ?', [sinav_durumu, sinavId]);
-    return res.json({ success: true, message: 'Sinav durumu guncellendi!' });
+    return res.json({ success: true, message: 'Sınav durumu güncellendi!' });
   } catch (error) {
     console.error('Sinav durumu guncelleme hatasi:', error);
-    return res.status(500).json({ success: false, message: 'Sinav durumu guncellenirken hata olustu!' });
+    return res.status(500).json({ success: false, message: 'Sınav durumu guncellenirken hata oluştu!' });
   }
 });
 
@@ -8747,7 +9016,7 @@ app.post('/kurum/cevap-anahtari-yukle/:id', requireAuth, requireRole(['kurum_yon
 
     const sinav = await dbGet('SELECT id FROM sinavlar WHERE id = ?', [sinavId]);
     if (!sinav) {
-      return res.status(404).json({ success: false, message: 'Sinav bulunamadi!' });
+      return res.status(404).json({ success: false, message: 'Sınav bulunamadı!' });
     }
 
     if (!req.file) {
@@ -8757,10 +9026,10 @@ app.post('/kurum/cevap-anahtari-yukle/:id', requireAuth, requireRole(['kurum_yon
     const relativePath = req.file.path.replace(/^\.?\/?/, '');
     await dbRun('UPDATE sinavlar SET cevap_anahtari_pdf = ? WHERE id = ?', [relativePath, sinavId]);
 
-    return res.json({ success: true, message: 'Cevap anahtari yuklendi!' });
+    return res.json({ success: true, message: 'Cevap anahtari yüklendi!' });
   } catch (error) {
     console.error('Cevap anahtari yukleme hatasi:', error);
-    return res.status(500).json({ success: false, message: 'Cevap anahtari yuklenirken hata olustu!' });
+    return res.status(500).json({ success: false, message: 'Cevap anahtari yuklenirken hata oluştu!' });
   }
 });
 
@@ -8793,7 +9062,7 @@ app.post('/kurum/sinav-katilimci-ekle', requireAuth, requireRole(['kurum_yonetic
   try {
     const { sinav_id, ogrenci_ids } = req.body;
     if (!sinav_id || !Array.isArray(ogrenci_ids) || ogrenci_ids.length === 0) {
-      return res.status(400).json({ success: false, error: 'Sinav veya ogrenci bilgisi eksik!' });
+      return res.status(400).json({ success: false, error: 'Sınav veya öğrenci bilgisi eksik!' });
     }
     // Mevcut katilimcilari onbellege al (cift kaydi engelle)
     const mevcut = await dbAll("SELECT ogrenci_id, ogrenci_kaynak FROM sinav_katilimcilari WHERE sinav_id = ?", [sinav_id]);
@@ -8891,7 +9160,7 @@ app.post('/kurum/sinav-sil/:id', requireAuth, requireRole(['kurum_yonetici', 'ku
     res.json({ success: true });
   } catch (error) {
     console.error('Sinav silme hatas:', error);
-    res.status(500).json({ success: false, error: 'Sinav silinemedi!' });
+    res.status(500).json({ success: false, error: 'Sınav silinemedi!' });
   }
 });
 

@@ -3,16 +3,64 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %> - Sınav Merkezi</title>
-  <% if (sayfa.seo_aciklama) { %>
-  <meta name="description" content="<%= sayfa.seo_aciklama %>">
-  <% } %>
+  <% var _siteName = typeof siteName !== 'undefined' ? siteName : 'Adana Sınav Kulübü'; %>
+  <% var _fullTitle = (title || sayfa.baslik) + ' | ' + _siteName; %>
+  <% var _desc = (sayfa.seo_aciklama && sayfa.seo_aciklama.trim()) ? sayfa.seo_aciklama : (typeof metaDescription !== 'undefined' ? metaDescription : ''); %>
+  <title><%= _fullTitle %></title>
+  <meta name="description" content="<%= _desc %>">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#003b78">
+  <% if (typeof canonicalUrl !== 'undefined') { %><link rel="canonical" href="<%= canonicalUrl %>"><% } %>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23003b78'/><text x='16' y='23' font-size='20' font-family='Arial,sans-serif' font-weight='bold' fill='white' text-anchor='middle'>A</text></svg>">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="<%= _siteName %>">
+  <meta property="og:title" content="<%= _fullTitle %>">
+  <meta property="og:description" content="<%= _desc %>">
+  <meta property="og:locale" content="tr_TR">
+  <% if (typeof canonicalUrl !== 'undefined') { %><meta property="og:url" content="<%= canonicalUrl %>"><% } %>
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="<%= _fullTitle %>">
+  <meta name="twitter:description" content="<%= _desc %>">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="/css/mobile-fixes.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
+    /* Sinav Merkezi (sube) kartlari - sade */
+    .merkez-card {
+      background: #fff;
+      border: 1px solid #e8ecf0;
+      border-left: 4px solid #003b78;
+      border-radius: 14px;
+      padding: 24px 26px;
+      height: 100%;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      transition: all 0.25s ease;
+    }
+    .merkez-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+    }
+    .merkez-ad {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: #003b78;
+      margin: 0 0 16px;
+    }
+    .merkez-satir {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      color: #475569;
+      font-size: 1rem;
+      padding: 6px 0;
+    }
+    .merkez-satir i { color: #003b78; margin-top: 3px; }
+    .merkez-satir a { color: #475569; text-decoration: none; }
+    .merkez-satir a:hover { color: #003b78; text-decoration: underline; }
+
     :root {
       --primary: #003b78;
       --primary-light: #0056b3;
@@ -55,7 +103,7 @@
     }
     
     .navbar-brand i {
-      font-size: 1.8rem;
+      font-size: 1.75rem;
     }
     
     .nav-link {
@@ -99,38 +147,36 @@
     }
     
     /* Hero Section - Ana Sayfa ile Uyumlu */
-    .hero-section {
-      background: linear-gradient(135deg, #003b78 0%, #0056b3 100%);
-      color: white;
-      padding: 120px 0 80px;
-      margin-bottom: 60px;
-      position: relative;
-      overflow: hidden;
+    /* Sade baslik (Cevap Anahtarlari / Duyurular stili) */
+    .breadcrumb-container {
+      background: #f8f9fa;
+      padding: 16px 0;
+      border-bottom: 1px solid #e0e0e0;
     }
-    
-    .hero-section::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: 
-        radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%);
-      pointer-events: none;
+    .breadcrumb {
+      display: flex; align-items: center; gap: 8px;
+      list-style: none; padding: 0; margin: 0; flex-wrap: wrap;
     }
-    
-    .hero-section .container {
-      position: relative;
-      z-index: 1;
+    .breadcrumb-item { display: flex; align-items: center; gap: 8px; font-size: 1rem; }
+    .breadcrumb-item a {
+      color: var(--primary); text-decoration: none; transition: all 0.2s ease;
+      display: flex; align-items: center; gap: 6px;
     }
-    
-    .hero-section h1 {
-      font-weight: 800;
-      margin-bottom: 20px;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    .breadcrumb-item a:hover { color: var(--primary-dark); text-decoration: underline; }
+    .breadcrumb-item a i { font-size: 1rem; }
+    .breadcrumb-separator { color: #999; font-size: 0.875rem; }
+    .breadcrumb-item.active { color: #666; font-weight: 500; }
+
+    .page-header {
+      background: transparent;
+      padding: 30px 0 8px;
     }
+    .page-header h1 {
+      font-size: 2rem; font-weight: 800; margin-bottom: 6px; color: #1e293b;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .page-header h1 i { color: #003b78; font-size: 1.75rem; }
+    .page-header p { font-size: 1rem; color: #64748b; margin: 0; }
     
     /* Content Section */
     .content-section {
@@ -169,7 +215,7 @@
     }
     
     .content-section p {
-      font-size: 1.1rem;
+      font-size: 1.125rem;
       line-height: 1.8;
       color: var(--text);
       margin-bottom: 20px;
@@ -177,7 +223,7 @@
     
     .content-section ul, 
     .content-section ol {
-      font-size: 1.1rem;
+      font-size: 1.125rem;
       line-height: 1.8;
       color: var(--text);
       padding-left: 20px;
@@ -256,6 +302,53 @@
       box-shadow: var(--shadow-lg);
     }
   </style>
+
+  <% var _base = typeof baseUrl !== 'undefined' ? baseUrl : ''; %>
+  <!-- JSON-LD: Kurum -->
+  <script type="application/ld+json"><%- JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "EducationalOrganization",
+    "name": _siteName,
+    "url": _base + "/",
+    "email": "adanasinavkulubu@outlook.com.tr",
+    "telephone": "+90 541 190 24 25",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Toros Mah. Ahmet Sapmaz Blv. Yusuf Atlı Apt. A Blok No:61D",
+      "addressLocality": "Çukurova",
+      "addressRegion": "Adana",
+      "addressCountry": "TR"
+    }
+  }) %></script>
+  <% if (typeof canonicalUrl !== 'undefined') { %>
+  <!-- JSON-LD: Breadcrumb -->
+  <script type="application/ld+json"><%- JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Ana Sayfa", "item": _base + "/" },
+      { "@type": "ListItem", "position": 2, "name": (sayfa.sayfa_adi || sayfa.baslik), "item": canonicalUrl }
+    ]
+  }) %></script>
+  <% } %>
+  <% if (typeof merkezler !== 'undefined' && merkezler && merkezler.length > 0) { %>
+  <!-- JSON-LD: Sinav merkezleri (subeler) -->
+  <script type="application/ld+json"><%- JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "itemListElement": merkezler.map(function(m, i) {
+      var biz = {
+        "@type": "LocalBusiness",
+        "name": m.ad,
+        "parentOrganization": { "@type": "EducationalOrganization", "name": _siteName }
+      };
+      if (m.adres) biz.address = { "@type": "PostalAddress", "streetAddress": m.adres, "addressCountry": "TR" };
+      if (m.telefon) biz.telephone = m.telefon;
+      if (m.eposta) biz.email = m.eposta;
+      return { "@type": "ListItem", "position": i + 1, "item": biz };
+    })
+  }) %></script>
+  <% } %>
 </head>
 <body>
   <!-- Navbar - Ana Sayfa ile Aynı Tasarım -->
@@ -327,19 +420,84 @@
     </div>
   </nav>
 
-  <!-- Hero Section -->
-  <section class="hero-section">
-    <div class="container text-center">
-      <h1 class="display-4 fw-bold"><%= sayfa.baslik %></h1>
+  <%
+    var _slug = sayfa.sayfa_slug || '';
+    var _ikon = _slug === 'sinav-merkezleri' ? 'bi-geo-alt-fill'
+              : _slug === 'iletisim' ? 'bi-envelope'
+              : _slug === 'hakkimizda' ? 'bi-info-circle'
+              : 'bi-file-earmark-text';
+    var _altYazi = sayfa.seo_aciklama
+              || (_slug === 'sinav-merkezleri' ? 'Türkiye genelinde şubelerimiz'
+              : _slug === 'iletisim' ? 'Bize ulaşın, sorularınızı yanıtlayalım'
+              : _slug === 'hakkimizda' ? 'Sınav Merkezi olarak biz kimiz?'
+              : '');
+  %>
+  <!-- Breadcrumb -->
+  <div class="breadcrumb-container">
+    <div class="container">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item">
+            <a href="/"><i class="bi bi-house-door"></i> Ana Sayfa</a>
+          </li>
+          <li class="breadcrumb-separator"><i class="bi bi-chevron-right"></i></li>
+          <li class="breadcrumb-item active" aria-current="page"><%= sayfa.sayfa_adi || sayfa.baslik %></li>
+        </ol>
+      </nav>
     </div>
-  </section>
+  </div>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="container">
+      <h1><i class="bi <%= _ikon %>"></i> <%= sayfa.baslik %></h1>
+      <% if (_altYazi) { %><p><%= _altYazi %></p><% } %>
+    </div>
+  </div>
 
   <!-- Content Section -->
   <section class="content-section">
     <div class="container">
       <div class="row">
         <div class="col-lg-10 mx-auto">
-          <%- sayfa.icerik %>
+          <% if (typeof merkezler !== 'undefined') { %>
+            <% if (merkezler && merkezler.length > 0) { %>
+              <div class="row g-4">
+                <% merkezler.forEach(function(m) { %>
+                <div class="col-md-6">
+                  <div class="merkez-card">
+                    <h3 class="merkez-ad"><i class="bi bi-geo-alt-fill"></i> <%= m.ad %></h3>
+                    <% if (m.adres) { %>
+                    <div class="merkez-satir">
+                      <i class="bi bi-pin-map"></i>
+                      <span><%= m.adres %></span>
+                    </div>
+                    <% } %>
+                    <% if (m.telefon) { %>
+                    <div class="merkez-satir">
+                      <i class="bi bi-telephone"></i>
+                      <a href="tel:<%= m.telefon.replace(/\s/g, '') %>"><%= m.telefon %></a>
+                    </div>
+                    <% } %>
+                    <% if (m.eposta) { %>
+                    <div class="merkez-satir">
+                      <i class="bi bi-envelope"></i>
+                      <a href="mailto:<%= m.eposta %>"><%= m.eposta %></a>
+                    </div>
+                    <% } %>
+                  </div>
+                </div>
+                <% }); %>
+              </div>
+            <% } else { %>
+              <div class="text-center py-5 text-muted">
+                <i class="bi bi-geo-alt" style="font-size: 3rem; opacity: 0.4;"></i>
+                <p class="mt-3">Henüz sınav merkezi eklenmemiş.</p>
+              </div>
+            <% } %>
+          <% } else { %>
+            <%- sayfa.icerik %>
+          <% } %>
         </div>
       </div>
     </div>

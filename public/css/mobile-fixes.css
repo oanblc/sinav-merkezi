@@ -1,0 +1,87 @@
+/* ============================================================
+   Mobil İyileştirmeler (P0 + P1) — tüm sitede ortak
+   header.ejs (public) ve header-dashboard.ejs (panel) linkler
+   ============================================================ */
+
+/* ---------- P0-1: iOS odak-zoom'unu engelle ----------
+   16px altı input'lar mobilde odaklanınca sayfa zıplar.
+   Mobilde tüm form alanlarını min 16px yap. */
+@media (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea,
+  .form-control,
+  .form-select {
+    font-size: 16px !important;
+  }
+}
+
+/* ---------- P0-2: Dokunma hedefleri (min ~44px) ---------- */
+@media (max-width: 768px) {
+  .btn,
+  button.btn,
+  .nav-link,
+  .dropdown-item,
+  .page-link {
+    min-height: 44px;
+  }
+  .btn-sm,
+  .btn-group-sm > .btn {
+    min-height: 40px;
+  }
+  /* İkon-only aksiyon butonları: kare ve ortalı */
+  .btn-action,
+  .btn-icon,
+  .action-btn,
+  .kt-btn,
+  td .btn-sm,
+  td a.btn,
+  td button.btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ---------- P0-3: Tablo taşması — güvenli yatay kaydırma ---------- */
+@media (max-width: 768px) {
+  .table-responsive,
+  .dataTables_wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ---------- P1-1: Modal'lar küçük ekranda alanı kullansın ---------- */
+@media (max-width: 576px) {
+  .modal-dialog:not(.modal-fullscreen) {
+    margin: 0.5rem;
+    max-width: calc(100% - 1rem);
+  }
+  .modal-body {
+    padding: 18px !important;
+  }
+}
+
+/* ---------- P1-2: Çentik / home-bar güvenli alanı ---------- */
+.mobile-bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* ---------- P1-3: Görsel ve uzun metin taşması ---------- */
+img {
+  max-width: 100%;
+  height: auto;
+}
+@media (max-width: 768px) {
+  body {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+  }
+  /* Yatay kaydırmaya neden olan nowrap'leri mobilde gevşet */
+  .breadcrumb {
+    flex-wrap: wrap;
+  }
+}

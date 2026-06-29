@@ -1,0 +1,270 @@
+<%- include('../partials/header-dashboard', { title: 'Sınav Merkezleri Yönetimi - Kurum Paneli', user: user }) %>
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -30px -15px 40px;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 8px 32px rgba(6, 182, 212, 0.3);
+    }
+
+    .merkez-card {
+        background: white;
+        border-radius: 16px;
+        padding: 24px 28px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+        transition: all 0.3s ease;
+        border-left: 4px solid #3b82f6;
+    }
+
+    .merkez-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 28px rgba(0,0,0,0.10);
+    }
+
+    .merkez-card.pasif {
+        border-left-color: #94a3b8;
+        opacity: 0.65;
+    }
+
+    .merkez-bilgi {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        color: #475569;
+        font-size: 0.875rem;
+        padding: 4px 0;
+    }
+    .merkez-bilgi i { color: #3b82f6; margin-top: 3px; }
+
+    .form-label { font-weight: 600; color: #1e293b; margin-bottom: 8px; }
+    .form-control, .form-select {
+        border-radius: 12px; border: 2px solid #e2e8f0; padding: 12px 16px; transition: all 0.2s;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #3b82f6; box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+    }
+    .empty-state {
+        text-align: center; padding: 60px 20px; background: white;
+        border-radius: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h1 style="font-weight: 800; margin-bottom: 8px;">
+                    <i class="bi bi-geo-alt-fill"></i> Sınav Merkezleri
+                </h1>
+                <p style="opacity: 0.9; margin: 0;">Şubeleri ekleyin, düzenleyin ve yönetin. Bu bilgiler "Sınav Merkezlerimiz" sayfasında gösterilir.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="/sinav-merkezleri" target="_blank" class="btn btn-outline-light" style="border-radius: 12px; padding: 12px 20px; font-weight: 600;">
+                    <i class="bi bi-box-arrow-up-right"></i> Sayfayı Gör
+                </a>
+                <button class="btn btn-light" onclick="showAddModal()" style="border-radius: 12px; padding: 12px 24px; font-weight: 600;">
+                    <i class="bi bi-plus-circle"></i> Yeni Merkez Ekle
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Liste -->
+<div class="mb-4">
+    <h3 style="font-weight: 700; color: #1e293b;">
+        <i class="bi bi-list-ul"></i> Sınav Merkezleri (<%= merkezler.length %>)
+    </h3>
+</div>
+
+<% if (merkezler.length === 0) { %>
+<div class="empty-state">
+    <i class="bi bi-geo-alt" style="font-size: 4rem; color: #e2e8f0; margin-bottom: 20px;"></i>
+    <h4 style="color: #64748b; margin-bottom: 16px;">Henüz Sınav Merkezi Eklenmemiş</h4>
+    <p style="color: #94a3b8; margin-bottom: 24px;">İlk merkezi ekleyerek başlayın</p>
+    <button class="btn btn-primary btn-lg" onclick="showAddModal()" style="border-radius: 12px;">
+        <i class="bi bi-plus-circle"></i> Merkez Ekle
+    </button>
+</div>
+<% } else { %>
+<div class="row g-4">
+    <% merkezler.forEach(function(m) { %>
+    <div class="col-md-6">
+        <div class="merkez-card <%= !m.aktif ? 'pasif' : '' %>">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <h4 style="font-weight: 700; color: #1e293b; margin: 0; font-size: 1.125rem;">
+                    <%= m.ad %>
+                    <% if (!m.aktif) { %>
+                    <span class="badge bg-secondary ms-1">Pasif</span>
+                    <% } %>
+                </h4>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary btn-sm" onclick='editMerkez(<%- JSON.stringify(m) %>)' style="border-radius: 10px;">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteMerkez(<%= m.id %>, '<%= (m.ad || '').replace(/'/g, '\\\'') %>')" style="border-radius: 10px;">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <% if (m.adres) { %>
+            <div class="merkez-bilgi"><i class="bi bi-pin-map"></i> <span><%= m.adres %></span></div>
+            <% } %>
+            <% if (m.telefon) { %>
+            <div class="merkez-bilgi"><i class="bi bi-telephone"></i> <span><%= m.telefon %></span></div>
+            <% } %>
+            <% if (m.eposta) { %>
+            <div class="merkez-bilgi"><i class="bi bi-envelope"></i> <span><%= m.eposta %></span></div>
+            <% } %>
+        </div>
+    </div>
+    <% }); %>
+</div>
+<% } %>
+
+<!-- Ekle/Düzenle Modal -->
+<div class="modal fade" id="merkezModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 20px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%); color: white; border-radius: 20px 20px 0 0;">
+                <h5 class="modal-title" id="modalTitle">
+                    <i class="bi bi-plus-circle"></i> Yeni Merkez Ekle
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 30px;">
+                <form id="merkezForm">
+                    <input type="hidden" id="merkezId" name="id">
+
+                    <div class="mb-3">
+                        <label class="form-label"><i class="bi bi-building"></i> Merkez Adı *</label>
+                        <input type="text" name="ad" id="merkezAd" class="form-control" placeholder="Örn: Ankara Merkez Şube" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><i class="bi bi-pin-map"></i> Adres</label>
+                        <textarea name="adres" id="merkezAdres" class="form-control" rows="2" placeholder="Açık adres"></textarea>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label"><i class="bi bi-telephone"></i> Telefon</label>
+                            <input type="text" name="telefon" id="merkezTelefon" class="form-control" placeholder="+90 (3xx) xxx xx xx">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label"><i class="bi bi-envelope"></i> E-posta</label>
+                            <input type="email" name="eposta" id="merkezEposta" class="form-control" placeholder="ornek@sinavmerkezi.com">
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label"><i class="bi bi-sort-numeric-down"></i> Sıra</label>
+                            <input type="number" name="sira" id="merkezSira" class="form-control" value="0" min="0">
+                            <small class="text-muted">Düşük sayı önce gösterilir</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label"><i class="bi bi-toggle-on"></i> Durum</label>
+                            <select name="aktif" id="merkezAktif" class="form-select">
+                                <option value="1">Aktif (sayfada gösterilir)</option>
+                                <option value="0">Pasif (gizli)</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid #eef2f6; padding: 16px 30px;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 12px;">İptal</button>
+                <button type="button" class="btn btn-primary" onclick="saveMerkez(event)" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%); border: none; border-radius: 12px; font-weight: 600;">
+                    <i class="bi bi-check-circle"></i> Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let merkezModal;
+document.addEventListener('DOMContentLoaded', function() {
+    merkezModal = new bootstrap.Modal(document.getElementById('merkezModal'));
+});
+
+function showAddModal() {
+    document.getElementById('modalTitle').innerHTML = '<i class="bi bi-plus-circle"></i> Yeni Merkez Ekle';
+    document.getElementById('merkezForm').reset();
+    document.getElementById('merkezId').value = '';
+    document.getElementById('merkezAktif').value = '1';
+    merkezModal.show();
+}
+
+function editMerkez(m) {
+    document.getElementById('modalTitle').innerHTML = '<i class="bi bi-pencil"></i> Merkez Düzenle';
+    document.getElementById('merkezId').value = m.id;
+    document.getElementById('merkezAd').value = m.ad || '';
+    document.getElementById('merkezAdres').value = m.adres || '';
+    document.getElementById('merkezTelefon').value = m.telefon || '';
+    document.getElementById('merkezEposta').value = m.eposta || '';
+    document.getElementById('merkezSira').value = m.sira || 0;
+    document.getElementById('merkezAktif').value = m.aktif ? '1' : '0';
+    merkezModal.show();
+}
+
+async function saveMerkez(event) {
+    const id = document.getElementById('merkezId').value;
+    const data = {
+        ad: document.getElementById('merkezAd').value.trim(),
+        adres: document.getElementById('merkezAdres').value.trim(),
+        telefon: document.getElementById('merkezTelefon').value.trim(),
+        eposta: document.getElementById('merkezEposta').value.trim(),
+        sira: parseInt(document.getElementById('merkezSira').value) || 0,
+        aktif: document.getElementById('merkezAktif').value === '1'
+    };
+    if (!data.ad) { alert('❌ Merkez adı zorunludur!'); return; }
+
+    const url = id ? `/kurum/sinav-merkezi-guncelle/${id}` : '/kurum/sinav-merkezi-ekle';
+    const btn = event.target;
+    const btnText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Kaydediliyor...';
+
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert('✅ ' + result.message);
+            location.reload();
+        } else {
+            alert('❌ ' + result.message);
+            btn.disabled = false; btn.innerHTML = btnText;
+        }
+    } catch (err) {
+        console.error('Kaydetme hatası:', err);
+        alert('Bir hata oluştu!');
+        btn.disabled = false; btn.innerHTML = btnText;
+    }
+}
+
+function deleteMerkez(id, ad) {
+    if (!confirm(`"${ad}" merkezini silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz!`)) return;
+    fetch(`/kurum/sinav-merkezi-sil/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) { alert('✅ ' + data.message); location.reload(); }
+        else { alert('❌ ' + data.message); }
+    })
+    .catch(err => { console.error('Silme hatası:', err); alert('Bir hata oluştu!'); });
+}
+</script>
+
+<%- include('../partials/footer-dashboard') %>

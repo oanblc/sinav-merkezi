@@ -29,13 +29,21 @@
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         display: flex;
         gap: 16px;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
     }
-    
-    .filters .form-select {
-        min-width: 200px;
+
+    .filters .form-select,
+    .filters .form-control {
+        flex: 1 1 0;
+        min-width: 0;
         border-radius: 10px;
         border: 2px solid #e2e8f0;
+    }
+
+    @media (max-width: 768px) {
+        .filters { flex-wrap: wrap; }
+        .filters .form-select,
+        .filters .form-control { flex: 1 1 45%; }
     }
     
     .table-container {
@@ -49,7 +57,7 @@
         padding: 6px 12px;
         border-radius: 8px;
         font-weight: 600;
-        font-size: 0.85rem;
+        font-size: 0.875rem;
     }
     
     .badge.bg-success {
@@ -188,6 +196,23 @@
         }
     }
     
+    .dt-top-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .dt-top-row .dt-buttons {
+        margin-bottom: 0;
+    }
+
+    .dt-top-row .dataTables_filter {
+        margin: 0;
+    }
+
     .dt-buttons {
         margin-bottom: 20px;
     }
@@ -230,7 +255,7 @@
             <a href="/kurum/ogrenci-export-excel" class="btn btn-light">
                 <i class="bi bi-download"></i> Excel İndir
             </a>
-            <button class="btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;" onclick="topluVeliHesapOlustur()">
+            <button class="btn" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%); color: white;" onclick="topluVeliHesapOlustur()">
                 <i class="bi bi-people-fill"></i> Toplu Veli Hesabı Oluştur
             </button>
             <button class="btn btn-danger" onclick="showDeleteAllModal()">
@@ -248,7 +273,11 @@
             <option><%= sinif %></option>
         <% }); %>
     </select>
-    
+
+    <input type="text" id="ogrenciAdiFilter" class="form-control" placeholder="👤 Öğrenci Adı Ara">
+
+    <input type="text" id="veliAdiFilter" class="form-control" placeholder="👨‍👩‍👧 Veli Adı Ara">
+
     <select id="odemeDurumuFilter" class="form-select">
         <option value="">💰 Tüm Ödeme Durumları</option>
         <option>Bekliyor</option>
@@ -346,7 +375,7 @@
                 </td>
                 <td>
                     <% if (_tutar > 0) { %>
-                        <span class="badge bg-<%= _kalan > 0 ? 'danger' : 'success' %>" style="font-size: 0.85rem;">
+                        <span class="badge bg-<%= _kalan > 0 ? 'danger' : 'success' %>" style="font-size: 0.875rem;">
                             <%= paraFormat(_kalan) %> ₺
                         </span>
                     <% } else { %>
@@ -388,8 +417,8 @@
                                 veliTelForBtn = veliTelForBtn.toString().replace('.0', '');
                             }
                         %>
-                        <button class="btn btn-info btn-action" onclick="showVeliBilgileri('<%= veliTelForBtn %>', '<%= ogr.veli_adi %>')" title="Veli Giriş Bilgileri">
-                            <i class="bi bi-person-lock"></i>
+                        <button class="btn <%= ogr.hesap_var ? 'btn-info' : 'btn-secondary' %> btn-action" onclick="showVeliBilgileri('<%= veliTelForBtn %>', '<%= ogr.veli_adi %>', <%= ogr.id %>)" title="<%= ogr.hesap_var ? 'Veli Giriş Bilgileri (hesap var)' : 'Hesap yok — oluşturmak için tıkla' %>">
+                            <i class="bi <%= ogr.hesap_var ? 'bi-person-lock' : 'bi-person-dash' %>"></i>
                         </button>
                         <button class="btn btn-success btn-action" onclick="showOdemeGecmisi(<%= ogr.id %>)" title="Ödeme Geçmişi / Taksitler">
                             <i class="bi bi-cash-coin"></i>
@@ -447,21 +476,21 @@
                         <div class="col-md-6">
                             <label class="form-label">Telefon</label>
                             <input type="tel" class="form-control telefon-input" name="telefon" placeholder="05XX XXX XX XX" maxlength="14">
-                            <small class="text-muted">Ornek: 0532 123 45 67</small>
+                            <small class="text-muted">Örnek: 0532 123 45 67</small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">T.C. Kimlik No</label>
                             <input type="text" class="form-control tc-input" name="tc_kimlik_no" placeholder="XXXXXXXXXXX" maxlength="11" pattern="[0-9]{11}" inputmode="numeric">
-                            <small class="text-muted">11 haneli TC Kimlik numarasi</small>
+                            <small class="text-muted">11 haneli TC Kimlik numarası</small>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Veli Adi</label>
+                            <label class="form-label">Veli Adı</label>
                             <input type="text" class="form-control" name="veli_adi">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Veli Telefon</label>
                             <input type="tel" class="form-control telefon-input" name="veli_telefon" placeholder="05XX XXX XX XX" maxlength="14">
-                            <small class="text-muted">Ornek: 0532 123 45 67</small>
+                            <small class="text-muted">Örnek: 0532 123 45 67</small>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Tutar (Toplam)</label>
@@ -558,21 +587,21 @@
                         <div class="col-md-6">
                             <label class="form-label">Telefon</label>
                             <input type="tel" class="form-control telefon-input" id="edit_telefon" name="telefon" placeholder="05XX XXX XX XX" maxlength="14">
-                            <small class="text-muted">Ornek: 0532 123 45 67</small>
+                            <small class="text-muted">Örnek: 0532 123 45 67</small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">T.C. Kimlik No</label>
                             <input type="text" class="form-control tc-input" id="edit_tc_kimlik_no" name="tc_kimlik_no" placeholder="XXXXXXXXXXX" maxlength="11" pattern="[0-9]{11}" inputmode="numeric">
-                            <small class="text-muted">11 haneli TC Kimlik numarasi</small>
+                            <small class="text-muted">11 haneli TC Kimlik numarası</small>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Veli Adi</label>
+                            <label class="form-label">Veli Adı</label>
                             <input type="text" class="form-control" id="edit_veli_adi" name="veli_adi">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Veli Telefon</label>
                             <input type="tel" class="form-control telefon-input" id="edit_veli_telefon" name="veli_telefon" placeholder="05XX XXX XX XX" maxlength="14">
-                            <small class="text-muted">Ornek: 0532 123 45 67</small>
+                            <small class="text-muted">Örnek: 0532 123 45 67</small>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Tutar (Toplam)</label>
@@ -645,20 +674,20 @@
                 <div class="row g-2 mb-4">
                     <div class="col-4">
                         <div style="background:#eff6ff; border-radius:12px; padding:14px; text-align:center;">
-                            <div style="font-size:.8rem; color:#64748b;">Toplam Tutar</div>
-                            <div id="og_tutar" style="font-size:1.3rem; font-weight:800; color:#1e40af;">-</div>
+                            <div style="font-size:0.75rem; color:#64748b;">Toplam Tutar</div>
+                            <div id="og_tutar" style="font-size:1.25rem; font-weight:800; color:#1e40af;">-</div>
                         </div>
                     </div>
                     <div class="col-4">
                         <div style="background:#ecfdf5; border-radius:12px; padding:14px; text-align:center;">
-                            <div style="font-size:.8rem; color:#64748b;">Ödenen</div>
-                            <div id="og_odenen" style="font-size:1.3rem; font-weight:800; color:#059669;">-</div>
+                            <div style="font-size:0.75rem; color:#64748b;">Ödenen</div>
+                            <div id="og_odenen" style="font-size:1.25rem; font-weight:800; color:#059669;">-</div>
                         </div>
                     </div>
                     <div class="col-4">
                         <div id="og_kalanBox" style="background:#fef2f2; border-radius:12px; padding:14px; text-align:center;">
-                            <div style="font-size:.8rem; color:#64748b;">Kalan</div>
-                            <div id="og_kalan" style="font-size:1.3rem; font-weight:800; color:#dc2626;">-</div>
+                            <div style="font-size:0.75rem; color:#64748b;">Kalan</div>
+                            <div id="og_kalan" style="font-size:1.25rem; font-weight:800; color:#dc2626;">-</div>
                         </div>
                     </div>
                 </div>
@@ -670,15 +699,15 @@
                         <input type="hidden" id="og_ogrenciId">
                         <div class="row g-2 align-items-end">
                             <div class="col-md-4">
-                                <label class="form-label" style="font-size:.85rem;">Tutar *</label>
+                                <label class="form-label" style="font-size:0.875rem;">Tutar *</label>
                                 <input type="text" class="form-control" id="og_tutarInput" placeholder="Örn: 1.000" required>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label" style="font-size:.85rem;">Tarih</label>
+                                <label class="form-label" style="font-size:0.875rem;">Tarih</label>
                                 <input type="date" class="form-control" id="og_tarihInput">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label" style="font-size:.85rem;">Açıklama</label>
+                                <label class="form-label" style="font-size:0.875rem;">Açıklama</label>
                                 <input type="text" class="form-control" id="og_aciklamaInput" placeholder="Örn: 1. taksit / nakit">
                             </div>
                         </div>
@@ -705,7 +734,7 @@
 <div class="modal fade" id="importModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%); color: white;">
                 <h5 class="modal-title">
                     <i class="bi bi-upload"></i> Excel Dosyası Yükle
                 </h5>
@@ -723,13 +752,13 @@
                         </p>
                     </div>
                     
-                    <p style="color: #065f46; margin: 0 0 12px 0; font-size: 0.9rem;">
+                    <p style="color: #065f46; margin: 0 0 12px 0; font-size: 0.875rem;">
                         <strong>📋 Gerekli Sütunlar:</strong><br>
-                        <code style="background: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; display: inline-block; margin-top: 6px;">
+                        <code style="background: white; padding: 4px 8px; border-radius: 4px; font-size: 0.875rem; display: inline-block; margin-top: 6px;">
                             ÖĞRENCI SINIF BİLGİSİ, ÖĞRENCI ADI SOYADI, TELEFON KAYDI, T.C KİMLİK NO, ÖĞRENCİ VELİ, VELİ TELEFON, TUTAR, ÖDENEN, ÖDEME DURUMU, ÖDEME TÜRÜ, EDESIS KAYDI, TAKSİT
                         </code>
                     </p>
-                    <p style="color: #065f46; margin: 0; font-size: 0.85rem;">
+                    <p style="color: #065f46; margin: 0; font-size: 0.875rem;">
                         <strong>✅ Örnek Değerler:</strong><br>
                         • <strong>Sınıf:</strong> 1, 2, 3, ..., 12, Mezun<br>
                         • <strong>Ödeme Durumu:</strong> BEKLİYOR, YAPILDI, HAVALE, ÜCRETSİZ<br>
@@ -757,7 +786,7 @@
 <div class="modal fade" id="veliBilgiModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius: 20px; border: none;">
-            <div class="modal-header" style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); color: white; border-radius: 20px 20px 0 0;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%); color: white; border-radius: 20px 20px 0 0;">
                 <h5 class="modal-title">
                     <i class="bi bi-person-lock"></i> Veli Giriş Bilgileri
                 </h5>
@@ -780,7 +809,7 @@
 <div class="modal fade" id="kullaniciOlusturModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%); color: white;">
                 <h5 class="modal-title"><i class="bi bi-person-plus-fill me-2"></i>Kullanıcı Hesapları Oluştur</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -817,7 +846,7 @@
                     <h6 style="color: #dc2626; font-weight: 700; margin-bottom: 8px;">
                         ⚠️ UYARI
                     </h6>
-                    <p style="color: #991b1b; margin: 0; font-size: 0.95rem;">
+                    <p style="color: #991b1b; margin: 0; font-size: 1rem;">
                         <strong>TÜM öğrenci kayıtları silinecek!</strong><br>
                         Bu işlem <strong>GERİ ALINAMAZ</strong>.<br>
                         Devam etmek istediğinize emin misiniz?
@@ -825,7 +854,7 @@
                 </div>
                 
                 <div style="background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
-                    <p style="color: #92400e; margin: 0; font-size: 0.9rem;">
+                    <p style="color: #92400e; margin: 0; font-size: 0.875rem;">
                         💡 <strong>İpucu:</strong> Silmeden önce "Excel İndir" ile yedek almanız önerilir.
                     </p>
                 </div>
@@ -836,7 +865,7 @@
                             Onaylamak için "<strong style="color: #ef4444;">SİL</strong>" yazın:
                         </label>
                         <input type="text" class="form-control" id="onayKodu" 
-                               style="border-radius: 12px; border: 2px solid #e2e8f0; text-align: center; font-weight: 700; font-size: 1.1rem;"
+                               style="border-radius: 12px; border: 2px solid #e2e8f0; text-align: center; font-weight: 700; font-size: 1.125rem;"
                                placeholder="SİL" required autocomplete="off">
                         <small class="text-muted">Tam olarak "SİL" yazmanız gerekiyor (büyük harfle)</small>
                     </div>
@@ -862,7 +891,7 @@
             <div style="font-size: 4rem; color: #10b981; margin-bottom: 20px;">
                 <i class="bi bi-check-circle-fill"></i>
             </div>
-            <h4 style="font-weight: 800; color: #1e293b; margin-bottom: 16px;">Islem Basarili!</h4>
+            <h4 style="font-weight: 800; color: #1e293b; margin-bottom: 16px;">Işlem Başarılı!</h4>
             <p id="successMessage" style="color: #64748b; margin-bottom: 30px;"></p>
             <button type="button" class="btn btn-primary" data-bs-dismiss="modal" style="border-radius: 12px; padding: 12px 40px;" onclick="location.reload()">
                 Tamam
@@ -879,19 +908,16 @@
                 <div style="font-size: 4rem; color: #f59e0b; margin-bottom: 20px;">
                     <i class="bi bi-exclamation-triangle-fill"></i>
                 </div>
-                <h4 style="font-weight: 800; color: #1e293b; margin-bottom: 16px;">Ayni TC ile Kayit Mevcut!</h4>
-                <p style="color: #64748b; margin-bottom: 10px;">Bu TC Kimlik No ile zaten bir ogrenci kayitli:</p>
+                <h4 style="font-weight: 800; color: #1e293b; margin-bottom: 16px;">Bu Öğrenci Zaten Kayıtlı!</h4>
+                <p style="color: #64748b; margin-bottom: 10px;">Bu TC Kimlik No ile sistemde zaten bir öğrenci var:</p>
                 <div style="background: #fef3c7; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
                     <p style="margin: 0; font-weight: 700; color: #92400e;" id="tcDuplicateInfo"></p>
                 </div>
-                <p style="color: #64748b; margin-bottom: 20px; font-size: 0.9rem;">Yine de kaydetmek istiyor musunuz?</p>
+                <p style="color: #64748b; margin-bottom: 20px; font-size: 0.875rem;">Mükerrer (çift) kayıt oluşturulamaz. Mevcut kaydı düzenlemek için listeden ilgili öğrenciyi açabilirsiniz.</p>
             </div>
             <div class="d-flex gap-2">
-                <button type="button" class="btn btn-secondary flex-grow-1" data-bs-dismiss="modal" style="border-radius: 12px; padding: 12px;">
-                    <i class="bi bi-x-lg"></i> Iptal
-                </button>
-                <button type="button" class="btn btn-warning flex-grow-1" id="tcDuplicateConfirmBtn" style="border-radius: 12px; padding: 12px;">
-                    <i class="bi bi-check-lg"></i> Yine de Kaydet
+                <button type="button" class="btn btn-primary flex-grow-1" data-bs-dismiss="modal" style="border-radius: 12px; padding: 12px;">
+                    <i class="bi bi-check-lg"></i> Tamam
                 </button>
             </div>
         </div>
@@ -1057,7 +1083,7 @@ $(document).ready(function() {
             { targets: [2, 3, 5, 7, 8, 10, 11, 12], visible: false },
             { orderable: false, targets: -1 }
         ],
-        dom: 'Bfrtip',
+        dom: "<'dt-top-row'Bf>rtip",
         buttons: [
             {
                 extend: 'excel',
@@ -1096,6 +1122,14 @@ $(document).ready(function() {
     
     $('#odemeDurumuFilter').on('change', function() {
         table.column(9).search(this.value).draw();
+    });
+
+    $('#ogrenciAdiFilter').on('keyup input', function() {
+        table.column(1).search(this.value).draw();
+    });
+
+    $('#veliAdiFilter').on('keyup input', function() {
+        table.column(4).search(this.value).draw();
     });
 });
 
@@ -1144,7 +1178,7 @@ function showDetay(ogr) {
     document.getElementById('detay_baslik').textContent = '— ' + (ogr.ogrenci_adi_soyadi || '');
 
     const satir = (etiket, deger) =>
-        '<div class="col-md-6 mb-3"><div style="font-size:.8rem; color:#94a3b8; font-weight:600; text-transform:uppercase; letter-spacing:.3px;">' +
+        '<div class="col-md-6 mb-3"><div style="font-size:0.75rem; color:#94a3b8; font-weight:600; text-transform:uppercase; letter-spacing:.3px;">' +
         etiket + '</div><div style="font-size:1rem; color:#1e293b; font-weight:600;">' + deger + '</div></div>';
 
     let html = '<div class="row">';
@@ -1161,9 +1195,9 @@ function showDetay(ogr) {
     html += '</div><hr>';
     // Ödeme özeti
     html += '<div class="row g-2">';
-    html += '<div class="col-4"><div style="background:#eff6ff; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:.75rem; color:#64748b;">Tutar</div><div style="font-size:1.15rem; font-weight:800; color:#1e40af;">' + (tutar > 0 ? paraFormat(tutar) + ' ₺' : '-') + '</div></div></div>';
-    html += '<div class="col-4"><div style="background:#ecfdf5; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:.75rem; color:#64748b;">Ödenen</div><div style="font-size:1.15rem; font-weight:800; color:#059669;">' + (odenen > 0 ? paraFormat(odenen) + ' ₺' : '-') + '</div></div></div>';
-    html += '<div class="col-4"><div style="background:' + (kalan > 0 ? '#fef2f2' : '#ecfdf5') + '; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:.75rem; color:#64748b;">Kalan</div><div style="font-size:1.15rem; font-weight:800; color:' + (kalan > 0 ? '#dc2626' : '#059669') + ';">' + (tutar > 0 ? paraFormat(kalan) + ' ₺' : '-') + '</div></div></div>';
+    html += '<div class="col-4"><div style="background:#eff6ff; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:.75rem; color:#64748b;">Tutar</div><div style="font-size:1.125rem; font-weight:800; color:#1e40af;">' + (tutar > 0 ? paraFormat(tutar) + ' ₺' : '-') + '</div></div></div>';
+    html += '<div class="col-4"><div style="background:#ecfdf5; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:.75rem; color:#64748b;">Ödenen</div><div style="font-size:1.125rem; font-weight:800; color:#059669;">' + (odenen > 0 ? paraFormat(odenen) + ' ₺' : '-') + '</div></div></div>';
+    html += '<div class="col-4"><div style="background:' + (kalan > 0 ? '#fef2f2' : '#ecfdf5') + '; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:.75rem; color:#64748b;">Kalan</div><div style="font-size:1.125rem; font-weight:800; color:' + (kalan > 0 ? '#dc2626' : '#059669') + ';">' + (tutar > 0 ? paraFormat(kalan) + ' ₺' : '-') + '</div></div></div>';
     html += '</div>';
 
     document.getElementById('detay_govde').innerHTML = html;
@@ -1401,15 +1435,7 @@ async function submitOgrenciForm(data) {
     }
 }
 
-// TC Duplicate onay butonu
-document.getElementById('tcDuplicateConfirmBtn').addEventListener('click', async function() {
-    if (pendingFormData) {
-        pendingFormData.tcOnaylanmis = true;
-        bootstrap.Modal.getInstance(document.getElementById('tcDuplicateModal')).hide();
-        await submitOgrenciForm(pendingFormData);
-        pendingFormData = null;
-    }
-});
+// Mukerrer TC kaydi tamamen engellendi - "yine de kaydet" akisi kaldirildi.
 
 document.getElementById('editForm').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -1446,7 +1472,7 @@ document.getElementById('editForm').addEventListener('submit', async function(e)
         }
     } catch (error) {
         console.error('Guncelleme hatasi:', error);
-        alert('Guncelleme sirasinda bir hata olustu!');
+        alert('Güncelleme sırasında bir hata oluştu!');
     }
 });
 
@@ -1512,7 +1538,8 @@ document.getElementById('deleteAllForm').addEventListener('submit', async functi
 
 // ============ VELİ GİRİŞ BİLGİLERİ ============
 
-async function showVeliBilgileri(veliTelefon, veliAdi) {
+async function showVeliBilgileri(veliTelefon, veliAdi, ogrenciId) {
+    window._sonVeliOgrenciId = ogrenciId; // tekil hesap oluşturma için sakla
     if (!veliTelefon || veliTelefon === '-') {
         alert('Bu öğrenci için veli telefonu kayıtlı değil!');
         return;
@@ -1528,7 +1555,7 @@ async function showVeliBilgileri(veliTelefon, veliAdi) {
     modal.show();
     
     try {
-        const response = await fetch(`/kurum/veli-giris-bilgisi?telefon=${encodeURIComponent(temizTelefon)}`);
+        const response = await fetch(`/kurum/veli-giris-bilgisi?telefon=${encodeURIComponent(temizTelefon)}&ogrenci_id=${encodeURIComponent(ogrenciId || '')}`);
         const data = await response.json();
         
         const content = document.getElementById('veliBilgiContent');
@@ -1547,11 +1574,11 @@ async function showVeliBilgileri(veliTelefon, veliAdi) {
                     
                     <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
                         <div style="margin-bottom: 16px;">
-                            <label style="font-size: 0.85rem; color: #64748b; font-weight: 600; display: block; margin-bottom: 4px;">
+                            <label style="font-size: 0.875rem; color: #64748b; font-weight: 600; display: block; margin-bottom: 4px;">
                                 <i class="bi bi-person-badge"></i> Kullanıcı Adı
                             </label>
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <input type="text" value="${data.username}" readonly class="form-control" id="copyUsername" style="background: #f8fafc; border: 2px solid #e8ecf0; font-weight: 600; font-size: 1.1rem;">
+                                <input type="text" value="${data.username}" readonly class="form-control" id="copyUsername" style="background: #f8fafc; border: 2px solid #e8ecf0; font-weight: 600; font-size: 1.125rem;">
                                 <button class="btn btn-outline-primary" onclick="copyToClipboard('${data.username}', 'Kullanıcı adı')" style="white-space: nowrap;">
                                     <i class="bi bi-clipboard"></i>
                                 </button>
@@ -1559,11 +1586,11 @@ async function showVeliBilgileri(veliTelefon, veliAdi) {
                         </div>
                         
                         <div>
-                            <label style="font-size: 0.85rem; color: #64748b; font-weight: 600; display: block; margin-bottom: 4px;">
+                            <label style="font-size: 0.875rem; color: #64748b; font-weight: 600; display: block; margin-bottom: 4px;">
                                 <i class="bi bi-key"></i> ${data.sifreDegismis ? 'İlk Şifre (Değiştirilmiş)' : 'Şifre'}
                             </label>
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <input type="text" value="${data.sifre}" readonly class="form-control" id="copyPassword" style="background: ${data.sifreDegismis ? '#fef3c7' : '#f8fafc'}; border: 2px solid ${data.sifreDegismis ? '#fbbf24' : '#e8ecf0'}; font-weight: 600; font-size: 1.1rem;">
+                                <input type="text" value="${data.sifre}" readonly class="form-control" id="copyPassword" style="background: ${data.sifreDegismis ? '#fef3c7' : '#f8fafc'}; border: 2px solid ${data.sifreDegismis ? '#fbbf24' : '#e8ecf0'}; font-weight: 600; font-size: 1.125rem;">
                                 <button class="btn btn-outline-primary" onclick="copyToClipboard('${data.sifre}', 'Şifre')" style="white-space: nowrap;">
                                     <i class="bi bi-clipboard"></i>
                                 </button>
@@ -1577,7 +1604,7 @@ async function showVeliBilgileri(veliTelefon, veliAdi) {
                     </div>
                     
                     <div style="background: #e0f2fe; border-left: 4px solid #0891b2; border-radius: 8px; padding: 12px;">
-                        <p style="color: #164e63; margin: 0; font-size: 0.9rem;">
+                        <p style="color: #164e63; margin: 0; font-size: 0.875rem;">
                             <i class="bi bi-info-circle"></i> 
                             <strong>Giriş Sayfası:</strong> ${window.location.origin}/login
                         </p>
@@ -1585,7 +1612,7 @@ async function showVeliBilgileri(veliTelefon, veliAdi) {
                 </div>
                 
                 <div style="background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 12px;">
-                    <p style="color: #92400e; margin: 0; font-size: 0.85rem;">
+                    <p style="color: #92400e; margin: 0; font-size: 0.875rem;">
                         <i class="bi bi-shield-check"></i> 
                         Bu bilgileri veliye SMS/WhatsApp ile gönderebilirsiniz.
                     </p>
@@ -1599,8 +1626,8 @@ async function showVeliBilgileri(veliTelefon, veliAdi) {
                     <p>Bu veli için sistemde hesap oluşturulmamış.</p>
                     <hr>
                     <p class="mb-0"><strong>Telefon:</strong> ${veliTelefon}</p>
-                    <button class="btn btn-primary mt-3" onclick="bootstrap.Modal.getInstance(document.getElementById('veliBilgiModal')).hide(); kontrolHesapsizVeliler();">
-                        <i class="bi bi-person-plus-fill"></i> Şimdi Hesap Oluştur
+                    <button class="btn btn-primary mt-3" onclick="tekilVeliHesapOlustur(window._sonVeliOgrenciId)">
+                        <i class="bi bi-person-plus-fill"></i> Bu Veli İçin Hesap Oluştur
                     </button>
                 </div>
             `;
@@ -1646,7 +1673,7 @@ async function topluVeliHesapOlustur() {
     const btn = event.target;
     const originalText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Olusturuluyor...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Oluşturuluyor...';
 
     try {
         const result = await apiCall('/kurum/toplu-veli-hesap-olustur', {
@@ -1682,6 +1709,40 @@ async function topluVeliHesapOlustur() {
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;
+    }
+}
+
+// TEKIL: sadece bu öğrencinin velisi için hesap oluştur
+async function tekilVeliHesapOlustur(ogrenciId) {
+    if (!ogrenciId) { alert('Öğrenci bilgisi bulunamadı!'); return; }
+    const btn = event.target.closest('button');
+    const orig = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Oluşturuluyor...'; }
+    try {
+        const res = await fetch('/kurum/veli-hesap-olustur-tekil', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ogrenci_id: ogrenciId })
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (data.zatenVardi) {
+                alert('ℹ️ ' + data.message + '\nKullanıcı Adı (TC): ' + data.username);
+            } else {
+                alert('✅ Veli hesabı oluşturuldu!\n\n' +
+                      'Kullanıcı Adı (TC): ' + data.username + '\n' +
+                      'İlk Şifre (TC): ' + data.sifre + '\n\n' +
+                      'Veli ilk girişte şifresini değiştirmelidir.');
+            }
+            location.reload();
+        } else {
+            alert('❌ ' + data.message);
+            if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+        }
+    } catch (e) {
+        console.error('Tekil hesap hatası:', e);
+        alert('Bir hata oluştu!');
+        if (btn) { btn.disabled = false; btn.innerHTML = orig; }
     }
 }
 
@@ -1728,8 +1789,8 @@ async function kontrolHesapsizVeliler() {
                     <i class="bi bi-shield-check me-2"></i>
                     <strong>Oluşturulacak Hesap Bilgileri:</strong>
                     <ul class="mb-0 mt-2">
-                        <li><strong>Kullanıcı Adı:</strong> Telefon numarası</li>
-                        <li><strong>İlk Şifre:</strong> Veli2024!</li>
+                        <li><strong>Kullanıcı Adı:</strong> TC Kimlik No</li>
+                        <li><strong>İlk Şifre:</strong> TC Kimlik No</li>
                         <li><strong>Hesap Tipi:</strong> Veli</li>
                     </ul>
                     <p class="mt-2 mb-0 small">

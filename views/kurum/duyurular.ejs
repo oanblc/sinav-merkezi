@@ -2,7 +2,7 @@
 
 <style>
     .page-header {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
         padding: 40px 0;
         margin: -30px -15px 40px;
@@ -108,7 +108,7 @@
     <i class="bi bi-megaphone" style="font-size: 4rem; color: #e2e8f0; margin-bottom: 20px;"></i>
     <h4 style="color: #64748b; margin-bottom: 16px;">Henüz Duyuru Eklenmemiş</h4>
     <p style="color: #94a3b8; margin-bottom: 24px;">İlk duyurunuzu ekleyerek başlayın</p>
-    <button class="btn btn-primary btn-lg" onclick="showAddModal()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; border-radius: 12px;">
+    <button class="btn btn-primary btn-lg" onclick="showAddModal()" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%); border: none; border-radius: 12px;">
         <i class="bi bi-plus-circle"></i> Duyuru Ekle
     </button>
 </div>
@@ -131,7 +131,7 @@
                         <% } %>
                     </h4>
                     <% if (duyuru.tarih) { %>
-                    <p style="color: #64748b; font-size: 0.9rem; margin: 0;">
+                    <p style="color: #64748b; font-size: 0.875rem; margin: 0;">
                         <i class="bi bi-calendar"></i> <%= new Date(duyuru.tarih).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) %>
                     </p>
                     <% } %>
@@ -161,7 +161,7 @@
 <div class="modal fade" id="duyuruModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content" style="border-radius: 20px;">
-            <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border-radius: 20px 20px 0 0;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%); color: white; border-radius: 20px 20px 0 0;">
                 <h5 class="modal-title" id="modalTitle">
                     <i class="bi bi-plus-circle"></i> Yeni Duyuru Ekle
                 </h5>
@@ -215,7 +215,7 @@
             </div>
             <div class="modal-footer" style="border: none; padding: 20px 30px;">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 12px;">İptal</button>
-                <button type="button" class="btn btn-primary" onclick="saveDuyuru()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; border-radius: 12px; font-weight: 600;">
+                <button type="button" class="btn btn-primary" onclick="saveDuyuru()" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%); border: none; border-radius: 12px; font-weight: 600;">
                     <i class="bi bi-check-circle"></i> Kaydet
                 </button>
             </div>

@@ -107,7 +107,7 @@
 <div class="vp-dashboard-header">
     <div class="container">
         <h2><i class="bi bi-house-heart-fill"></i> Veli Paneli</h2>
-        <p><%= ogrenciler.length %> Ogrenci</p>
+        <p><%= ogrenciler.length %> Öğrenci</p>
     </div>
 </div>
 
@@ -115,15 +115,15 @@
     <!-- Hizli Erisim Butonlari -->
     <div class="row g-3 mb-4">
         <div class="col-6">
-            <a href="/veli/tum-sinav-takvimi" class="vp-quick-action" style="--action-color: #8b5cf6;">
+            <a href="/veli/tum-sinav-takvimi" class="vp-quick-action" style="--action-color: #3b82f6;">
                 <i class="bi bi-calendar-event"></i>
-                <span>Sinav Takvimi</span>
+                <span>Sınav Takvimi</span>
             </a>
         </div>
         <div class="col-6">
             <a href="/veli/sinav-sonuclari" class="vp-quick-action" style="--action-color: #10b981;">
                 <i class="bi bi-file-earmark-text-fill"></i>
-                <span>Sinav Sonuclari</span>
+                <span>Sınav Sonuçları</span>
             </a>
         </div>
     </div>
@@ -131,7 +131,7 @@
     <!-- Ogrenciler Bolumu -->
     <div class="vp-section-title">
         <i class="bi bi-people"></i>
-        <span>Ogrencilerim</span>
+        <span>Öğrencilerim</span>
     </div>
 
     <% if (ogrenciler && ogrenciler.length > 0) { %>
@@ -156,7 +156,7 @@
             <div class="vp-student-actions">
                 <a href="/veli/ogrenci-duzenle/<%= ogrenci.id %>" class="vp-btn vp-btn-warning vp-btn-sm">
                     <i class="bi bi-pencil-square"></i>
-                    <span class="d-none d-sm-inline">Duzenle</span>
+                    <span class="d-none d-sm-inline">Düzenle</span>
                 </a>
                 <button type="button" class="vp-btn vp-btn-danger vp-btn-sm" onclick="silOnayi(<%= ogrenci.id %>, '<%= ogrenci.ad_soyad %>')">
                     <i class="bi bi-trash3"></i>
@@ -168,10 +168,10 @@
     <% } else { %>
         <div class="vp-empty">
             <i class="bi bi-person-x"></i>
-            <h4>Henuz Ogrenci Yok</h4>
-            <p>Henuz kayitli ogrenci bulunmamaktadir. Asagidaki butonla ogrenci ekleyebilirsiniz.</p>
+            <h4>Henüz Öğrenci Yok</h4>
+            <p>Henüz kayıtlı öğrenci bulunmamaktadır. Asagidaki butonla öğrenci ekleyebilirsiniz.</p>
             <a href="/veli/ogrenci-ekle" class="vp-btn vp-btn-success">
-                <i class="bi bi-person-plus-fill"></i> Ilk Ogrenciyi Ekle
+                <i class="bi bi-person-plus-fill"></i> Ilk Öğrenciyi Ekle
             </a>
         </div>
     <% } %>
@@ -182,12 +182,12 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius: var(--vp-radius-lg); border: none;">
             <div class="modal-header" style="background: var(--vp-danger); color: white; border: none; border-radius: var(--vp-radius-lg) var(--vp-radius-lg) 0 0;">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle"></i> Ogrenci Sil</h5>
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle"></i> Öğrenci Sil</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" style="padding: 24px;">
                 <p style="font-size: 1rem;" id="silMesaj"></p>
-                <p style="color: var(--vp-text-muted); font-size: 0.9rem;">Bu islem geri alinamaz!</p>
+                <p style="color: var(--vp-text-muted); font-size: 0.875rem;">Bu işlem geri alinamaz!</p>
             </div>
             <div class="modal-footer" style="border: none; gap: 8px;">
                 <button type="button" class="vp-btn vp-btn-secondary" data-bs-dismiss="modal">Iptal</button>

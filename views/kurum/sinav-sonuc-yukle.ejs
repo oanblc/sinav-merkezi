@@ -3,7 +3,7 @@
 <!-- 🆕 Akıllı Sistem v1.1 - Gelişmiş İsim Tanıma -->
 <style>
     .page-header {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
         padding: 40px 0;
         margin: -30px -15px 40px;
@@ -87,7 +87,7 @@
     }
     
     .modal-header {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
         border-radius: 20px 20px 0 0;
     }
@@ -116,7 +116,7 @@
     .confidence-badge {
         padding: 4px 12px;
         border-radius: 8px;
-        font-size: 0.85rem;
+        font-size: 0.875rem;
         font-weight: 600;
     }
     
@@ -513,7 +513,7 @@ function showNameSelectionModal(names) {
             div.dataset.lineNumber = name.lineNumber;
             div.innerHTML = `
                 <div class="d-flex justify-content-between align-items-center">
-                    <strong style="font-size: 1.1rem;">${name.text}</strong>
+                    <strong style="font-size: 1.125rem;">${name.text}</strong>
                     <span class="confidence-badge ${confidenceClass}">
                         ${name.confidence === 'high' ? 'Yüksek' : name.confidence === 'medium' ? 'Orta' : 'Düşük'} Güven
                     </span>
@@ -1066,5 +1066,5 @@ async function whatsappGonder() {
 }
 </script>
 
-<%- include('../partials/footer') %>
+<%- include('../partials/footer-dashboard') %>
 

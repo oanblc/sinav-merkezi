@@ -120,6 +120,16 @@ async function ensureTursoTables() {
       email TEXT,
       talep_tarihi DATETIME DEFAULT CURRENT_TIMESTAMP,
       yanitlanma_tarihi DATETIME
+    )`,
+    `CREATE TABLE IF NOT EXISTS sinav_merkezleri (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ad TEXT NOT NULL,
+      adres TEXT,
+      telefon TEXT,
+      eposta TEXT,
+      sira INTEGER DEFAULT 0,
+      aktif INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`
   ];
 

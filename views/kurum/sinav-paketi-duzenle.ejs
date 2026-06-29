@@ -2,7 +2,7 @@
 
 <style>
     .page-header {
-        background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
         padding: 40px 0;
         margin: -30px -15px 40px;
@@ -31,7 +31,7 @@
     }
     
     .form-control:focus, .form-select:focus {
-        border-color: #ec4899;
+        border-color: #3b82f6;
         box-shadow: 0 0 0 0.2rem rgba(236, 72, 153, 0.25);
     }
     
@@ -46,12 +46,12 @@
     }
     
     .sinav-item:hover {
-        border-color: #ec4899;
+        border-color: #3b82f6;
         background: #fdf2f8;
     }
     
     .sinav-item.selected {
-        border-color: #ec4899;
+        border-color: #3b82f6;
         background: #fdf2f8;
     }
     
@@ -163,7 +163,7 @@
                         <h6 style="font-weight: 600; color: #1e293b; margin: 0 0 4px 0;">
                             <%= sinav.ad %>
                         </h6>
-                        <p style="color: #64748b; font-size: 0.85rem; margin: 0;">
+                        <p style="color: #64748b; font-size: 0.875rem; margin: 0;">
                             <i class="bi bi-calendar"></i> <%= new Date(sinav.tarih).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) %>
                             <% if (sinav.sinif) { %>
                             | <i class="bi bi-mortarboard"></i> <%= sinav.sinif %>. Sınıf
@@ -189,7 +189,7 @@
             <a href="/kurum/sinav-paketleri" class="btn btn-secondary" style="border-radius: 12px; padding: 12px 32px; font-weight: 600;">
                 <i class="bi bi-x-circle"></i> İptal
             </a>
-            <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); border: none; border-radius: 12px; padding: 12px 32px; font-weight: 600;">
+            <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%); border: none; border-radius: 12px; padding: 12px 32px; font-weight: 600;">
                 <i class="bi bi-check-circle"></i> Paketi Kaydet
             </button>
         </div>

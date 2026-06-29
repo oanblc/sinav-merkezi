@@ -4,7 +4,7 @@
 <style>
     /* Sayfa Header - Yesil tema */
     .vp-add-header {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);
         color: white;
         padding: clamp(16px, 4vw, 24px) 0;
         margin: -20px -12px clamp(16px, 4vw, 24px);
@@ -81,21 +81,21 @@
 <!-- Page Header -->
 <div class="vp-add-header">
     <div class="container">
-        <h2><i class="bi bi-person-plus-fill"></i> Ogrenci Ekle</h2>
-        <p>Ogrenci bilgilerini girerek sisteme ekleyin</p>
+        <h2><i class="bi bi-person-plus-fill"></i> Öğrenci Ekle</h2>
+        <p>Öğrenci bilgilerini girerek sisteme ekleyin</p>
     </div>
 </div>
 
 <div class="container">
     <% if (error) { %>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.875rem;">
         <i class="bi bi-exclamation-triangle"></i> <%= error %>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
     <% } %>
 
     <% if (success) { %>
-    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.9rem;">
+    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: var(--vp-radius); font-size: 0.875rem;">
         <i class="bi bi-check-circle"></i> <%= success %>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
@@ -109,7 +109,7 @@
                 <ul>
                     <li><strong>Ad Soyad</strong> - Zorunlu</li>
                     <li><strong>Okul / Mezun</strong> - Zorunlu</li>
-                    <li><strong>Sinif</strong> - Zorunlu</li>
+                    <li><strong>Sınıf</strong> - Zorunlu</li>
                 </ul>
             </div>
 
@@ -129,7 +129,7 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="vp-form-group">
-                                <label><i class="bi bi-person"></i> Ogrenci Adi Soyadi *</label>
+                                <label><i class="bi bi-person"></i> Öğrenci Adı Soyadı *</label>
                                 <input type="text" name="ad_soyad" class="vp-form-control"
                                        placeholder="Orn: Ahmet Yilmaz" required>
                             </div>
@@ -146,7 +146,7 @@
 
                         <div class="col-md-6">
                             <div class="vp-form-group">
-                                <label><i class="bi bi-phone"></i> Ogrenci Cep Telefonu</label>
+                                <label><i class="bi bi-phone"></i> Öğrenci Cep Telefonu</label>
                                 <input type="tel" name="telefon" class="vp-form-control"
                                        placeholder="0555 555 55 55">
                                 <small style="color: var(--vp-text-muted); font-size: 0.75rem;">Opsiyonel</small>
@@ -163,13 +163,13 @@
 
                         <div class="col-12">
                             <div class="vp-form-group">
-                                <label><i class="bi bi-book"></i> Sinif *</label>
+                                <label><i class="bi bi-book"></i> Sınıf *</label>
                                 <select name="sinif" class="vp-form-control" required>
-                                    <option value="">Seciniz...</option>
-                                    <option value="9. Sinif">9. Sinif</option>
-                                    <option value="10. Sinif">10. Sinif</option>
-                                    <option value="11. Sinif">11. Sinif</option>
-                                    <option value="12. Sinif">12. Sinif</option>
+                                    <option value="">Seçiniz...</option>
+                                    <option value="9. Sinif">9. Sınıf</option>
+                                    <option value="10. Sinif">10. Sınıf</option>
+                                    <option value="11. Sinif">11. Sınıf</option>
+                                    <option value="12. Sinif">12. Sınıf</option>
                                     <option value="Mezun">Mezun</option>
                                 </select>
                             </div>
@@ -178,7 +178,7 @@
 
                     <div class="d-flex gap-2 flex-wrap mt-3">
                         <button type="submit" class="vp-btn vp-btn-success flex-grow-1">
-                            <i class="bi bi-check-circle"></i> Ogrenci Ekle
+                            <i class="bi bi-check-circle"></i> Öğrenci Ekle
                         </button>
                         <a href="/veli/dashboard" class="vp-btn vp-btn-secondary">
                             <i class="bi bi-arrow-left"></i> Iptal

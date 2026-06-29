@@ -6,7 +6,7 @@
 <style>
     /* Sinav Paketleri - Kompakt Kart Stilleri */
     .pricing-card {
-        padding: 16px !important;
+        padding: 14px !important;
         border-radius: 14px !important;
         transition: all 0.3s ease;
         margin-top: 0 !important;
@@ -19,33 +19,98 @@
 
     .pricing-badge {
         position: absolute;
-        top: 12px;
-        left: 12px;
+        top: 10px;
+        left: 10px;
         transform: none;
-        padding: 5px 12px;
-        font-size: 0.7rem;
+        padding: 3px 9px;
+        font-size: 0.625rem;
         border-radius: 6px;
     }
 
     .pricing-header {
-        margin-bottom: 12px;
-        padding-bottom: 12px;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
         padding-top: 0;
     }
 
     .pricing-title {
-        font-size: 1rem !important;
+        font-size: 1.125rem !important;
+        font-weight: 700 !important;
         margin-bottom: 4px;
     }
 
     .pricing-subtitle {
-        font-size: 0.8rem !important;
+        font-size: 0.75rem !important;
         margin: 0;
+        line-height: 1.45;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        /* 3 satirlik sabit alan: tum kartlar esit yukseklikte hizalansin */
+        min-height: calc(1.45em * 3);
     }
 
+    .read-more-btn {
+        background: none;
+        border: none;
+        padding: 4px 0 0;
+        margin: 0;
+        color: #003b78;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .read-more-btn:hover { text-decoration: underline; }
+
+    /* Detay modal icerigi */
+    .detay-aciklama {
+        color: #475569;
+        font-size: 1rem;
+        line-height: 1.7;
+        white-space: pre-line;
+    }
+
+    .detay-feature {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #334155;
+        font-size: 1rem;
+        padding: 6px 0;
+    }
+
+    .detay-feature i { color: #003b78; }
+
+    /* Detay modal - kompakt */
+    .detay-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+
+    .detay-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #f1f5f9;
+        color: #334155;
+        border-radius: 20px;
+        padding: 5px 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .detay-chip i { color: #003b78; }
+
     .pricing-price {
-        padding: 12px 0 !important;
-        margin-bottom: 12px !important;
+        padding: 10px 0 !important;
+        margin-bottom: 10px !important;
     }
 
     .price-amount {
@@ -53,12 +118,12 @@
     }
 
     .price-currency {
-        font-size: 0.9rem !important;
+        font-size: 0.875rem !important;
     }
 
     .price-info {
-        margin-top: 6px !important;
-        font-size: 0.8rem !important;
+        margin-top: 4px !important;
+        font-size: 0.75rem !important;
         gap: 4px !important;
     }
 
@@ -70,7 +135,7 @@
         width: 100%;
         padding: 10px 16px;
         font-weight: 600;
-        font-size: 0.85rem;
+        font-size: 0.875rem;
         border-radius: 8px;
         transition: all 0.3s ease;
     }
@@ -94,31 +159,44 @@
         .pricing-badge {
             top: 10px;
             left: 10px;
-            font-size: 0.65rem;
+            font-size: 0.625rem;
             padding: 4px 10px;
         }
 
         .pricing-title {
-            font-size: 0.95rem !important;
+            font-size: 1rem !important;
         }
 
         .price-amount {
-            font-size: 1.3rem !important;
+            font-size: 1.25rem !important;
         }
     }
 </style>
 
+<!-- Breadcrumb -->
+<div class="breadcrumb-container">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/"><i class="bi bi-house-door"></i> Ana Sayfa</a></li>
+                <li class="breadcrumb-separator"><i class="bi bi-chevron-right"></i></li>
+                <li class="breadcrumb-item active" aria-current="page">Sınav Paketleri</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
 <!-- Sınavlar -->
-<section class="section" style="padding-top: 40px;">
+<section class="section" style="padding-top: 30px;">
     <div class="container">
         <!-- Baslik -->
         <div class="mb-4">
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
                 <div>
                     <h2 style="font-weight: 800; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 10px;">
-                        <i class="bi bi-journals" style="color: #003b78;"></i> Sinav Paketleri
+                        <i class="bi bi-journals" style="color: #003b78;"></i> Sınav Paketleri
                     </h2>
-                    <p style="color: #64748b; margin-top: 6px; margin-bottom: 0; font-size: 0.95rem;">
+                    <p style="color: #64748b; margin-top: 6px; margin-bottom: 0; font-size: 1rem;">
                         <span id="sinavSayisi"><%= (sinavlar ? sinavlar.length : 0) + (typeof paketler !== 'undefined' && paketler ? paketler.length : 0) %></span> paket bulundu
                     </p>
                 </div>
@@ -128,28 +206,28 @@
             <!-- Kompakt Filtre Cubugu -->
             <div class="filter-bar" id="filterBar" style="background: white; border-radius: 50px; padding: 8px 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); border: 1px solid #e8ecf0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                 <div style="flex: 2; min-width: 150px; position: relative;">
-                    <i class="bi bi-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #003b78; font-size: 0.95rem;"></i>
-                    <input type="text" id="searchInput" class="form-control" placeholder="Sinav ara..."
-                           style="border: none; border-radius: 25px; padding: 10px 16px 10px 38px; font-size: 0.9rem; background: #f8fafc; height: 42px;">
+                    <i class="bi bi-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #003b78; font-size: 1rem;"></i>
+                    <input type="text" id="searchInput" class="form-control" placeholder="Sınav ara..."
+                           style="border: none; border-radius: 25px; padding: 10px 16px 10px 38px; font-size: 0.875rem; background: #f8fafc; height: 42px;">
                 </div>
 
                 <div style="flex: 1; min-width: 100px; position: relative;">
-                    <i class="bi bi-mortarboard" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #003b78; font-size: 0.95rem; z-index: 1;"></i>
-                    <select id="sinifFilter" class="form-select" style="border: none; border-radius: 25px; padding: 10px 32px 10px 38px; font-size: 0.9rem; background: #f8fafc; height: 42px; cursor: pointer;">
-                        <option value="">Sinif</option>
+                    <i class="bi bi-mortarboard" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #003b78; font-size: 1rem; z-index: 1;"></i>
+                    <select id="sinifFilter" class="form-select" style="border: none; border-radius: 25px; padding: 10px 32px 10px 38px; font-size: 0.875rem; background: #f8fafc; height: 42px; cursor: pointer;">
+                        <option value="">Sınıf</option>
                     </select>
                 </div>
 
                 <div style="flex: 1; min-width: 100px; position: relative;">
-                    <i class="bi bi-book" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #003b78; font-size: 0.95rem; z-index: 1;"></i>
-                    <select id="dersFilter" class="form-select" style="border: none; border-radius: 25px; padding: 10px 32px 10px 38px; font-size: 0.9rem; background: #f8fafc; height: 42px; cursor: pointer;">
+                    <i class="bi bi-book" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #003b78; font-size: 1rem; z-index: 1;"></i>
+                    <select id="dersFilter" class="form-select" style="border: none; border-radius: 25px; padding: 10px 32px 10px 38px; font-size: 0.875rem; background: #f8fafc; height: 42px; cursor: pointer;">
                         <option value="">Ders</option>
                     </select>
                 </div>
 
                 <div style="flex: 1; min-width: 100px; position: relative;">
-                    <i class="bi bi-sort-down" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #003b78; font-size: 0.95rem; z-index: 1;"></i>
-                    <select id="sortFilter" class="form-select" style="border: none; border-radius: 25px; padding: 10px 32px 10px 38px; font-size: 0.9rem; background: #f8fafc; height: 42px; cursor: pointer;">
+                    <i class="bi bi-sort-down" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #003b78; font-size: 1rem; z-index: 1;"></i>
+                    <select id="sortFilter" class="form-select" style="border: none; border-radius: 25px; padding: 10px 32px 10px 38px; font-size: 0.875rem; background: #f8fafc; height: 42px; cursor: pointer;">
                         <option value="tarih">Tarih</option>
                         <option value="fiyat-artan">Fiyat ↑</option>
                         <option value="fiyat-azalan">Fiyat ↓</option>
@@ -157,7 +235,7 @@
                     </select>
                 </div>
 
-                <button class="btn-clear" onclick="resetFilters()" id="clearBtn" style="display: none; background: none; border: none; color: #94a3b8; padding: 8px 12px; border-radius: 20px; font-size: 0.85rem; cursor: pointer;">
+                <button class="btn-clear" onclick="resetFilters()" id="clearBtn" style="display: none; background: none; border: none; color: #94a3b8; padding: 8px 12px; border-radius: 20px; font-size: 0.875rem; cursor: pointer;">
                     <i class="bi bi-x-circle"></i> Temizle
                 </button>
             </div>
@@ -165,22 +243,32 @@
         <div class="row g-3 mt-2" id="sinavlarContainer">
             <% if (typeof paketler !== 'undefined' && paketler && paketler.length > 0) { %>
                 <% paketler.forEach((paket, index) => { %>
-                    <div class="col-lg-3 col-md-4 col-sm-6 sinav-item paket-item"
+                    <div class="col-lg-4 col-md-6 col-sm-12 sinav-item paket-item"
                          data-ad="<%= paket.ad.toLowerCase() %>"
                          data-sinif="<%= paket.sinif || '' %>"
                          data-ders=""
                          data-fiyat="<%= paket.fiyat || 0 %>"
-                         data-tarih="<%= paket.olusturulma_tarihi %>">
+                         data-tarih="<%= paket.olusturulma_tarihi %>"
+                         data-tur="paket"
+                         data-id="<%= paket.id %>"
+                         data-baslik="<%= paket.ad %>"
+                         data-aciklama="<%= paket.aciklama || 'Sınav paketi' %>"
+                         data-sinav-sayisi="<%= paket.sinav_sayisi || 0 %>"
+                         data-tarih-formatli="<%= new Date(paket.olusturulma_tarihi).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) %>"
+                         data-fiyat-formatli="<%= paket.fiyat ? paket.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '0' %>">
                         <div class="pricing-card" style="border: 1px solid #e8ecf0;">
-                            <div class="pricing-badge" style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);">
+                            <div class="pricing-badge" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%);">
                                 <i class="bi bi-star-fill"></i> PAKET
                             </div>
 
-                            <div class="pricing-header" style="padding-top: 24px;">
+                            <div class="pricing-header" style="padding-top: 30px;">
                                 <h3 class="pricing-title"><%= paket.ad %></h3>
                                 <p class="pricing-subtitle">
                                     <%= paket.aciklama || 'Sınav paketi' %>
                                 </p>
+                                <button type="button" class="read-more-btn" onclick="acDetay(this)">
+                                    Devamını oku <i class="bi bi-chevron-right"></i>
+                                </button>
                             </div>
 
                             <div class="pricing-price">
@@ -202,7 +290,7 @@
                             <div class="pricing-actions">
                                 <button class="pricing-btn primary btn-buy" onclick="talepGonderPaket(<%= paket.id %>, '<%= paket.ad %>', 0)">
                                     <i class="bi bi-send"></i>
-                                    <span>TALEP GONDER</span>
+                                    <span>TALEP GÖNDER</span>
                                 </button>
                             </div>
                         </div>
@@ -212,18 +300,27 @@
             
             <% if (sinavlar && sinavlar.length > 0) { %>
                 <% sinavlar.forEach((sinav, index) => { %>
-                    <div class="col-lg-3 col-md-4 col-sm-6 sinav-item"
+                    <div class="col-lg-4 col-md-6 col-sm-12 sinav-item"
                          data-ad="<%= sinav.ad.toLowerCase() %>"
                          data-sinif="<%= sinav.sinif || '' %>"
                          data-ders="<%= sinav.ders || '' %>"
                          data-fiyat="<%= sinav.fiyat %>"
-                         data-tarih="<%= sinav.tarih %>">
+                         data-tarih="<%= sinav.tarih %>"
+                         data-tur="sinav"
+                         data-id="<%= sinav.id %>"
+                         data-baslik="<%= sinav.ad %>"
+                         data-aciklama="<%= sinav.aciklama || 'Kapsamlı deneme sınavı' %>"
+                         data-tarih-formatli="<%= new Date(sinav.tarih).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) %>"
+                         data-fiyat-formatli="<%= typeof sinav.fiyat === 'number' ? sinav.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : sinav.fiyat %>">
                         <div class="pricing-card" style="border: 1px solid #e8ecf0;">
                             <div class="pricing-header">
                                 <h3 class="pricing-title"><%= sinav.ad %></h3>
                                 <p class="pricing-subtitle">
                                     <%= sinav.aciklama || 'Kapsamlı deneme sınavı' %>
                                 </p>
+                                <button type="button" class="read-more-btn" onclick="acDetay(this)">
+                                    Devamını oku <i class="bi bi-chevron-right"></i>
+                                </button>
                             </div>
 
                             <div class="pricing-price">
@@ -247,7 +344,7 @@
                             <div class="pricing-actions">
                                 <button class="pricing-btn primary btn-buy" onclick="talepGonder(<%= sinav.id %>, '<%= sinav.ad %>', <%= sinav.fiyat %>)">
                                     <i class="bi bi-send"></i>
-                                    <span>TALEP GONDER</span>
+                                    <span>TALEP GÖNDER</span>
                                 </button>
                             </div>
                         </div>
@@ -275,12 +372,42 @@
     </div>
 </section>
 
+<!-- Paket/Sınav Detay Modalı -->
+<div class="modal fade" id="detayModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border-radius: 24px; border: none; overflow: hidden;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%); color: white; border: none; padding: 16px 22px;">
+                <h5 class="modal-title" id="detayBaslik" style="font-weight: 700; font-size: 1.125rem;">
+                    <i class="bi bi-journals me-2"></i><span></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 18px 22px;">
+                <div class="detay-chips" id="detayFeatures"></div>
+                <h6 style="font-weight: 700; color: #1e293b; margin-bottom: 8px; font-size: 0.875rem;">
+                    <i class="bi bi-info-circle me-1" style="color:#06b6d4;"></i> Açıklama
+                </h6>
+                <div class="detay-aciklama" id="detayAciklama" style="max-height: 34vh; overflow-y: auto; padding-right: 6px;"></div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid #eef2f6; padding: 12px 22px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: nowrap;">
+                <div style="display: flex; align-items: baseline; gap: 3px;">
+                    <span id="detayFiyat" style="font-size: 1.75rem; font-weight: 800; color: #003b78;"></span>
+                    <span style="font-size: 1rem; color:#003b78; font-weight: 700;">₺</span>
+                </div>
+                <button type="button" class="pricing-btn primary btn-buy" id="detayTalepBtn" style="width: auto; margin: 0; padding: 10px 26px;">
+                    <i class="bi bi-send"></i> <span>TALEP GÖNDER</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Hızlı Talep Modal (Giriş Yapmış Kullanıcılar İçin) -->
 <% if (user) { %>
 <div class="modal fade" id="quickRequestModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius: 24px; border: none; overflow: hidden;">
-            <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 24px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%); color: white; border: none; padding: 24px;">
                 <h5 class="modal-title">
                     <i class="bi bi-send-check"></i> Talep Gönder
                 </h5>
@@ -292,7 +419,7 @@
                         <i class="bi bi-file-earmark-text" style="font-size: 2.5rem; color: #059669;"></i>
                     </div>
                     <h4 id="quickRequestSinavAd" style="font-weight: 700; color: #1e293b; margin-bottom: 12px;"></h4>
-                    <p style="color: #64748b; font-size: 0.95rem; margin: 0;">
+                    <p style="color: #64748b; font-size: 1rem; margin: 0;">
                         <i class="bi bi-info-circle"></i> Talebiniz kuruma iletilecektir
                     </p>
                 </div>
@@ -308,7 +435,7 @@
                     </div>
                     
                     <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-                        <p style="color: #065f46; margin: 0; font-size: 0.85rem; font-weight: 500;">
+                        <p style="color: #065f46; margin: 0; font-size: 0.875rem; font-weight: 500;">
                             <i class="bi bi-lightning-charge-fill"></i> Bilgileriniz otomatik kullanılacak, hızlıca talep gönderin!
                         </p>
                     </div>
@@ -317,7 +444,7 @@
                         <button type="button" class="btn btn-secondary flex-grow-1" data-bs-dismiss="modal" style="border-radius: 12px; padding: 12px;">
                             İptal
                         </button>
-                        <button type="submit" class="btn btn-success flex-grow-1" style="border-radius: 12px; padding: 12px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none;">
+                        <button type="submit" class="btn btn-success flex-grow-1" style="border-radius: 12px; padding: 12px; background: linear-gradient(135deg, #003b78 0%, #2563eb 100%); border: none;">
                             <i class="bi bi-send-fill"></i> Hemen Gönder
                         </button>
                     </div>
@@ -332,7 +459,7 @@
 <div class="modal fade" id="requestModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content" style="border-radius: 24px; border: none; overflow: hidden;">
-            <div class="modal-header" style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); color: white; border: none; padding: 24px 32px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%); color: white; border: none; padding: 24px 32px;">
                 <h5 class="modal-title">
                     <i class="bi bi-send"></i> <span id="modalTitle">Sınav Talep Et</span>
                 </h5>
@@ -348,7 +475,7 @@
                         </div>
                         <h4 id="modalSinavAd" style="font-weight: 700; color: #1e293b; margin-bottom: 16px;"></h4>
                         <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
-                            <p style="color: #1e40af; margin: 0; font-size: 0.95rem;">
+                            <p style="color: #1e40af; margin: 0; font-size: 1rem;">
                                 <i class="bi bi-info-circle"></i> Bu sınav için talebiniz kuruma iletilecektir. Onay sonrası sınav erişiminiz açılacaktır.
                             </p>
                         </div>
@@ -382,7 +509,7 @@
                             <i class="bi bi-person-plus" style="font-size: 2.5rem; color: #06b6d4;"></i>
                         </div>
                         <h4 id="modalSinavAdGuest" style="font-weight: 700; color: #1e293b; margin-bottom: 12px;"></h4>
-                        <p style="color: #64748b; font-size: 0.9rem;">
+                        <p style="color: #64748b; font-size: 0.875rem;">
                             <i class="bi bi-info-circle"></i> Talep göndermek için bilgilerinizi girin
                         </p>
                     </div>
@@ -413,7 +540,7 @@
                         </div>
                         
                         <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-                            <p style="color: #1e40af; margin: 0; font-size: 0.85rem;">
+                            <p style="color: #1e40af; margin: 0; font-size: 0.875rem;">
                                 <i class="bi bi-shield-check"></i> Hesabınız otomatik oluşturulacak ve talebiniz kuruma iletilecektir.
                             </p>
                         </div>
@@ -438,7 +565,7 @@
 <div class="modal fade" id="successModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius: 24px; border: none; overflow: hidden;">
-            <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #003b78 0%, #2563eb 100%); color: white; border: none;">
                 <h5 class="modal-title">
                     <i class="bi bi-check-circle"></i> Talep Gönderildi!
                 </h5>
@@ -449,7 +576,7 @@
                     <div style="width: 100px; height: 100px; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
                         <i class="bi bi-check-circle-fill" style="font-size: 3rem; color: #059669;"></i>
                     </div>
-                    <p id="successMessage" style="color: #1e293b; font-size: 1.1rem; margin-bottom: 24px;"></p>
+                    <p id="successMessage" style="color: #1e293b; font-size: 1.125rem; margin-bottom: 24px;"></p>
                     <div class="d-flex gap-2">
                         <a href="/sinav-paketleri" class="btn btn-secondary flex-grow-1" style="border-radius: 12px; padding: 12px;">
                             <i class="bi bi-arrow-left"></i> Geri Dön
@@ -646,6 +773,60 @@
         <% } %>
     }
     
+    // ===== Detay Modalı =====
+    let detayCurrent = null;
+
+    function detayFeatureRow(icon, text) {
+        return '<span class="detay-chip"><i class="bi ' + icon + '"></i> ' + text + '</span>';
+    }
+
+    function acDetay(btn) {
+        const card = btn.closest('.sinav-item');
+        if (!card) return;
+        const d = card.dataset;
+        detayCurrent = { tur: d.tur, id: d.id, ad: d.baslik, fiyat: parseFloat(d.fiyat) || 0 };
+
+        document.querySelector('#detayBaslik span').textContent = d.baslik || '';
+        document.getElementById('detayAciklama').textContent = d.aciklama || '';
+        document.getElementById('detayFiyat').textContent = d.fiyatFormatli || '0';
+
+        let feat = '';
+        if (d.tur === 'paket') {
+            feat += detayFeatureRow('bi-journals', (d.sinavSayisi || '0') + ' Sınav');
+            if (d.sinif) feat += detayFeatureRow('bi-person-workspace', d.sinif + '. Sınıf');
+        } else {
+            if (d.sinif) feat += detayFeatureRow('bi-person-workspace', d.sinif);
+            if (d.ders) feat += detayFeatureRow('bi-book', d.ders);
+        }
+        if (d.tarihFormatli) feat += detayFeatureRow('bi-calendar-event', d.tarihFormatli);
+        document.getElementById('detayFeatures').innerHTML = feat;
+
+        new bootstrap.Modal(document.getElementById('detayModal')).show();
+    }
+
+    document.getElementById('detayTalepBtn').addEventListener('click', function() {
+        if (!detayCurrent) return;
+        const dm = bootstrap.Modal.getInstance(document.getElementById('detayModal'));
+        if (dm) dm.hide();
+        const cur = detayCurrent;
+        // Detay modalı tam kapansın, sonra talep modalını aç (backdrop çakışmasını önler)
+        setTimeout(function() {
+            if (cur.tur === 'paket') talepGonderPaket(cur.id, cur.ad, cur.fiyat);
+            else talepGonder(cur.id, cur.ad, cur.fiyat);
+        }, 350);
+    });
+
+    // Açıklama 4 satıra sığıyorsa "Devamını oku" butonunu gizle
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.sinav-item').forEach(function(item) {
+            const sub = item.querySelector('.pricing-subtitle');
+            const rmBtn = item.querySelector('.read-more-btn');
+            if (sub && rmBtn && sub.scrollHeight <= sub.clientHeight + 2) {
+                rmBtn.style.display = 'none';
+            }
+        });
+    });
+
     // Hızlı Talep Formu (Giriş yapmış kullanıcılar için)
     const quickRequestForm = document.getElementById('quickRequestForm');
     if (quickRequestForm) {
