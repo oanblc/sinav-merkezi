@@ -85,3 +85,34 @@ img {
     flex-wrap: wrap;
   }
 }
+
+/* ---------- Yüzen WhatsApp butonu ---------- */
+.whatsapp-fab {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 56px;
+  height: 56px;
+  background: #25D366;
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  z-index: 1050;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.whatsapp-fab:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 22px rgba(0,0,0,0.3);
+  color: #fff;
+}
+.whatsapp-fab i { line-height: 1; }
+@media (max-width: 768px) {
+  .whatsapp-fab { bottom: calc(20px + env(safe-area-inset-bottom, 0)); }
+  /* Veli panelinde alt navigasyon varsa butonu yukarı al */
+  body:has(.mobile-bottom-nav) .whatsapp-fab { bottom: calc(86px + env(safe-area-inset-bottom, 0)); }
+}
