@@ -48,3 +48,4 @@ tmp/
 # autoMatcher.js
 # insertIndex.js
 .env
+mobile-app/node_modules

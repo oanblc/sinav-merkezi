@@ -17,6 +17,7 @@ const createTableStatements = [
     mezuniyet TEXT,
     profil_foto TEXT,
     password_changed INTEGER DEFAULT 0,
+    push_token TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`,
 
@@ -459,6 +460,7 @@ async function initDatabase() {
       'ALTER TABLE users ADD COLUMN uzmanlik_alani TEXT',
       'ALTER TABLE users ADD COLUMN mezuniyet TEXT',
       'ALTER TABLE users ADD COLUMN profil_foto TEXT',
+      'ALTER TABLE users ADD COLUMN push_token TEXT',
       'ALTER TABLE ogrenciler ADD COLUMN telefon TEXT',
       'ALTER TABLE ogrenciler ADD COLUMN okul TEXT',
       'ALTER TABLE ogrenciler ADD COLUMN sinif TEXT',

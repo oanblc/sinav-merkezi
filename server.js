@@ -2,6 +2,7 @@
 const session = require('express-session');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const path = require('path');
 const multer = require('multer');
 const ExcelJS = require('exceljs');
@@ -24,6 +25,8 @@ const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'sinav_merkezi.db');
 // SESSION_SECRET - Railway icin fallback (production'da mutlaka environment variable kullanin!)
 // Railway'de NODE_ENV otomatik production olmayabilir, bu yuzden fallback ekliyoruz
 const SESSION_SECRET = process.env.SESSION_SECRET || 'railway-temp-secret-' + Date.now() + '-change-this-in-production';
+// Mobil uygulama (JWT) icin gizli anahtar
+const JWT_SECRET = process.env.JWT_SECRET || SESSION_SECRET;
 const ENABLE_ADMIN_RESET = process.env.ENABLE_ADMIN_RESET === 'true';
 
 if (!SESSION_SECRET) {
@@ -243,6 +246,150 @@ async function whatsappBildirimGonder(telefon, mesaj, bildirimTipi = 'genel') {
     
     return { success: false, message: 'Bildirim gönderilemedi', error: error.message };
   }
+}
+
+// ============================================
+// EXPO PUSH BILDIRIM (mobil uygulama)
+// ============================================
+// Expo Push API'ye mesaj gonderir. messages: [{ to, title, body, data }]
+// Token'lar 100'erli gruplar halinde gonderilir.
+async function expoPushGonder(messages) {
+  const gecerli = (messages || []).filter(m => m && typeof m.to === 'string' && /^ExponentPushToken\[.+\]$/.test(m.to));
+  if (gecerli.length === 0) return { success: true, gonderilen: 0 };
+
+  const https = require('https');
+  const gruplar = [];
+  for (let i = 0; i < gecerli.length; i += 100) gruplar.push(gecerli.slice(i, i + 100));
+
+  let gonderilen = 0;
+  for (const grup of gruplar) {
+    const postData = JSON.stringify(grup.map(m => ({
+      to: m.to,
+      sound: 'default',
+      title: m.title || 'Bildirim',
+      body: m.body || '',
+      data: m.data || {},
+    })));
+
+    await new Promise((resolve) => {
+      const r = https.request({
+        hostname: 'exp.host',
+        path: '/--/api/v2/push/send',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Content-Length': Buffer.byteLength(postData),
+        },
+      }, (resp) => {
+        let data = '';
+        resp.on('data', (c) => { data += c; });
+        resp.on('end', () => {
+          if (resp.statusCode === 200) gonderilen += grup.length;
+          else console.error('Expo push hata:', resp.statusCode, data.slice(0, 300));
+          resolve();
+        });
+      });
+      r.on('error', (e) => { console.error('Expo push baglanti hatasi:', e.message); resolve(); });
+      r.write(postData);
+      r.end();
+    });
+  }
+  return { success: true, gonderilen };
+}
+
+// Bir sınava katılan öğrencilerin velilerinden push_token'ı olanları bulur.
+// Dönüş: [{ token, ad_soyad }] (benzersiz token).
+async function sinavPushAlicilari(sinavId) {
+  const norm = (v) => { const d = String(v == null ? '' : v).replace(/\D/g, ''); return d.length > 10 ? d.slice(-10) : d; };
+
+  // Kurum öğrencileri (veli_telefon ile eşleşecek)
+  const kurum = await dbAll(`
+    SELECT ok.veli_telefon, ok.telefon AS ogrenci_telefon
+    FROM sinav_katilimcilari sk
+    INNER JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id AND sk.ogrenci_kaynak = 'kurum'
+    WHERE sk.sinav_id = ? AND sk.pdf_path IS NOT NULL
+  `, [sinavId]).catch(() => []);
+
+  // Veli'nin eklediği öğrenciler (veli_id ile doğrudan)
+  const veli = await dbAll(`
+    SELECT o.veli_id
+    FROM sinav_katilimcilari sk
+    INNER JOIN ogrenciler o ON sk.ogrenci_id = o.id AND sk.ogrenci_kaynak = 'veli'
+    WHERE sk.sinav_id = ? AND sk.pdf_path IS NOT NULL
+  `, [sinavId]).catch(() => []);
+
+  const telefonSet = new Set();
+  kurum.forEach(k => { if (k.veli_telefon) telefonSet.add(norm(k.veli_telefon)); if (k.ogrenci_telefon) telefonSet.add(norm(k.ogrenci_telefon)); });
+  const veliIdSet = new Set(veli.map(v => v.veli_id).filter(Boolean));
+
+  // push_token'ı olan tüm veli kullanıcıları çek, JS'te eşleştir
+  const veliler = await dbAll(
+    `SELECT id, ad_soyad, telefon, push_token FROM users WHERE user_type = 'veli' AND push_token IS NOT NULL AND push_token != ''`
+  ).catch(() => []);
+
+  const sonuc = new Map(); // token → ad_soyad
+  for (const u of veliler) {
+    const eslesti = veliIdSet.has(u.id) || (u.telefon && telefonSet.has(norm(u.telefon)));
+    if (eslesti) sonuc.set(u.push_token, u.ad_soyad || 'Veli');
+  }
+  return [...sonuc.entries()].map(([token, ad_soyad]) => ({ token, ad_soyad }));
+}
+
+// push_token'ı olan TÜM velileri döndürür → [{ token, ad_soyad }]
+async function tumVeliPushTokenlari() {
+  const veliler = await dbAll(
+    `SELECT ad_soyad, push_token FROM users WHERE user_type = 'veli' AND push_token IS NOT NULL AND push_token != ''`
+  ).catch(() => []);
+  const m = new Map();
+  veliler.forEach(u => { if (u.push_token) m.set(u.push_token, u.ad_soyad || 'Veli'); });
+  return [...m.entries()].map(([token, ad_soyad]) => ({ token, ad_soyad }));
+}
+
+// Belirli bir sınıftaki öğrencilerin velilerinden push_token'ı olanlar → [{ token, ad_soyad }]
+async function sinifPushAlicilari(sinif) {
+  if (!sinif) return [];
+  const norm = (v) => { const d = String(v == null ? '' : v).replace(/\D/g, ''); return d.length > 10 ? d.slice(-10) : d; };
+
+  const kurum = await dbAll(`SELECT veli_id, veli_telefon, telefon FROM ogrenci_kayitlari WHERE sinif = ?`, [sinif]).catch(() => []);
+  const veliOgr = await dbAll(`SELECT veli_id FROM ogrenciler WHERE sinif = ?`, [sinif]).catch(() => []);
+
+  const telefonSet = new Set();
+  const veliIdSet = new Set();
+  kurum.forEach(k => { if (k.veli_id) veliIdSet.add(k.veli_id); if (k.veli_telefon) telefonSet.add(norm(k.veli_telefon)); if (k.telefon) telefonSet.add(norm(k.telefon)); });
+  veliOgr.forEach(v => { if (v.veli_id) veliIdSet.add(v.veli_id); });
+
+  const veliler = await dbAll(`SELECT id, ad_soyad, telefon, push_token FROM users WHERE user_type = 'veli' AND push_token IS NOT NULL AND push_token != ''`).catch(() => []);
+  const m = new Map();
+  for (const u of veliler) {
+    if (veliIdSet.has(u.id) || (u.telefon && telefonSet.has(norm(u.telefon)))) m.set(u.push_token, u.ad_soyad || 'Veli');
+  }
+  return [...m.entries()].map(([token, ad_soyad]) => ({ token, ad_soyad }));
+}
+
+// Belirli bir veli kullanıcısının (id) push_token'ı
+async function veliPushTokenById(veliId) {
+  if (!veliId) return null;
+  const u = await dbGet(`SELECT push_token FROM users WHERE id = ? AND push_token IS NOT NULL AND push_token != ''`, [veliId]).catch(() => null);
+  return u && u.push_token ? u.push_token : null;
+}
+
+// Telefon (son-10 eşleşmesi) ile veli push_token'ı
+async function veliPushTokenByTelefon(tel) {
+  const norm = (v) => { const d = String(v == null ? '' : v).replace(/\D/g, ''); return d.length > 10 ? d.slice(-10) : d; };
+  const hedef = norm(tel);
+  if (!hedef || hedef.length < 10) return null;
+  const veliler = await dbAll(`SELECT telefon, push_token FROM users WHERE user_type = 'veli' AND push_token IS NOT NULL AND push_token != ''`).catch(() => []);
+  const bulunan = veliler.find(u => u.telefon && norm(u.telefon) === hedef);
+  return bulunan ? bulunan.push_token : null;
+}
+
+// Kısa yardımcı: alıcı listesine (token'lı) push gönder + logla
+async function veliPushGonder(alicilar, title, body, data = {}) {
+  const liste = (alicilar || []).filter(a => a && a.token);
+  if (!liste.length) return { success: true, gonderilen: 0 };
+  const messages = liste.map(a => ({ to: a.token, title, body, data }));
+  return expoPushGonder(messages);
 }
 
 // Yeni talep bildirimi olustur
@@ -1905,6 +2052,455 @@ app.use((req, res, next) => {
   next();
 });
 
+// ============================================================
+//  MOBİL API (Veli Uygulaması) — JSON + JWT
+//  Tüm veriler gerçek DB tablolarından gelir.
+// ============================================================
+
+// JWT doğrulama middleware (Authorization: Bearer <token>)
+function veliApiAuth(req, res, next) {
+  const h = req.headers['authorization'] || '';
+  // Authorization header VEYA (tarayıcıda açılan dosya için) query ?token=
+  const token = (h.startsWith('Bearer ') ? h.slice(7) : null) || req.query.token || null;
+  if (!token) return res.status(401).json({ success: false, message: 'Oturum gerekli.' });
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    if (payload.type !== 'veli') return res.status(403).json({ success: false, message: 'Yetkisiz.' });
+    req.veli = payload; // { id, username, ad_soyad, type }
+    next();
+  } catch (e) {
+    return res.status(401).json({ success: false, message: 'Oturum süresi doldu, tekrar giriş yapın.' });
+  }
+}
+
+// POST /api/veli/giris  → { tc, sifre }  → JWT + veli bilgisi
+// Veri kaynağı: users tablosu (username = TC, user_type = 'veli')
+app.post('/api/veli/giris', async (req, res) => {
+  try {
+    const tc = (req.body.tc || '').toString().replace(/\D/g, '').trim();
+    const sifre = (req.body.sifre || '').toString();
+    if (!tc || !sifre) {
+      return res.status(400).json({ success: false, message: 'TC Kimlik No ve şifre gerekli.' });
+    }
+
+    // Kullanıcıyı TC ile bul (.0 ekli eski format dahil), sadece veli
+    const user = await dbGet(
+      "SELECT id, username, password_hash, ad_soyad, telefon, password_changed FROM users WHERE (username = ? OR username = ?) AND user_type = 'veli'",
+      [tc, tc + '.0']
+    );
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'TC Kimlik No veya şifre hatalı.' });
+    }
+
+    const eslesti = await bcrypt.compare(sifre, user.password_hash);
+    if (!eslesti) {
+      return res.status(401).json({ success: false, message: 'TC Kimlik No veya şifre hatalı.' });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, username: String(user.username).replace('.0', ''), ad_soyad: user.ad_soyad, type: 'veli' },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      veli: {
+        id: user.id,
+        ad_soyad: user.ad_soyad || 'Veli',
+        username: String(user.username).replace('.0', ''),
+        telefon: user.telefon || null,
+        sifre_degistirilmeli: user.password_changed === 0 || user.password_changed === null
+      }
+    });
+  } catch (error) {
+    console.error('Mobil veli giris hatasi:', error);
+    res.status(500).json({ success: false, message: 'Giriş sırasında bir hata oluştu.' });
+  }
+});
+
+// POST /api/veli/sifre-degistir  → { yeni_sifre, yeni_sifre_tekrar }  (JWT gerekli)
+// Veri kaynağı: users (password_hash güncellenir, password_changed=1 yapılır)
+app.post('/api/veli/sifre-degistir', veliApiAuth, async (req, res) => {
+  try {
+    const yeni = (req.body.yeni_sifre || '').toString();
+    const tekrar = (req.body.yeni_sifre_tekrar || '').toString();
+
+    if (yeni.length < 6) {
+      return res.status(400).json({ success: false, message: 'Şifre en az 6 karakter olmalıdır.' });
+    }
+    if (yeni !== tekrar) {
+      return res.status(400).json({ success: false, message: 'Şifreler uyuşmuyor.' });
+    }
+
+    const hash = await bcrypt.hash(yeni, 10);
+    await dbRun('UPDATE users SET password_hash = ?, password_changed = 1 WHERE id = ?', [hash, req.veli.id]);
+
+    res.json({ success: true, message: 'Şifreniz başarıyla değiştirildi!' });
+  } catch (error) {
+    console.error('Mobil sifre degistirme hatasi:', error);
+    res.status(500).json({ success: false, message: 'Şifre değiştirme sırasında bir hata oluştu.' });
+  }
+});
+
+// GET /api/veli/panel  (JWT)  → veli + öğrenci listesi
+// Veri kaynağı: users (telefon) + ogrenci_kayitlari (veli_id VEYA veli_telefon eşleşmesi — web ile aynı)
+app.get('/api/veli/panel', veliApiAuth, async (req, res) => {
+  try {
+    const kullanici = await dbGet('SELECT username, telefon, ad_soyad FROM users WHERE id = ?', [req.veli.id]);
+    const tel = kullanici && kullanici.telefon ? String(kullanici.telefon).replace('.0', '') : '';
+    const telNokta = tel ? tel + '.0' : '___yok___';
+
+    // Kurum öğrencileri (salt-görüntü)
+    const kurumOgr = await dbAll(
+      `SELECT id, ogrenci_adi_soyadi, sinif, tc_kimlik_no
+       FROM ogrenci_kayitlari
+       WHERE veli_id = ? OR veli_telefon = ? OR veli_telefon = ?
+       ORDER BY ogrenci_adi_soyadi`,
+      [req.veli.id, tel || '___yok___', telNokta]
+    );
+    const kurumListe = kurumOgr.map(o => {
+      const tc = o.tc_kimlik_no ? String(o.tc_kimlik_no).replace('.0', '') : '';
+      return {
+        id: o.id,
+        ad_soyad: o.ogrenci_adi_soyadi,
+        sinif: o.sinif || null,
+        tc_maskeli: tc ? tc.slice(0, 3) + '***' : null,
+        kaynak: 'kurum',
+        duzenlenebilir: false,
+      };
+    });
+
+    // Velinin kendi eklediği öğrenciler (düzenlenebilir)
+    const veliOgr = await dbAll(
+      'SELECT id, ad_soyad, tc_no, telefon, okul, sinif FROM ogrenciler WHERE veli_id = ? ORDER BY ad_soyad',
+      [req.veli.id]
+    ).catch(() => []);
+    const veliListe = veliOgr.map(o => {
+      const tc = o.tc_no ? String(o.tc_no).replace('.0', '') : '';
+      return {
+        id: o.id,
+        ad_soyad: o.ad_soyad,
+        sinif: o.sinif || null,
+        tc_maskeli: tc ? tc.slice(0, 3) + '***' : null,
+        kaynak: 'veli',
+        duzenlenebilir: true,
+        // düzenleme formu için tam alanlar
+        tc_no: tc || '',
+        telefon: o.telefon || '',
+        okul: o.okul || '',
+      };
+    });
+
+    const liste = [...veliListe, ...kurumListe];
+
+    res.json({
+      success: true,
+      veli: { ad_soyad: kullanici ? kullanici.ad_soyad : req.veli.ad_soyad, username: req.veli.username },
+      ogrenci_sayisi: liste.length,
+      ogrenciler: liste,
+    });
+  } catch (error) {
+    console.error('Mobil panel hatasi:', error);
+    res.status(500).json({ success: false, message: 'Veriler alınamadı.' });
+  }
+});
+
+// Veli'nin KENDİ eklediği öğrenciler (ogrenciler tablosu) — ekle/düzenle/sil (JWT)
+app.post('/api/veli/ogrenci-ekle', veliApiAuth, async (req, res) => {
+  try {
+    const { ad_soyad, tc_no, telefon, okul, sinif } = req.body;
+    if (!ad_soyad || !ad_soyad.trim() || !okul || !sinif) {
+      return res.json({ success: false, message: 'Ad soyad, okul ve sınıf zorunludur.' });
+    }
+    const ogrenciNo = 'V' + req.veli.id + '-' + Math.floor(Math.random() * 1e9);
+    await dbRun(
+      'INSERT INTO ogrenciler (ad_soyad, tc_no, telefon, okul, sinif, veli_id, ogrenci_no) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [ad_soyad.trim(), tc_no || null, telefon || null, okul, sinif, req.veli.id, ogrenciNo]
+    );
+    res.json({ success: true, message: 'Öğrenci eklendi.' });
+  } catch (error) {
+    console.error('Mobil ogrenci-ekle hatasi:', error);
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
+  }
+});
+
+app.post('/api/veli/ogrenci-duzenle/:id', veliApiAuth, async (req, res) => {
+  try {
+    const { ad_soyad, tc_no, telefon, okul, sinif } = req.body;
+    if (!ad_soyad || !ad_soyad.trim() || !okul || !sinif) {
+      return res.json({ success: false, message: 'Ad soyad, okul ve sınıf zorunludur.' });
+    }
+    const o = await dbGet('SELECT id FROM ogrenciler WHERE id = ? AND veli_id = ?', [req.params.id, req.veli.id]);
+    if (!o) return res.status(403).json({ success: false, message: 'Bu öğrenciyi düzenleme yetkiniz yok.' });
+    await dbRun(
+      'UPDATE ogrenciler SET ad_soyad = ?, tc_no = ?, telefon = ?, okul = ?, sinif = ? WHERE id = ? AND veli_id = ?',
+      [ad_soyad.trim(), tc_no || null, telefon || null, okul, sinif, req.params.id, req.veli.id]
+    );
+    res.json({ success: true, message: 'Öğrenci güncellendi.' });
+  } catch (error) {
+    console.error('Mobil ogrenci-duzenle hatasi:', error);
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
+  }
+});
+
+app.post('/api/veli/ogrenci-sil/:id', veliApiAuth, async (req, res) => {
+  try {
+    const o = await dbGet('SELECT id FROM ogrenciler WHERE id = ? AND veli_id = ?', [req.params.id, req.veli.id]);
+    if (!o) return res.status(403).json({ success: false, message: 'Bu öğrenciyi silme yetkiniz yok.' });
+    await dbRun('DELETE FROM ogrenciler WHERE id = ? AND veli_id = ?', [req.params.id, req.veli.id]);
+    res.json({ success: true, message: 'Öğrenci silindi.' });
+  } catch (error) {
+    console.error('Mobil ogrenci-sil hatasi:', error);
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
+  }
+});
+
+// GET /api/veli/takvim  (JWT)  → öğrenci/sınav/bu hafta istatistikleri + yaklaşan sınavlar
+// Veri kaynağı: sinav_katilimcilari + sinavlar (veli-eklediği + kurum TC eşleşmesi — web ile aynı)
+app.get('/api/veli/takvim', veliApiAuth, async (req, res) => {
+  try {
+    const veliId = req.veli.id;
+
+    // Veli-eklediği öğrencilerin sınavları
+    const veliTakvim = await dbAll(`
+      SELECT s.id as sinav_id, s.ad as sinav_adi, s.tarih, s.sinif, s.ders, s.aciklama,
+             o.ad_soyad as ogrenci_ad_soyad, 'veli' as kaynak
+      FROM sinav_katilimcilari sk
+      INNER JOIN sinavlar s ON sk.sinav_id = s.id
+      INNER JOIN ogrenciler o ON sk.ogrenci_id = o.id AND sk.ogrenci_kaynak = 'veli'
+      WHERE o.veli_id = ?
+    `, [veliId]).catch(() => []);
+
+    // Kurum öğrencilerinin sınavları (TC = kullanıcı adı)
+    const kurumTakvim = await dbAll(`
+      SELECT s.id as sinav_id, s.ad as sinav_adi, s.tarih, s.sinif, s.ders, s.aciklama,
+             ok.ogrenci_adi_soyadi as ogrenci_ad_soyad, 'kurum' as kaynak
+      FROM sinav_katilimcilari sk
+      INNER JOIN sinavlar s ON sk.sinav_id = s.id
+      INNER JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id AND sk.ogrenci_kaynak = 'kurum'
+      WHERE REPLACE(CAST(ok.tc_kimlik_no AS TEXT), '.0', '') = (SELECT username FROM users WHERE id = ?)
+    `, [veliId]).catch(() => []);
+
+    const tum = [...veliTakvim, ...kurumTakvim]
+      .filter(t => t.tarih)
+      .sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+
+    // Yaklaşan (bugün ve sonrası)
+    const bugun = new Date(); bugun.setHours(0, 0, 0, 0);
+    const haftaSonu = new Date(bugun); haftaSonu.setDate(haftaSonu.getDate() + 7);
+    const yaklasan = tum.filter(t => new Date(t.tarih) >= bugun);
+    const buHafta = yaklasan.filter(t => new Date(t.tarih) <= haftaSonu).length;
+
+    // Öğrenci sayısı (dashboard ile aynı: veli_id veya veli_telefon)
+    const kullanici = await dbGet('SELECT telefon FROM users WHERE id = ?', [veliId]);
+    const tel = kullanici && kullanici.telefon ? String(kullanici.telefon).replace('.0', '') : '___yok___';
+    const sayim = await dbGet(
+      `SELECT COUNT(*) as n FROM ogrenci_kayitlari WHERE veli_id = ? OR veli_telefon = ? OR veli_telefon = ?`,
+      [veliId, tel, tel + '.0']
+    );
+
+    res.json({
+      success: true,
+      ogrenci_sayisi: (sayim && sayim.n) || 0,
+      sinav_sayisi: yaklasan.length,
+      bu_hafta: buHafta,
+      yaklasan: yaklasan.map(t => ({
+        sinav_adi: t.sinav_adi,
+        tarih: t.tarih,
+        sinif: t.sinif || null,
+        ders: t.ders || null,
+        ogrenci_ad_soyad: t.ogrenci_ad_soyad || null,
+      })),
+    });
+  } catch (error) {
+    console.error('Mobil takvim hatasi:', error);
+    res.status(500).json({ success: false, message: 'Takvim alınamadı.' });
+  }
+});
+
+// GET /api/veli/sonuclar  (JWT)  → yayınlanmış sonuçlar (PDF'li)
+// Veri kaynağı: sinav_katilimcilari + sinavlar (sonuc_yayinlandi=1, pdf_path dolu) — web ile aynı
+app.get('/api/veli/sonuclar', veliApiAuth, async (req, res) => {
+  try {
+    const veliId = req.veli.id;
+    const veliSonuc = await dbAll(`
+      SELECT sk.id, sk.pdf_path, sk.sonuc_durumu, s.ad as sinav_adi, s.tarih as sinav_tarihi,
+             s.sinif, s.ders, o.ad_soyad as ogrenci_adi_soyadi, o.sinif as ogrenci_sinif
+      FROM sinav_katilimcilari sk
+      INNER JOIN sinavlar s ON sk.sinav_id = s.id
+      INNER JOIN ogrenciler o ON sk.ogrenci_id = o.id
+      WHERE sk.ogrenci_kaynak='veli' AND o.veli_id=? AND s.sonuc_yayinlandi=1 AND sk.pdf_path IS NOT NULL
+    `, [veliId]).catch(() => []);
+
+    const kurumSonuc = await dbAll(`
+      SELECT sk.id, sk.pdf_path, sk.sonuc_durumu, s.ad as sinav_adi, s.tarih as sinav_tarihi,
+             s.sinif, s.ders, ok.ogrenci_adi_soyadi, ok.sinif as ogrenci_sinif
+      FROM sinav_katilimcilari sk
+      INNER JOIN sinavlar s ON sk.sinav_id = s.id
+      INNER JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id
+      WHERE sk.ogrenci_kaynak='kurum' AND s.sonuc_yayinlandi=1 AND sk.pdf_path IS NOT NULL
+        AND REPLACE(CAST(ok.tc_kimlik_no AS TEXT),'.0','') = (SELECT username FROM users WHERE id=?)
+    `, [veliId]).catch(() => []);
+
+    const tum = [...veliSonuc, ...kurumSonuc]
+      .filter(r => r.sinav_tarihi)
+      .sort((a, b) => new Date(b.sinav_tarihi) - new Date(a.sinav_tarihi));
+
+    res.json({
+      success: true,
+      sonuclar: tum.map(r => ({
+        id: r.id,
+        sinav_adi: r.sinav_adi,
+        sinav_tarihi: r.sinav_tarihi,
+        ogrenci_adi_soyadi: r.ogrenci_adi_soyadi,
+        sinif: r.sinif || r.ogrenci_sinif || null,
+        ders: r.ders || null,
+        durum: r.sonuc_durumu || null,
+        pdf_var: !!r.pdf_path,
+      })),
+    });
+  } catch (error) {
+    console.error('Mobil sonuclar hatasi:', error);
+    res.status(500).json({ success: false, message: 'Sonuçlar alınamadı.' });
+  }
+});
+
+// GET /api/veli/sonuc-pdf/:katilimciId?token=JWT  → sonuç PDF'ini servis eder (yetki kontrollü)
+app.get('/api/veli/sonuc-pdf/:katilimciId', veliApiAuth, async (req, res) => {
+  try {
+    const k = await dbGet('SELECT ogrenci_kaynak, ogrenci_id, pdf_path FROM sinav_katilimcilari WHERE id = ?', [req.params.katilimciId]);
+    if (!k) return res.status(404).json({ success: false, message: 'Sonuç bulunamadı.' });
+
+    let yetki = false;
+    if (k.ogrenci_kaynak === 'veli') {
+      const o = await dbGet('SELECT veli_id FROM ogrenciler WHERE id = ?', [k.ogrenci_id]);
+      yetki = o && o.veli_id === req.veli.id;
+    } else {
+      const u = await dbGet('SELECT telefon FROM users WHERE id = ?', [req.veli.id]);
+      const o = await dbGet('SELECT veli_telefon FROM ogrenci_kayitlari WHERE id = ?', [k.ogrenci_id]);
+      yetki = o && u && String(u.telefon).replace('.0', '') === String(o.veli_telefon || '').replace('.0', '');
+    }
+    if (!yetki) return res.status(403).json({ success: false, message: 'Bu sonuca erişim yetkiniz yok.' });
+
+    if (!k.pdf_path || !fs.existsSync(k.pdf_path)) {
+      return res.status(404).json({ success: false, message: 'PDF dosyası bulunamadı.' });
+    }
+
+    await dbRun(
+      'UPDATE sinav_katilimcilari SET pdf_goruldu=1, pdf_gorunme_tarihi=?, pdf_indirilme_sayisi=COALESCE(pdf_indirilme_sayisi,0)+1 WHERE id=?',
+      [new Date().toISOString(), req.params.katilimciId]
+    ).catch(() => {});
+
+    res.sendFile(path.resolve(k.pdf_path));
+  } catch (error) {
+    console.error('Mobil sonuc-pdf hatasi:', error);
+    res.status(500).json({ success: false, message: 'PDF açılırken hata oluştu.' });
+  }
+});
+
+// GET /api/veli/profil  (JWT)  → veli bilgileri (users tablosu)
+app.get('/api/veli/profil', veliApiAuth, async (req, res) => {
+  try {
+    const u = await dbGet('SELECT ad_soyad, username, telefon FROM users WHERE id = ?', [req.veli.id]);
+    if (!u) return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı.' });
+    res.json({
+      success: true,
+      profil: {
+        ad_soyad: u.ad_soyad || 'Veli',
+        username: String(u.username || '').replace('.0', ''),
+        telefon: u.telefon ? String(u.telefon).replace('.0', '') : null,
+      },
+    });
+  } catch (error) {
+    console.error('Mobil profil hatasi:', error);
+    res.status(500).json({ success: false, message: 'Profil alınamadı.' });
+  }
+});
+
+// GET /api/veli/bildirimler  (JWT)  → veliye/öğrencilerine gönderilmiş bildirimler (bildirim_gecmisi)
+app.get('/api/veli/bildirimler', veliApiAuth, async (req, res) => {
+  try {
+    // Türk telefon no'ları farklı formatlarda (05XX..., +905XX..., 5XX...) →
+    // son 10 haneye (abone no) indirgeyerek karşılaştır.
+    const norm = (v) => {
+      const d = String(v == null ? '' : v).replace(/\D/g, '');
+      return d.length > 10 ? d.slice(-10) : d;
+    };
+    const kullanici = await dbGet('SELECT telefon FROM users WHERE id = ?', [req.veli.id]);
+
+    // Bu veliye ait tüm telefon numaralarını topla (kendi + öğrencilerinin)
+    const telefonlar = new Set();
+    if (kullanici && kullanici.telefon) telefonlar.add(norm(kullanici.telefon));
+
+    const tel = kullanici && kullanici.telefon ? String(kullanici.telefon).replace('.0', '') : '';
+    const telNokta = tel ? tel + '.0' : '___yok___';
+
+    const kurumOgr = await dbAll(
+      `SELECT veli_telefon, telefon FROM ogrenci_kayitlari
+       WHERE veli_id = ? OR veli_telefon = ? OR veli_telefon = ?`,
+      [req.veli.id, tel || '___yok___', telNokta]
+    ).catch(() => []);
+    kurumOgr.forEach(o => { if (o.veli_telefon) telefonlar.add(norm(o.veli_telefon)); if (o.telefon) telefonlar.add(norm(o.telefon)); });
+
+    const veliOgr = await dbAll('SELECT telefon FROM ogrenciler WHERE veli_id = ?', [req.veli.id]).catch(() => []);
+    veliOgr.forEach(o => { if (o.telefon) telefonlar.add(norm(o.telefon)); });
+
+    const gecerli = [...telefonlar].filter(t => t && t.length >= 10);
+    if (gecerli.length === 0) return res.json({ success: true, bildirimler: [] });
+
+    // alici_telefon DB'de '.0' ekli veya farklı formatta olabilir → tüm satırları çekip normalize karşılaştır
+    const tumu = await dbAll(
+      `SELECT bildirim_tipi, alici_telefon, mesaj, durum, created_at
+       FROM bildirim_gecmisi ORDER BY created_at DESC LIMIT 500`
+    ).catch(() => []);
+
+    const set = new Set(gecerli);
+    const bildirimler = tumu
+      .filter(b => set.has(norm(b.alici_telefon)))
+      .map(b => ({
+        tip: b.bildirim_tipi || 'genel',
+        mesaj: b.mesaj || '',
+        durum: b.durum || 'gonderildi',
+        tarih: b.created_at,
+      }));
+
+    res.json({ success: true, bildirimler });
+  } catch (error) {
+    console.error('Mobil bildirim hatasi:', error);
+    res.status(500).json({ success: false, message: 'Bildirimler alınamadı.' });
+  }
+});
+
+// POST /api/veli/push-token  (JWT) → cihazın Expo push token'ını kaydet
+app.post('/api/veli/push-token', veliApiAuth, async (req, res) => {
+  try {
+    const token = (req.body && req.body.token ? String(req.body.token) : '').trim();
+    if (!token || !/^ExponentPushToken\[.+\]$/.test(token)) {
+      return res.status(400).json({ success: false, message: 'Geçersiz push token.' });
+    }
+    // Aynı token başka bir hesapta kayıtlıysa (cihaz el değiştirmiş olabilir) temizle
+    await dbRun('UPDATE users SET push_token = NULL WHERE push_token = ? AND id != ?', [token, req.veli.id]).catch(() => {});
+    await dbRun('UPDATE users SET push_token = ? WHERE id = ?', [token, req.veli.id]);
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Push token kayit hatasi:', e);
+    res.status(500).json({ success: false, message: 'Token kaydedilemedi.' });
+  }
+});
+
+// POST /api/veli/push-token-sil  (JWT) → token'ı kaldır (bildirimi kapatınca / çıkışta)
+app.post('/api/veli/push-token-sil', veliApiAuth, async (req, res) => {
+  try {
+    await dbRun('UPDATE users SET push_token = NULL WHERE id = ?', [req.veli.id]);
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Push token silme hatasi:', e);
+    res.status(500).json({ success: false, message: 'Token silinemedi.' });
+  }
+});
+
 // ===== robots.txt =====
 app.get('/robots.txt', (req, res) => {
   const base = seoBaseUrl(req);
@@ -3487,8 +4083,17 @@ app.post('/kurum/talep-yanitla', requireAuth, async (req, res) => {
         whatsappBildirimGonder(talep.veli_telefon, mesaj, `rehber_talep_${durum}`)
           .then(result => console.log(' WhatsApp bildirimi gonderildi:', result))
           .catch(error => console.error(' WhatsApp bildirimi hatasi:', error));
+
+        // Mobil push (arka planda)
+        const pushBaslik = durum === 'onaylandi' ? 'Talebiniz Onaylandı' : 'Talebiniz Reddedildi';
+        const pushGovde = `${talep.ogrenci_adi || 'Öğrenciniz'} için rehberlik talebi ${durum === 'onaylandi' ? 'onaylandı' : 'reddedildi'}.`;
+        Promise.resolve()
+          .then(() => veliPushTokenById(talep.veli_id))
+          .then(tok => tok || veliPushTokenByTelefon(talep.veli_telefon))
+          .then(tok => tok ? veliPushGonder([{ token: tok }], pushBaslik, pushGovde, { tip: `rehber_talep_${durum}` }) : null)
+          .catch(e => console.error(' Rehber talep push hatasi:', e.message));
       }
-      
+
     } else if (talep_tipi === 'paket') {
       // Paket talebi
       await dbRun(
@@ -3539,6 +4144,15 @@ app.post('/kurum/talep-yanitla', requireAuth, async (req, res) => {
         whatsappBildirimGonder(talep.veli_telefon, mesaj, `talep_${durum}`)
           .then(result => console.log(' WhatsApp bildirimi gonderildi:', result))
           .catch(error => console.error(' WhatsApp bildirimi hatasi:', error));
+
+        // Mobil push (arka planda)
+        const pushBaslik2 = durum === 'onaylandi' ? 'Talebiniz Onaylandı' : 'Talebiniz Reddedildi';
+        const pushGovde2 = `${talep.sinav_adi || 'Sınav'} talebiniz ${durum === 'onaylandi' ? 'onaylandı' : 'reddedildi'}.`;
+        Promise.resolve()
+          .then(() => veliPushTokenById(talep.veli_id))
+          .then(tok => tok || veliPushTokenByTelefon(talep.veli_telefon))
+          .then(tok => tok ? veliPushGonder([{ token: tok }], pushBaslik2, pushGovde2, { tip: `talep_${durum}` }) : null)
+          .catch(e => console.error(' Talep push hatasi:', e.message));
       }
     }
 
@@ -5652,9 +6266,21 @@ app.post('/kurum/sinav-sonuclari-yayinla/:id', requireAuth, async (req, res) => 
     
     // Sinavi yayinla
     await dbRun('UPDATE sinavlar SET sonuc_yayinlandi = 1 WHERE id = ?', [sinavId]);
-    
+
     console.log(`    Yayinlandi: ${eslesmeSayisi} sonuc velilere gorunur hale geldi`);
-    
+
+    // Mobil uygulamaya push bildirimi gonder (arka planda — yaniti geciktirme)
+    sinavPushAlicilari(sinavId).then((alicilar) => {
+      if (!alicilar.length) { console.log('    Push: token kayitli veli yok'); return; }
+      const messages = alicilar.map(a => ({
+        to: a.token,
+        title: 'Sınav Sonucu Açıklandı',
+        body: `${sinav.ad} sonucu yayınlandı. Sonucu görüntülemek için uygulamayı açın.`,
+        data: { tip: 'sinav_sonuc', sinav_id: Number(sinavId) },
+      }));
+      return expoPushGonder(messages).then(r => console.log(`    Push gonderildi: ${r.gonderilen}/${alicilar.length}`));
+    }).catch(e => console.error('    Push gonderim hatasi:', e.message));
+
     res.json({
       success: true,
       message: 'Sonuçlar yayinlandi! ' + eslesmeSayisi + ' ogrencinin velisi artik sonuclari gorebilir.'
@@ -7257,11 +7883,20 @@ app.post('/rehber/talep-yanitla', requireAuth, requireRole('rehber_ogretmen'), a
       whatsappBildirimGonder(talep.veli_telefon, mesaj, `rehber_talep_${durum}`)
         .then(result => console.log(' Veli WhatsApp bildirimi gonderildi:', result))
         .catch(error => console.error(' Veli WhatsApp bildirimi hatasi:', error));
+
+      // Mobil push (arka planda)
+      const pBaslik = durum === 'onaylandi' ? 'Talebiniz Onaylandı' : 'Talebiniz Reddedildi';
+      const pGovde = `${talep.ad_soyad || 'Öğrenciniz'} için rehberlik talebi ${durum === 'onaylandi' ? 'onaylandı' : 'reddedildi'}.`;
+      Promise.resolve()
+        .then(() => veliPushTokenById(talep.veli_id))
+        .then(tok => tok || veliPushTokenByTelefon(talep.veli_telefon))
+        .then(tok => tok ? veliPushGonder([{ token: tok }], pBaslik, pGovde, { tip: `rehber_talep_${durum}` }) : null)
+        .catch(e => console.error(' Veli push hatasi:', e.message));
     }
-    
-    res.json({ 
-      success: true, 
-      message: durum === 'onaylandi' ? 'Talep başarıyla onaylandı!' : 'Talep reddedildi.' 
+
+    res.json({
+      success: true,
+      message: durum === 'onaylandi' ? 'Talep başarıyla onaylandı!' : 'Talep reddedildi.'
     });
     
   } catch (error) {
@@ -7491,6 +8126,76 @@ app.get('/sinav-takvimi', async (req, res) => {
 
 // ESKI Sinav Paketleri Route - KALDIRILDI (Yeni route satir 729'da)
 
+// ============ MOBIL BILDIRIM GONDER (KURUM) ============
+
+// Kurum - Mobil bildirim gönderme sayfası
+app.get('/kurum/bildirim-gonder', requireAuth, async (req, res) => {
+  if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
+    return res.status(403).send('Bu sayfaya erisim yetkiniz yok!');
+  }
+  try {
+    const sayim = await dbGet(`SELECT COUNT(*) AS adet FROM users WHERE user_type = 'veli' AND push_token IS NOT NULL AND push_token != ''`).catch(() => ({ adet: 0 }));
+    // Sınıf listesi (her iki öğrenci kaynağından)
+    const s1 = await dbAll(`SELECT DISTINCT sinif FROM ogrenci_kayitlari WHERE sinif IS NOT NULL AND sinif != ''`).catch(() => []);
+    const s2 = await dbAll(`SELECT DISTINCT sinif FROM ogrenciler WHERE sinif IS NOT NULL AND sinif != ''`).catch(() => []);
+    const siniflar = [...new Set([...s1, ...s2].map(r => String(r.sinif)))].sort((a, b) => a.localeCompare(b, 'tr', { numeric: true }));
+
+    res.render('kurum/bildirim-gonder', {
+      tokenliVeliSayisi: (sayim && sayim.adet) || 0,
+      siniflar,
+      success: req.session.success,
+      error: req.session.error,
+    });
+    req.session.success = null;
+    req.session.error = null;
+  } catch (error) {
+    console.error('Bildirim gonder sayfa hatasi:', error);
+    res.status(500).send('Bir hata olustu!');
+  }
+});
+
+// Kurum - Mobil bildirim gönder (POST)
+app.post('/kurum/bildirim-gonder', requireAuth, async (req, res) => {
+  if (!['kurum_yonetici', 'kurum_admin'].includes(req.session.userType)) {
+    return res.status(403).send('Yetkisiz erisim!');
+  }
+  try {
+    const baslik = (req.body.baslik || '').trim();
+    const mesaj = (req.body.mesaj || '').trim();
+    const hedef = req.body.hedef === 'sinif' ? 'sinif' : 'tum';
+    const sinif = (req.body.sinif || '').trim();
+
+    if (!baslik || !mesaj) {
+      req.session.error = 'Başlık ve mesaj zorunludur.';
+      return res.redirect('/kurum/bildirim-gonder');
+    }
+
+    let alicilar = [];
+    if (hedef === 'sinif') {
+      if (!sinif) { req.session.error = 'Lütfen bir sınıf seçin.'; return res.redirect('/kurum/bildirim-gonder'); }
+      alicilar = await sinifPushAlicilari(sinif);
+    } else {
+      alicilar = await tumVeliPushTokenlari();
+    }
+
+    if (!alicilar.length) {
+      req.session.error = 'Bildirim alabilecek (token kayıtlı) veli bulunamadı.';
+      return res.redirect('/kurum/bildirim-gonder');
+    }
+
+    const sonuc = await veliPushGonder(alicilar, baslik, mesaj, { tip: 'duyuru' });
+    console.log(`\n MOBIL BILDIRIM GONDERILDI → ${sonuc.gonderilen}/${alicilar.length} (hedef: ${hedef}${sinif ? '/' + sinif : ''})`);
+
+    const hedefMetni = hedef === 'sinif' ? `${sinif} sınıfı velileri` : 'tüm veliler';
+    req.session.success = `Bildirim ${hedefMetni} için ${sonuc.gonderilen} cihaza gönderildi.`;
+    res.redirect('/kurum/bildirim-gonder');
+  } catch (error) {
+    console.error('Bildirim gonderme hatasi:', error);
+    req.session.error = 'Bildirim gönderilirken bir hata oluştu: ' + error.message;
+    res.redirect('/kurum/bildirim-gonder');
+  }
+});
+
 // ============ DUYURU YONETIMI (KURUM) ============
 
 // Kurum - Duyuru Yonetimi Sayfasi
@@ -7537,7 +8242,16 @@ app.post('/kurum/duyuru-ekle', requireAuth, async (req, res) => {
     
     console.log(`\n YENI DUYURU EKLENDI`);
     console.log(`   Baslik: ${baslik}`);
-    
+
+    // Aktif (yayında) duyuru ise tüm velilere push gönder (arka planda)
+    if (aktif) {
+      tumVeliPushTokenlari().then((alicilar) => {
+        if (!alicilar.length) return;
+        return veliPushGonder(alicilar, baslik, (icerik || '').slice(0, 140), { tip: 'duyuru' })
+          .then(r => console.log(`   Duyuru push: ${r.gonderilen}/${alicilar.length}`));
+      }).catch(e => console.error('   Duyuru push hatasi:', e.message));
+    }
+
     req.session.success = 'Duyuru basariyla eklendi!';
     res.json({ success: true, message: 'Duyuru başarıyla eklendi!' });
   } catch (error) {
@@ -7728,6 +8442,112 @@ app.get('/iletisim', async (req, res) => {
     console.error('Iletisim hatasi:', error);
     res.status(500).send('Bir hata olustu!');
   }
+});
+
+// ===== Yasal sayfalar (Gizlilik Politikası / Kullanım Koşulları) =====
+// kurumsal_sayfalar tablosundan okur; yoksa varsayılan içerikle bir kez ekler
+// (böylece admin panelinden de düzenlenebilir olur).
+async function yasalSayfaGoster(req, res, slug, sayfaAdi, baslik, icerik, seoAciklama) {
+  try {
+    let sayfa = await dbGet('SELECT * FROM kurumsal_sayfalar WHERE sayfa_slug = ?', [slug]).catch(() => null);
+    if (!sayfa) {
+      await dbRun(
+        `INSERT OR IGNORE INTO kurumsal_sayfalar (sayfa_slug, sayfa_adi, baslik, icerik, seo_baslik, seo_aciklama, aktif, sira)
+         VALUES (?, ?, ?, ?, ?, ?, 1, 90)`,
+        [slug, sayfaAdi, baslik, icerik, baslik, seoAciklama]
+      ).catch(() => {});
+      sayfa = await dbGet('SELECT * FROM kurumsal_sayfalar WHERE sayfa_slug = ?', [slug]).catch(() => null);
+    }
+    // DB'ye hiç yazılamadıysa (ör. izin) bellek içi nesneyle devam et
+    if (!sayfa) sayfa = { sayfa_slug: slug, sayfa_adi: sayfaAdi, baslik, seo_baslik: baslik, seo_aciklama: seoAciklama, icerik, aktif: 1 };
+
+    res.render('kurumsal-sayfa', {
+      title: sayfa.seo_baslik || sayfa.baslik,
+      sayfa,
+      user: req.session.userId ? { type: req.session.userType } : null,
+    });
+  } catch (error) {
+    console.error('Yasal sayfa hatasi (' + slug + '):', error);
+    res.status(500).send('Bir hata olustu!');
+  }
+}
+
+const GIZLILIK_ICERIK = `
+<p class="text-muted">Son güncelleme: 30 Haziran 2026</p>
+<p>Bu Gizlilik Politikası, <strong>Adana Sınav Kulübü</strong> web sitesi ve mobil veli uygulamasını ("Uygulama") kullanan velilerimizin ve öğrencilerimizin kişisel verilerinin 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") kapsamında nasıl işlendiğini açıklar.</p>
+
+<h3 class="mt-4">1. Toplanan Veriler</h3>
+<ul>
+  <li><strong>Hesap bilgileri:</strong> Ad soyad, T.C. kimlik numarası, telefon numarası.</li>
+  <li><strong>Öğrenci bilgileri:</strong> Öğrencinin adı soyadı, sınıfı, okulu ve (varsa) T.C. kimlik numarası.</li>
+  <li><strong>Sınav verileri:</strong> Öğrencinin katıldığı sınavlar ve sonuç karneleri.</li>
+  <li><strong>Bildirim verisi:</strong> Mobil bildirim göndermek için cihazınıza ait push bildirim kimliği (token). Bu kimlik yalnızca siz bildirim iznini açtığınızda toplanır.</li>
+</ul>
+
+<h3 class="mt-4">2. Verilerin İşlenme Amacı</h3>
+<ul>
+  <li>Sınav takvimi ve sonuçlarının velilere güvenli şekilde sunulması,</li>
+  <li>Sınav sonucu açıklandığında ve duyurularda bilgilendirme yapılması,</li>
+  <li>Hesap güvenliğinin sağlanması ve destek hizmetlerinin yürütülmesi.</li>
+</ul>
+
+<h3 class="mt-4">3. Verilerin Paylaşımı</h3>
+<p>Kişisel verileriniz üçüncü kişilerle pazarlama amacıyla paylaşılmaz. Yalnızca hizmetin işleyişi için gerekli teknik altyapı sağlayıcılarıyla sınırlı şekilde paylaşılabilir:</p>
+<ul>
+  <li><strong>Push bildirim altyapısı (Expo / Apple / Google):</strong> Yalnızca bildirim iletimi için cihaz kimliği.</li>
+  <li><strong>WhatsApp bilgilendirme:</strong> Bilgilendirme mesajları için telefon numarası.</li>
+</ul>
+
+<h3 class="mt-4">4. Verilerin Saklanması ve Güvenliği</h3>
+<p>Veriler, yetkisiz erişime karşı korunan sunucularda saklanır. Şifreler geri döndürülemez şekilde şifrelenir. Veriler, ilgili mevzuatın gerektirdiği süre boyunca veya hesabınız aktif olduğu sürece tutulur.</p>
+
+<h3 class="mt-4">5. KVKK Haklarınız</h3>
+<p>KVKK'nın 11. maddesi uyarınca; verilerinize erişme, düzeltilmesini veya silinmesini isteme, işlenmesine itiraz etme haklarına sahipsiniz. Bu haklarınızı kullanmak için bizimle iletişime geçebilirsiniz.</p>
+<p>Mobil uygulamada bildirim iznini istediğiniz zaman cihaz ayarlarından kapatabilir, hesabınızdan çıkış yaparak cihaz bildirim kimliğinizin kaldırılmasını sağlayabilirsiniz.</p>
+
+<h3 class="mt-4">6. İletişim</h3>
+<p>Sorularınız ve talepleriniz için: <strong>WhatsApp / Telefon:</strong> 0 (541) 190 24 25</p>
+`;
+
+const KULLANIM_ICERIK = `
+<p class="text-muted">Son güncelleme: 30 Haziran 2026</p>
+<p>Bu Kullanım Koşulları, <strong>Adana Sınav Kulübü</strong> web sitesi ve mobil veli uygulamasının ("Uygulama") kullanımına ilişkin kuralları belirler. Uygulamayı kullanarak bu koşulları kabul etmiş sayılırsınız.</p>
+
+<h3 class="mt-4">1. Hesap ve Kullanım</h3>
+<ul>
+  <li>Uygulama, kuruma kayıtlı öğrencilerin velilerinin kullanımı içindir.</li>
+  <li>Hesap bilgilerinizin (T.C. kimlik no ve şifre) gizliliğinden siz sorumlusunuz.</li>
+  <li>İlk girişte şifrenizi değiştirmeniz önerilir; şifrenizi kimseyle paylaşmayınız.</li>
+</ul>
+
+<h3 class="mt-4">2. İçeriğin Kullanımı</h3>
+<ul>
+  <li>Sınav sonuç karneleri ve diğer içerikler yalnızca kişisel bilgilendirme amaçlıdır.</li>
+  <li>İçerikler izinsiz çoğaltılamaz, dağıtılamaz veya ticari amaçla kullanılamaz.</li>
+  <li>Uygulamayı yalnızca yasalara uygun ve amacına uygun şekilde kullanmayı kabul edersiniz.</li>
+</ul>
+
+<h3 class="mt-4">3. Bildirimler</h3>
+<p>Bildirim izni verdiğinizde, sınav sonucu ve duyuru gibi konularda mobil bildirim alabilirsiniz. Bildirimleri istediğiniz zaman cihaz ayarlarından kapatabilirsiniz.</p>
+
+<h3 class="mt-4">4. Sorumluluğun Sınırlandırılması</h3>
+<p>Uygulamadaki bilgiler özenle hazırlanır; ancak teknik aksaklıklar veya veri giriş hatalarından doğabilecek dolaylı zararlardan kurum sorumlu tutulamaz. Hizmet kesintisiz olarak garanti edilmez.</p>
+
+<h3 class="mt-4">5. Değişiklikler</h3>
+<p>Bu koşullar zaman zaman güncellenebilir. Güncel sürüm bu sayfada yayımlandığı an yürürlüğe girer.</p>
+
+<h3 class="mt-4">6. İletişim</h3>
+<p>Sorularınız için: <strong>WhatsApp / Telefon:</strong> 0 (541) 190 24 25</p>
+`;
+
+app.get('/gizlilik-politikasi', async (req, res) => {
+  await yasalSayfaGoster(req, res, 'gizlilik-politikasi', 'Gizlilik Politikası', 'Gizlilik Politikası',
+    GIZLILIK_ICERIK, 'Adana Sınav Kulübü gizlilik politikası ve kişisel verilerin korunması (KVKK) bilgilendirmesi.');
+});
+
+app.get('/kullanim-kosullari', async (req, res) => {
+  await yasalSayfaGoster(req, res, 'kullanim-kosullari', 'Kullanım Koşulları', 'Kullanım Koşulları',
+    KULLANIM_ICERIK, 'Adana Sınav Kulübü web sitesi ve mobil uygulama kullanım koşulları.');
 });
 
 app.get('/sinav-merkezleri', async (req, res) => {
@@ -9171,11 +9991,22 @@ app.post('/kurum/sinav-ekle', requireAuth, requireRole(['kurum_yonetici', 'kurum
     }
     
     await dbRun(
-      `INSERT INTO sinavlar (ad, tarih, sinif, aciklama, durum, katilimci_sayisi, sonuc_yuklendi, sonuclar_aciklandi) 
+      `INSERT INTO sinavlar (ad, tarih, sinif, aciklama, durum, katilimci_sayisi, sonuc_yuklendi, sonuclar_aciklandi)
        VALUES (?, ?, ?, ?, 'taslak', 0, 0, 0)`,
       [ad.trim(), tarih, sinif || null, aciklama || null]
     );
-    
+
+    // Velilere yeni sınav push'u (arka planda) — "push_gonder" işaretliyse
+    if (req.body.push_gonder) {
+      let tarihStr = tarih;
+      try { tarihStr = new Date(tarih).toLocaleDateString('tr-TR'); } catch (e) {}
+      tumVeliPushTokenlari().then((alicilar) => {
+        if (!alicilar.length) return;
+        return veliPushGonder(alicilar, 'Yeni Sınav', `${ad.trim()} — ${tarihStr}${sinif ? ' (' + sinif + ')' : ''}`, { tip: 'yeni_sinav' })
+          .then(r => console.log(`   Yeni sınav push: ${r.gonderilen}/${alicilar.length}`));
+      }).catch(e => console.error('   Yeni sınav push hatasi:', e.message));
+    }
+
     req.session.success = 'Sinav eklendi!';
     res.redirect('/kurum/sinavlar');
   } catch (error) {

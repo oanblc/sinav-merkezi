@@ -73,3 +73,6 @@ modify.js
 modify2.js
 modify3.js
 
+
+# Mobil uygulama (ayrı Expo projesi - backend deploy'una dahil değil)
+mobile-app/
