@@ -30,11 +30,6 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'adana-sinav-kulubu-stable-
 const JWT_SECRET = process.env.JWT_SECRET || SESSION_SECRET;
 const ENABLE_ADMIN_RESET = process.env.ENABLE_ADMIN_RESET === 'true';
 
-// Telefon/TC normalize: yalnızca rakam; telefon karşılaştırmaları için son 10 hane.
-// (Türk telefonları: 05XX... veya +905XX... → son 10 hane = abone no)
-function sadeceRakam(v) { return String(v == null ? '' : v).replace(/\D/g, ''); }
-function normTel(v) { const d = sadeceRakam(v); return d.length > 10 ? d.slice(-10) : d; }
-
 if (!SESSION_SECRET) {
   console.error(' HATA: SESSION_SECRET environment variable is required!');
   console.error(' Railway Dashboard → Your Project → Variables → Add:');
@@ -2089,23 +2084,13 @@ app.post('/api/veli/giris', async (req, res) => {
       return res.status(400).json({ success: false, message: 'TC Kimlik No ve şifre gerekli.' });
     }
 
-    // 1) Önce kullanıcı adı (TC) ile bul (.0 ekli eski format dahil)
-    let user = await dbGet(
+    // Kullanıcıyı TC ile bul (.0 ekli eski format dahil), sadece veli
+    const user = await dbGet(
       "SELECT id, username, password_hash, ad_soyad, telefon, password_changed FROM users WHERE (username = ? OR username = ?) AND user_type = 'veli'",
       [tc, tc + '.0']
     );
-    // 2) Bulunamadıysa TELEFON ile dene (telefon-merkezli giriş)
     if (!user) {
-      const inp10 = normTel(tc);
-      if (inp10.length === 10) {
-        const veliler = await dbAll(
-          "SELECT id, username, password_hash, ad_soyad, telefon, password_changed FROM users WHERE user_type = 'veli' AND telefon IS NOT NULL"
-        ).catch(() => []);
-        user = veliler.find(u => normTel(u.telefon) === inp10) || null;
-      }
-    }
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'TC/telefon veya şifre hatalı.' });
+      return res.status(401).json({ success: false, message: 'TC Kimlik No veya şifre hatalı.' });
     }
 
     const eslesti = await bcrypt.compare(sifre, user.password_hash);
@@ -2289,19 +2274,15 @@ app.get('/api/veli/takvim', veliApiAuth, async (req, res) => {
       WHERE o.veli_id = ?
     `, [veliId]).catch(() => []);
 
-    // Kurum öğrencilerinin sınavları — veli_id VEYA veli_telefon VEYA (eski) TC=kullanıcı adı
+    // Kurum öğrencilerinin sınavları (TC = kullanıcı adı)
     const kurumTakvim = await dbAll(`
       SELECT s.id as sinav_id, s.ad as sinav_adi, s.tarih, s.sinif, s.ders, s.aciklama,
              ok.ogrenci_adi_soyadi as ogrenci_ad_soyad, 'kurum' as kaynak
       FROM sinav_katilimcilari sk
       INNER JOIN sinavlar s ON sk.sinav_id = s.id
       INNER JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id AND sk.ogrenci_kaynak = 'kurum'
-      WHERE (
-        ok.veli_id = ?
-        OR REPLACE(CAST(ok.veli_telefon AS TEXT), '.0', '') = (SELECT REPLACE(CAST(telefon AS TEXT), '.0', '') FROM users WHERE id = ?)
-        OR REPLACE(CAST(ok.tc_kimlik_no AS TEXT), '.0', '') = (SELECT username FROM users WHERE id = ?)
-      )
-    `, [veliId, veliId, veliId]).catch(() => []);
+      WHERE REPLACE(CAST(ok.tc_kimlik_no AS TEXT), '.0', '') = (SELECT username FROM users WHERE id = ?)
+    `, [veliId]).catch(() => []);
 
     const tum = [...veliTakvim, ...kurumTakvim]
       .filter(t => t.tarih)
@@ -2361,12 +2342,8 @@ app.get('/api/veli/sonuclar', veliApiAuth, async (req, res) => {
       INNER JOIN sinavlar s ON sk.sinav_id = s.id
       INNER JOIN ogrenci_kayitlari ok ON sk.ogrenci_id = ok.id
       WHERE sk.ogrenci_kaynak='kurum' AND s.sonuc_yayinlandi=1 AND sk.pdf_path IS NOT NULL
-        AND (
-          ok.veli_id = ?
-          OR REPLACE(CAST(ok.veli_telefon AS TEXT),'.0','') = (SELECT REPLACE(CAST(telefon AS TEXT),'.0','') FROM users WHERE id=?)
-          OR REPLACE(CAST(ok.tc_kimlik_no AS TEXT),'.0','') = (SELECT username FROM users WHERE id=?)
-        )
-    `, [veliId, veliId, veliId]).catch(() => []);
+        AND REPLACE(CAST(ok.tc_kimlik_no AS TEXT),'.0','') = (SELECT username FROM users WHERE id=?)
+    `, [veliId]).catch(() => []);
 
     const tum = [...veliSonuc, ...kurumSonuc]
       .filter(r => r.sinav_tarihi)
@@ -2402,14 +2379,9 @@ app.get('/api/veli/sonuc-pdf/:katilimciId', veliApiAuth, async (req, res) => {
       const o = await dbGet('SELECT veli_id FROM ogrenciler WHERE id = ?', [k.ogrenci_id]);
       yetki = o && o.veli_id === req.veli.id;
     } else {
-      const u = await dbGet('SELECT telefon, username FROM users WHERE id = ?', [req.veli.id]);
-      const o = await dbGet('SELECT veli_id, veli_telefon, tc_kimlik_no FROM ogrenci_kayitlari WHERE id = ?', [k.ogrenci_id]);
-      // Eklemeli yetki: veli_id eşleşmesi VEYA telefon (son 10) VEYA (eski) öğrenci TC = kullanıcı adı
-      yetki = !!(o && u && (
-        (o.veli_id && o.veli_id === req.veli.id) ||
-        (normTel(u.telefon) && normTel(u.telefon) === normTel(o.veli_telefon)) ||
-        (String(u.username).replace('.0','') === String(o.tc_kimlik_no || '').replace('.0',''))
-      ));
+      const u = await dbGet('SELECT telefon FROM users WHERE id = ?', [req.veli.id]);
+      const o = await dbGet('SELECT veli_telefon FROM ogrenci_kayitlari WHERE id = ?', [k.ogrenci_id]);
+      yetki = o && u && String(u.telefon).replace('.0', '') === String(o.veli_telefon || '').replace('.0', '');
     }
     if (!yetki) return res.status(403).json({ success: false, message: 'Bu sonuca erişim yetkiniz yok.' });
 
@@ -3516,20 +3488,10 @@ app.post('/login', loginLimiter, async (req, res) => {
     // Kullanıcı adı VEYA e-posta ile giriş (e-posta küçük harfe normalize)
     const kimlik = String(username || '').trim();
     const kimlikLower = kimlik.toLowerCase();
-    let user = await dbGet(
+    const user = await dbGet(
       'SELECT * FROM users WHERE username = ? OR LOWER(email) = ?',
       [kimlik, kimlikLower]
     );
-    // Bulunamadıysa ve girilen bir telefon ise → veli telefonu ile dene
-    if (!user) {
-      const inp10 = normTel(kimlik);
-      if (inp10.length === 10) {
-        const veliler = await dbAll(
-          "SELECT * FROM users WHERE user_type = 'veli' AND telefon IS NOT NULL"
-        ).catch(() => []);
-        user = veliler.find(u => normTel(u.telefon) === inp10) || null;
-      }
-    }
     
     console.log('\n GIRI DENEMESI:');
     console.log('   Kullanici Adi:', username);
@@ -9278,67 +9240,39 @@ app.post('/kurum/veli-hesap-olustur-tekil', requireAuth, async (req, res) => {
     if (!ogrenci) {
       return res.json({ success: false, message: 'Öğrenci kaydı bulunamadı!' });
     }
-
-    // TELEFON-MERKEZLİ: hesap velinin telefonuna bağlıdır, şifre = İLK kaydedilen çocuğun TC'si
-    const telRaw = (ogrenci.veli_telefon || ogrenci.telefon || '').toString();
-    const tel10 = normTel(telRaw);
-    if (tel10.length !== 10) {
-      return res.json({ success: false, message: 'Bu velinin geçerli bir telefonu yok — hesap oluşturulamaz.' });
-    }
-    const telTemiz = telRaw.endsWith('.0') ? telRaw.replace('.0', '') : telRaw;
-
-    // Bu telefona ait TÜM kurum öğrencileri → ilk kaydedilen (en küçük id) ve TC'si olan
-    const kardesler = await dbAll(
-      `SELECT id, tc_kimlik_no FROM ogrenci_kayitlari
-       WHERE REPLACE(CAST(veli_telefon AS TEXT),'.0','') IN (?, ?)
-       ORDER BY id ASC`,
-      [telTemiz, tel10]
-    ).catch(() => []);
-    const ilkCocuk = kardesler.find(k => k.tc_kimlik_no && String(k.tc_kimlik_no).replace('.0','').trim());
-    if (!ilkCocuk) {
-      return res.json({ success: false, message: 'Bu velinin TC\'si kayıtlı bir öğrencisi yok — şifre oluşturulamaz.' });
-    }
-    const ilkTc = String(ilkCocuk.tc_kimlik_no).replace('.0', '').trim();
-
-    // Mevcut veli hesabını bul: telefonla VEYA (eski) çocuk TC'leriyle
-    const veliler = await dbAll(
-      "SELECT id, username, telefon FROM users WHERE user_type='veli'"
-    ).catch(() => []);
-    const tcSet = new Set(kardesler.map(k => String(k.tc_kimlik_no || '').replace('.0','').trim()).filter(Boolean));
-    let veliHesap = veliler.find(u => normTel(u.telefon) === tel10) ||
-                    veliler.find(u => tcSet.has(String(u.username).replace('.0','').trim())) || null;
-
-    const hashedPassword = await bcrypt.hash(ilkTc, 10);
-
-    if (veliHesap) {
-      // Şifreyi (yeniden) oluştur = ilk çocuğun TC'si; telefon ve aktif durumu güncelle
-      await dbRun(
-        'UPDATE users SET password_hash = ?, password_changed = 0, telefon = COALESCE(NULLIF(telefon, \'\'), ?) WHERE id = ?',
-        [hashedPassword, telTemiz, veliHesap.id]
-      );
-    } else {
-      // Yeni hesap: kullanıcı adı = telefon (rakam), şifre = ilk çocuk TC
-      await dbRun(
-        `INSERT INTO users (username, email, password_hash, user_type, ad_soyad, telefon, password_changed)
-         VALUES (?, ?, ?, 'veli', ?, ?, 0)`,
-        [tel10, null, hashedPassword, ogrenci.veli_adi || `${ogrenci.ogrenci_adi_soyadi} Velisi`, telTemiz]
-      );
-      veliHesap = await dbGet('SELECT id FROM users WHERE username = ?', [tel10]);
+    if (!ogrenci.tc_kimlik_no || ogrenci.tc_kimlik_no === '') {
+      return res.json({ success: false, message: 'Bu öğrencinin TC Kimlik No\'su kayıtlı değil — hesap oluşturulamaz.' });
     }
 
-    // Bu telefona ait tüm kurum öğrencilerini bu hesaba bağla
+    // Zaten var mı? (kullanıcı adı = TC)
+    const mevcut = await dbGet('SELECT id FROM users WHERE username = ?', [ogrenci.tc_kimlik_no]);
+    if (mevcut) {
+      // Öğrenci kaydına veli_id'yi bağla (eksikse) ve "zaten var" bilgisini dön
+      await dbRun('UPDATE ogrenci_kayitlari SET veli_id = ? WHERE id = ? AND (veli_id IS NULL OR veli_id = 0)', [mevcut.id, ogrenci.id]);
+      return res.json({ success: true, zatenVardi: true, username: ogrenci.tc_kimlik_no, message: 'Bu veli için hesap zaten mevcut.' });
+    }
+
+    // Yeni hesap: kullanıcı adı = TC, ilk şifre = TC, e-posta = NULL
+    const hashedPassword = await bcrypt.hash(ogrenci.tc_kimlik_no, 10);
     await dbRun(
-      `UPDATE ogrenci_kayitlari SET veli_id = ? WHERE REPLACE(CAST(veli_telefon AS TEXT),'.0','') IN (?, ?)`,
-      [veliHesap.id, telTemiz, tel10]
-    ).catch(() => {});
+      `INSERT INTO users (username, email, password_hash, user_type, ad_soyad, telefon, password_changed)
+       VALUES (?, ?, ?, 'veli', ?, ?, 0)`,
+      [
+        ogrenci.tc_kimlik_no,
+        null,
+        hashedPassword,
+        ogrenci.veli_adi || `${ogrenci.ogrenci_adi_soyadi} Velisi`,
+        ogrenci.veli_telefon || ogrenci.telefon
+      ]
+    );
+    const veliUser = await dbGet('SELECT id FROM users WHERE username = ?', [ogrenci.tc_kimlik_no]);
+    await dbRun('UPDATE ogrenci_kayitlari SET veli_id = ? WHERE id = ?', [veliUser.id, ogrenci.id]);
 
     res.json({
       success: true,
-      username: telTemiz,           // giriş = telefon
-      sifre: ilkTc,                 // ilk şifre = ilk çocuğun TC'si
-      ilk_cocuk_id: ilkCocuk.id,
-      cocuk_sayisi: kardesler.length,
-      message: 'Veli hesabı hazır. Giriş: telefon, şifre: ilk çocuğun TC\'si (ilk girişte değişir).'
+      username: ogrenci.tc_kimlik_no,
+      sifre: ogrenci.tc_kimlik_no,
+      message: 'Veli hesabı oluşturuldu!'
     });
   } catch (error) {
     console.error('Tekil veli hesap olusturma hatasi:', error);
