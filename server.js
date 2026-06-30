@@ -3483,9 +3483,15 @@ app.get('/login', (req, res) => {
 
 app.post('/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body;
-  
+
   try {
-    const user = await dbGet('SELECT * FROM users WHERE username = ?', [username]);
+    // Kullanıcı adı VEYA e-posta ile giriş (e-posta küçük harfe normalize)
+    const kimlik = String(username || '').trim();
+    const kimlikLower = kimlik.toLowerCase();
+    const user = await dbGet(
+      'SELECT * FROM users WHERE username = ? OR LOWER(email) = ?',
+      [kimlik, kimlikLower]
+    );
     
     console.log('\n GIRI DENEMESI:');
     console.log('   Kullanici Adi:', username);
@@ -3598,7 +3604,7 @@ app.get('/register', (req, res) => {
 });
 
 app.post('/register', async (req, res) => {
-  const { username, email, password, user_type, kvkk_onay } = req.body;
+  const { email, password, ad_soyad, telefon, kvkk_onay } = req.body;
 
   try {
     // Yasal metinlerin kabulü zorunlu
@@ -3607,23 +3613,35 @@ app.post('/register', async (req, res) => {
       return res.redirect('/register');
     }
 
-    // Kullanici adi kontrolu
-    const existingUser = await dbGet('SELECT * FROM users WHERE username = ? OR email = ?', [username, email]);
-    if (existingUser) {
-      req.session.error = existingUser.username === username 
-        ? 'Bu kullanici adi zaten kullaniliyor!'
-        : 'Bu e-posta adresi zaten kullaniliyor!';
+    // Ad soyad ve telefon zorunlu
+    if (!ad_soyad || !ad_soyad.trim() || !telefon || !telefon.trim()) {
+      req.session.error = 'Ad soyad ve telefon zorunludur.';
       return res.redirect('/register');
     }
-    
-    // ifreyi hashle
+
+    const emailNorm = String(email || '').trim().toLowerCase();
+    if (!emailNorm) {
+      req.session.error = 'Geçerli bir e-posta giriniz.';
+      return res.redirect('/register');
+    }
+
+    // Tek hesap: kullanıcı adı = e-posta (NOT NULL UNIQUE şartı için)
+    const existingUser = await dbGet('SELECT id FROM users WHERE email = ? OR username = ?', [emailNorm, emailNorm]);
+    if (existingUser) {
+      req.session.error = 'Bu e-posta adresi zaten kullanılıyor!';
+      return res.redirect('/register');
+    }
+
+    // Şifreyi hashle
     const passwordHash = await bcrypt.hash(password, 10);
-    
-    // Kullaniciyi kaydet
-    await dbRun('INSERT INTO users (username, email, password_hash, user_type) VALUES (?, ?, ?, ?)', 
-      [username, email, passwordHash, user_type]);
-    
-    req.session.success = 'Kayit basarili! Giris yapabilirsiniz.';
+
+    // Veli olarak kaydet (kayıt yalnızca veli; rehber hesabı kurum oluşturur)
+    await dbRun(
+      'INSERT INTO users (username, email, password_hash, user_type, ad_soyad, telefon, password_changed) VALUES (?, ?, ?, ?, ?, ?, 1)',
+      [emailNorm, emailNorm, passwordHash, 'veli', ad_soyad.trim(), telefon.trim()]
+    );
+
+    req.session.success = 'Kayit basarili! E-posta ve şifrenizle giriş yapabilirsiniz.';
     res.redirect('/login');
   } catch (error) {
     console.error('Register hatasi:', error);
