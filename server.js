@@ -3598,9 +3598,15 @@ app.get('/register', (req, res) => {
 });
 
 app.post('/register', async (req, res) => {
-  const { username, email, password, user_type } = req.body;
-  
+  const { username, email, password, user_type, kvkk_onay } = req.body;
+
   try {
+    // Yasal metinlerin kabulü zorunlu
+    if (!kvkk_onay) {
+      req.session.error = 'Kayıt için Gizlilik Politikası ve Kullanım Koşullarını kabul etmelisiniz.';
+      return res.redirect('/register');
+    }
+
     // Kullanici adi kontrolu
     const existingUser = await dbGet('SELECT * FROM users WHERE username = ? OR email = ?', [username, email]);
     if (existingUser) {
