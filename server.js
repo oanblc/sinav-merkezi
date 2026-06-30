@@ -4224,41 +4224,148 @@ app.post('/kurum/ogrenci-kayit-sil/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Silinecek ogrencinin TC'sini al (veli hesabi kontrolu icin)
-    const ogrenci = await dbGet('SELECT tc_kimlik_no FROM ogrenci_kayitlari WHERE id = ?', [id]);
-    const tcKimlik = ogrenci?.tc_kimlik_no?.toString().replace('.0', '').trim();
+    // Silinecek ogrencinin TAM kaydini al (arsivlemek icin)
+    const ogrenci = await dbGet('SELECT * FROM ogrenci_kayitlari WHERE id = ?', [id]);
+    if (!ogrenci) {
+      return res.json({ success: false, message: 'Öğrenci kaydı bulunamadı!' });
+    }
+    const tcKimlik = ogrenci.tc_kimlik_no?.toString().replace('.0', '').trim();
 
-    // Ogrenciyi sil
-    await dbRun('DELETE FROM ogrenci_kayitlari WHERE id = ?', [id]);
-    // Bu ogrenciye ait odeme gecmisini de temizle
-    await dbRun('DELETE FROM odeme_gecmisi WHERE ogrenci_kayit_id = ?', [id]);
+    // Odeme gecmisini al (arsive ekle)
+    const odemeGecmisi = await dbAll('SELECT * FROM odeme_gecmisi WHERE ogrenci_kayit_id = ?', [id]);
 
-    // TC varsa, bu TC ile baska ogrenci var mi kontrol et
+    // Veli hesabi var mi? (varsa arsive username olarak yaz)
+    let veliUsername = null;
     let veliSilindi = false;
     if (tcKimlik) {
       const digerOgrenci = await dbGet(
-        'SELECT id FROM ogrenci_kayitlari WHERE tc_kimlik_no = ? OR tc_kimlik_no = ?',
-        [tcKimlik, tcKimlik + '.0']
+        'SELECT id FROM ogrenci_kayitlari WHERE (tc_kimlik_no = ? OR tc_kimlik_no = ?) AND id != ?',
+        [tcKimlik, tcKimlik + '.0', id]
       );
-
-      // Baska ogrenci yoksa veli hesabini sil
       if (!digerOgrenci) {
         const veli = await dbGet('SELECT id FROM users WHERE username = ? AND user_type = ?', [tcKimlik, 'veli']);
-        if (veli) {
-          await dbRun('DELETE FROM users WHERE id = ?', [veli.id]);
-          console.log(`Veli hesabi silindi (TC: ${tcKimlik}) - baska ogrencisi kalmadi`);
-          veliSilindi = true;
-        }
+        if (veli) veliUsername = tcKimlik;
       }
     }
 
+    // ARSIVE TASI
+    await dbRun(
+      `INSERT INTO ogrenci_arsiv (orijinal_id, sinif, ogrenci_adi_soyadi, telefon, tc_kimlik_no,
+        veli_adi, veli_telefon, tutar, odenen_tutar, odeme_durumu, odeme_turu, edessis_kaydi, taksit,
+        veli_username, odeme_gecmisi_json, silen)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [ogrenci.id, ogrenci.sinif, ogrenci.ogrenci_adi_soyadi, ogrenci.telefon, ogrenci.tc_kimlik_no,
+       ogrenci.veli_adi, ogrenci.veli_telefon, ogrenci.tutar, ogrenci.odenen_tutar, ogrenci.odeme_durumu,
+       ogrenci.odeme_turu, ogrenci.edessis_kaydi, ogrenci.taksit,
+       veliUsername, JSON.stringify(odemeGecmisi || []), req.session.username || 'kurum']
+    );
+
+    // Ana tablolardan sil
+    await dbRun('DELETE FROM ogrenci_kayitlari WHERE id = ?', [id]);
+    await dbRun('DELETE FROM odeme_gecmisi WHERE ogrenci_kayit_id = ?', [id]);
+    if (veliUsername) {
+      await dbRun('DELETE FROM users WHERE username = ? AND user_type = ?', [veliUsername, 'veli']);
+      veliSilindi = true;
+      console.log(`Veli hesabi arsive alindi ve silindi (TC: ${veliUsername})`);
+    }
+
     const mesaj = veliSilindi
-      ? 'Ogrenci kaydi ve veli hesabi silindi!'
-      : 'Ogrenci kaydi silindi!';
+      ? 'Öğrenci kaydı ve veli hesabı arşive taşındı!'
+      : 'Öğrenci kaydı arşive taşındı!';
     res.json({ success: true, message: mesaj });
   } catch (error) {
     console.error('Ogrenci kayit silme hatasi:', error);
     res.json({ success: false, message: 'Silme sırasında bir hata oluştu!' });
+  }
+});
+
+// ============ ARSIV (Silinen ogrenci/veli kayitlari) ============
+
+// Arsiv sayfasi
+app.get('/kurum/arsiv', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
+  try {
+    const arsiv = await dbAll('SELECT * FROM ogrenci_arsiv ORDER BY silinme_tarihi DESC');
+    res.render('kurum/arsiv', {
+      title: 'Arşiv - Kurum Paneli',
+      arsiv: arsiv,
+      user: { username: req.session.username, type: req.session.userType }
+    });
+  } catch (error) {
+    console.error('Arsiv sayfasi hatasi:', error);
+    res.status(500).send('Bir hata oluştu!');
+  }
+});
+
+// Arsivden geri yukle
+app.post('/kurum/arsiv-geri-yukle/:arsivId', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
+  try {
+    const a = await dbGet('SELECT * FROM ogrenci_arsiv WHERE arsiv_id = ?', [req.params.arsivId]);
+    if (!a) return res.json({ success: false, message: 'Arşiv kaydı bulunamadı!' });
+
+    // Ayni TC ile aktif ogrenci varsa geri yukleme (mukerrer olmasin)
+    if (a.tc_kimlik_no) {
+      const tcTemiz = a.tc_kimlik_no.toString().replace('.0', '').trim();
+      const aktif = await dbGet('SELECT id FROM ogrenci_kayitlari WHERE tc_kimlik_no = ? OR tc_kimlik_no = ?', [tcTemiz, tcTemiz + '.0']);
+      if (aktif) return res.json({ success: false, message: 'Bu TC ile aktif bir öğrenci zaten var — geri yüklenemez.' });
+    }
+
+    // Ogrenci kaydini geri ekle
+    const r = await dbRun(
+      `INSERT INTO ogrenci_kayitlari (sinif, ogrenci_adi_soyadi, telefon, tc_kimlik_no,
+        veli_adi, veli_telefon, tutar, odenen_tutar, odeme_durumu, odeme_turu, edessis_kaydi, taksit)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [a.sinif, a.ogrenci_adi_soyadi, a.telefon, a.tc_kimlik_no, a.veli_adi, a.veli_telefon,
+       a.tutar, a.odenen_tutar, a.odeme_durumu, a.odeme_turu, a.edessis_kaydi, a.taksit]
+    );
+    const yeniId = r.lastID;
+
+    // Odeme gecmisini geri yukle
+    try {
+      const odemeler = JSON.parse(a.odeme_gecmisi_json || '[]');
+      for (const o of odemeler) {
+        await dbRun(
+          'INSERT INTO odeme_gecmisi (ogrenci_kayit_id, tutar, odeme_tarihi, aciklama) VALUES (?, ?, ?, ?)',
+          [yeniId, o.tutar ?? 0, o.odeme_tarihi ?? null, o.aciklama ?? null]
+        );
+      }
+    } catch (e) { console.log('Odeme gecmisi geri yukleme atlandi:', e.message); }
+
+    // Veli hesabini geri ac (varsa ve henuz yoksa)
+    let veliGeri = false;
+    if (a.veli_username) {
+      const tc = a.veli_username.toString().replace('.0', '').trim();
+      const mevcut = await dbGet('SELECT id FROM users WHERE username = ?', [tc]);
+      if (!mevcut) {
+        const hash = await bcrypt.hash(tc, 10);
+        await dbRun(
+          `INSERT INTO users (username, email, password_hash, user_type, ad_soyad, telefon, password_changed)
+           VALUES (?, NULL, ?, 'veli', ?, ?, 0)`,
+          [tc, hash, a.veli_adi || (a.ogrenci_adi_soyadi + ' Velisi'), a.veli_telefon || a.telefon]
+        );
+        veliGeri = true;
+      }
+      const vu = await dbGet('SELECT id FROM users WHERE username = ?', [tc]);
+      if (vu) await dbRun('UPDATE ogrenci_kayitlari SET veli_id = ? WHERE id = ?', [vu.id, yeniId]);
+    }
+
+    // Arsivden kaldir
+    await dbRun('DELETE FROM ogrenci_arsiv WHERE arsiv_id = ?', [req.params.arsivId]);
+
+    res.json({ success: true, message: 'Kayıt geri yüklendi' + (veliGeri ? ' (veli hesabı da yeniden açıldı).' : '.') });
+  } catch (error) {
+    console.error('Arsiv geri yukleme hatasi:', error);
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
+  }
+});
+
+// Arsivden kalici sil
+app.post('/kurum/arsiv-kalici-sil/:arsivId', requireAuth, requireRole(['kurum_yonetici', 'kurum_admin']), async (req, res) => {
+  try {
+    await dbRun('DELETE FROM ogrenci_arsiv WHERE arsiv_id = ?', [req.params.arsivId]);
+    res.json({ success: true, message: 'Kayıt arşivden kalıcı olarak silindi.' });
+  } catch (error) {
+    console.error('Arsiv kalici silme hatasi:', error);
+    res.json({ success: false, message: 'Bir hata oluştu: ' + error.message });
   }
 });
 
@@ -4417,6 +4524,27 @@ app.post('/kurum/ogrenci-kayitlari-tumunu-sil', requireAuth, async (req, res) =>
       SELECT DISTINCT tc_kimlik_no FROM ogrenci_kayitlari
       WHERE tc_kimlik_no IS NOT NULL AND tc_kimlik_no != ''
     `);
+
+    // Once TUM ogrencileri ARSIVE TASI (geri yuklenebilsin)
+    const tumOgrenciler = await dbAll('SELECT * FROM ogrenci_kayitlari');
+    for (const o of tumOgrenciler) {
+      const tc = o.tc_kimlik_no?.toString().replace('.0', '').trim();
+      let veliUsername = null;
+      if (tc) {
+        const veli = await dbGet('SELECT id FROM users WHERE username = ? AND user_type = ?', [tc, 'veli']);
+        if (veli) veliUsername = tc;
+      }
+      const odemeGecmisi = await dbAll('SELECT * FROM odeme_gecmisi WHERE ogrenci_kayit_id = ?', [o.id]);
+      await dbRun(
+        `INSERT INTO ogrenci_arsiv (orijinal_id, sinif, ogrenci_adi_soyadi, telefon, tc_kimlik_no,
+          veli_adi, veli_telefon, tutar, odenen_tutar, odeme_durumu, odeme_turu, edessis_kaydi, taksit,
+          veli_username, odeme_gecmisi_json, silen)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [o.id, o.sinif, o.ogrenci_adi_soyadi, o.telefon, o.tc_kimlik_no, o.veli_adi, o.veli_telefon,
+         o.tutar, o.odenen_tutar, o.odeme_durumu, o.odeme_turu, o.edessis_kaydi, o.taksit,
+         veliUsername, JSON.stringify(odemeGecmisi || []), req.session.username || 'kurum']
+      );
+    }
 
     // Tum ogrenci kayitlarini sil
     await dbRun('DELETE FROM ogrenci_kayitlari');

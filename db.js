@@ -130,6 +130,17 @@ async function ensureTursoTables() {
       sira INTEGER DEFAULT 0,
       aktif INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS ogrenci_arsiv (
+      arsiv_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      orijinal_id INTEGER,
+      sinif TEXT, ogrenci_adi_soyadi TEXT, telefon TEXT, tc_kimlik_no TEXT,
+      veli_adi TEXT, veli_telefon TEXT, tutar TEXT, odenen_tutar TEXT,
+      odeme_durumu TEXT, odeme_turu TEXT, edessis_kaydi TEXT, taksit TEXT,
+      veli_username TEXT,
+      odeme_gecmisi_json TEXT,
+      silinme_tarihi DATETIME DEFAULT CURRENT_TIMESTAMP,
+      silen TEXT
     )`
   ];
 
