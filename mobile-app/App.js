@@ -13,6 +13,7 @@ import {
   getOnboardingDone, setOnboardingDone, getTourDone, setTourDone,
 } from './src/auth';
 import { pushTokenSil } from './src/push';
+import { setUnauthorizedHandler } from './src/api';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import SifreDegistirScreen from './src/screens/SifreDegistirScreen';
@@ -59,6 +60,11 @@ export default function App() {
   const [turBitti, setTurBitti] = useState(true);
 
   useEffect(() => {
+    // Oturum düşerse (401) otomatik çıkış → giriş ekranına dön
+    setUnauthorizedHandler(async () => {
+      await clearSession();
+      setVeli(null);
+    });
     (async () => {
       const token = await getToken();
       if (token) setVeli(await getVeli());

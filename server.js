@@ -24,7 +24,8 @@ const isProd = process.env.NODE_ENV === 'production';
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'sinav_merkezi.db');
 // SESSION_SECRET - Railway icin fallback (production'da mutlaka environment variable kullanin!)
 // Railway'de NODE_ENV otomatik production olmayabilir, bu yuzden fallback ekliyoruz
-const SESSION_SECRET = process.env.SESSION_SECRET || 'railway-temp-secret-' + Date.now() + '-change-this-in-production';
+// NOT: Fallback SABİT olmalı; yoksa her deploy'da değişip tüm oturumları/JWT'leri düşürür.
+const SESSION_SECRET = process.env.SESSION_SECRET || 'adana-sinav-kulubu-stable-fallback-2026-set-env-in-prod';
 // Mobil uygulama (JWT) icin gizli anahtar
 const JWT_SECRET = process.env.JWT_SECRET || SESSION_SECRET;
 const ENABLE_ADMIN_RESET = process.env.ENABLE_ADMIN_RESET === 'true';
